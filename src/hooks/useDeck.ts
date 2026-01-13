@@ -13,6 +13,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const [state, setState] = useState<DeckState>({
         track: null,
         isPlaying: false,
+        isLoading: false,
         currentTime: 0,
         pitch: 0,
         volume: 75,
@@ -63,6 +64,8 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     }, []);
 
     const loadTrack = useCallback(async (track: Track) => {
+        setState(prev => ({ ...prev, isLoading: true }));
+
         // Stop current playback
         if (audioElementRef.current) {
             audioElementRef.current.pause();
@@ -92,6 +95,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         let bpm = track.bpm;
         if (!bpm) {
             try {
+                // Fetch for BPM detection
                 const response = await fetch(track.url);
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -106,7 +110,8 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             ...prev,
             track: { ...track, bpm },
             currentTime: 0,
-            isPlaying: false
+            isPlaying: false,
+            isLoading: false
         }));
     }, [audioContext]);
 
@@ -187,6 +192,10 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         }
     }, []);
 
+    const setIsLoading = useCallback((isLoading: boolean) => {
+        setState(prev => ({ ...prev, isLoading }));
+    }, []);
+
     return {
         state,
         loadTrack,
@@ -196,6 +205,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         setPitch,
         setVolume,
         setEQ,
-        setEffect
+        setEffect,
+        setIsLoading
     };
 };

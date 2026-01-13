@@ -63,8 +63,7 @@
 .app-main {
   flex: 1;
   display: flex;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-md);
   overflow: hidden;
 }
 
@@ -82,42 +81,9 @@
   min-width: 260px;
 }
 
-/* Responsive Design */
-@media (max-width: 1280px) {
-  .decks-section {
-    flex-direction: column;
-  }
-
-  .app-main {
-    flex-direction: column;
-  }
-
-  .playlist {
-    max-width: 100%;
-  }
-}
-
-@media (max-width: 768px) {
-  .app-header {
-    padding: var(--spacing-sm) var(--spacing-md);
-  }
-
-  .app-title {
-    font-size: 1.25rem;
-  }
-
-  .app-main {
-    padding: var(--spacing-sm);
-    gap: var(--spacing-sm);
-  }
-
-  .decks-section {
-    gap: var(--spacing-sm);
-  }
-
-  .center-section {
-    min-width: 100%;
-  }
+/* Decks are now full width */
+.decks-section>.deck {
+  flex: 1;
 }
 
 /* Animations for reactive UI */
@@ -135,7 +101,6 @@
 
 .deck,
 .mixer,
-.effects,
-.playlist {
+.effects {
   animation: slideIn 0.3s ease-out;
 }

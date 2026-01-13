@@ -11,6 +11,7 @@ export interface Track {
 export interface DeckState {
     track: Track | null;
     isPlaying: boolean;
+    isLoading: boolean;
     currentTime: number;
     pitch: number;
     volume: number;

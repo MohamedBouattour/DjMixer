@@ -1,17 +1,18 @@
 .effects {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-xl);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
+    gap: var(--spacing-xl);
 }
 
 .effects-title {
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--color-text-secondary);
+    letter-spacing: 2px;
+    color: var(--color-text-primary);
     margin: 0;
+    text-align: center;
 }
 
 .effects-grid {
@@ -23,30 +24,35 @@
 .effects-deck {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
 }
 
 .effects-deck-label {
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-size: 0.8125rem;
+    font-weight: 800;
     letter-spacing: 1px;
-    padding: var(--spacing-xs) var(--spacing-md);
+    padding: 4px 12px;
     border-radius: var(--radius-sm);
     text-align: center;
+    text-transform: uppercase;
 }
 
 .effect-control {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-sm);
 }
 
 .effect-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: var(--color-text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -54,15 +60,10 @@
 
 .effect-value {
     color: var(--color-accent-green);
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 0.875rem;
 }
 
 .effect-slider {
     width: 100%;
-}
-
-@media (max-width: 1024px) {
-    .effects-grid {
-        grid-template-columns: 1fr;
-    }
 }

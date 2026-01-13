@@ -9,65 +9,101 @@
 
 .deck-header {
     width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: var(--spacing-sm);
+}
+
+.deck-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
 }
 
 .deck-label {
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    font-weight: 800;
     color: white;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    box-shadow: 0 0 15px var(--deck-color);
 }
 
 .track-info {
     flex: 1;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-md);
+    justify-content: flex-end;
+    gap: var(--spacing-xl);
+    padding-left: var(--spacing-lg);
+    overflow: hidden;
 }
 
 .track-name {
-    font-weight: 600;
-    font-size: 1.125rem;
+    font-weight: 700;
+    font-size: 1.25rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--color-text-primary);
+    text-align: right;
 }
 
 .bpm-display {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-md);
-    background: var(--color-bg-elevated);
-    border-radius: var(--radius-md);
+    justify-content: center;
+    min-width: 60px;
 }
 
 .bpm-label {
-    font-size: 0.7rem;
+    font-size: 0.625rem;
     color: var(--color-text-muted);
-    font-weight: 600;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .bpm-value {
-    font-size: 1.125rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: 800;
     color: var(--deck-color);
-    min-width: 3ch;
-    text-align: right;
+    text-shadow: 0 0 10px var(--deck-color);
+    line-height: 1;
 }
 
-.waveform-placeholder {
+.waveform-placeholder,
+.waveform-loading {
     height: 100px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     background: var(--color-bg-elevated);
     border-radius: var(--radius-md);
     color: var(--color-text-muted);
     font-size: 0.875rem;
+    gap: var(--spacing-sm);
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--deck-color);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .deck-controls {

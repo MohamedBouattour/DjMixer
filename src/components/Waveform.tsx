@@ -25,16 +25,17 @@ export const Waveform: React.FC<WaveformProps> = ({
 
         const wavesurfer = WaveSurfer.create({
             container: containerRef.current,
-            waveColor: color + '40',
+            waveColor: color + '80', // Slightly more opaque
             progressColor: color,
             cursorColor: color,
             cursorWidth: 2,
             barWidth: 2,
+            barGap: 1,
             barRadius: 3,
-            height: 80,
+            height: 100,
             normalize: true,
-            backend: 'WebAudio',
-            interact: true
+            interact: true,
+            dragToSeek: true
         });
 
         wavesurfer.on('interaction', () => {

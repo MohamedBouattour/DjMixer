@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import type { Track } from '../types';
 import { loadAudioFile } from '../utils/audioUtils';
 import { formatTime } from '../utils/helpers';
@@ -16,9 +16,28 @@ export const Playlist: React.FC<PlaylistProps> = ({
     onTracksChange,
     onLoadToDeck
 }) => {
+    const [isOpen, setIsOpen] = React.useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const drawerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        // ... (existing logic)
         const files = e.target.files;
         if (!files) return;
 
@@ -93,73 +112,86 @@ export const Playlist: React.FC<PlaylistProps> = ({
     };
 
     return (
-        <div className="playlist glass-panel">
-            <div className="playlist-header">
-                <h3 className="playlist-title">Playlist</h3>
-                <button
-                    className="btn-add-tracks"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    <PlusIcon />
-                    Add Tracks
-                </button>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="audio/*"
-                    multiple
-                    onChange={handleFileSelect}
-                    style={{ display: 'none' }}
-                />
-            </div>
-
-            <div
-                className="track-list"
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
+        <div ref={drawerRef} className={`playlist-drawer ${isOpen ? 'open' : ''}`}>
+            <button
+                className="playlist-handle"
+                onClick={() => setIsOpen(!isOpen)}
+                title={isOpen ? "Close Playlist" : "Open Playlist"}
             >
-                {tracks.length === 0 ? (
-                    <div className="empty-playlist">
-                        <UploadIcon />
-                        <p>Drop audio files here or click "Add Tracks"</p>
-                        <p className="text-sm text-muted">Supports MP3, WAV, OGG, and more</p>
-                    </div>
-                ) : (
-                    tracks.map((track) => (
-                        <div key={track.id} className="track-item">
-                            <div className="track-details">
-                                <div className="track-name">{track.name}</div>
-                                <div className="track-meta">
-                                    <span>{formatTime(track.duration)}</span>
-                                    {track.bpm && <span className="track-bpm">{track.bpm} BPM</span>}
+                <span className="handle-text">PLAYLIST</span>
+                <div className="handle-icon">
+                    {isOpen ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+                </div>
+            </button>
+
+            <div className="playlist-content glass-panel">
+                <div className="playlist-header">
+                    <h3 className="playlist-title">Playlist</h3>
+                    <button
+                        className="btn-add-tracks"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <PlusIcon />
+                        Add Tracks
+                    </button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="audio/*"
+                        multiple
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                    />
+                </div>
+
+                <div
+                    className="track-list"
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                >
+                    {tracks.length === 0 ? (
+                        <div className="empty-playlist">
+                            <UploadIcon />
+                            <p>Drop audio files here or click "Add Tracks"</p>
+                            <p className="text-sm text-muted">Supports MP3, WAV, OGG, and more</p>
+                        </div>
+                    ) : (
+                        tracks.map((track) => (
+                            <div key={track.id} className="track-item">
+                                <div className="track-details">
+                                    <div className="track-name">{track.name}</div>
+                                    <div className="track-meta">
+                                        <span>{formatTime(track.duration)}</span>
+                                        {track.bpm && <span className="track-bpm">{track.bpm} BPM</span>}
+                                    </div>
+                                </div>
+                                <div className="track-actions">
+                                    <button
+                                        className="btn-load-deck deck-a"
+                                        onClick={() => onLoadToDeck(track, 'A')}
+                                        title="Load to Deck A"
+                                    >
+                                        A
+                                    </button>
+                                    <button
+                                        className="btn-load-deck deck-b"
+                                        onClick={() => onLoadToDeck(track, 'B')}
+                                        title="Load to Deck B"
+                                    >
+                                        B
+                                    </button>
+                                    <button
+                                        className="btn-remove"
+                                        onClick={() => removeTrack(track.id)}
+                                        title="Remove track"
+                                    >
+                                        <TrashIcon />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="track-actions">
-                                <button
-                                    className="btn-load-deck deck-a"
-                                    onClick={() => onLoadToDeck(track, 'A')}
-                                    title="Load to Deck A"
-                                >
-                                    A
-                                </button>
-                                <button
-                                    className="btn-load-deck deck-b"
-                                    onClick={() => onLoadToDeck(track, 'B')}
-                                    title="Load to Deck B"
-                                >
-                                    B
-                                </button>
-                                <button
-                                    className="btn-remove"
-                                    onClick={() => removeTrack(track.id)}
-                                    title="Remove track"
-                                >
-                                    <TrashIcon />
-                                </button>
-                            </div>
-                        </div>
-                    ))
-                )}
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -184,5 +216,17 @@ const TrashIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <polyline points="3 6 5 6 21 6" />
         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+);
+
+const ChevronLeftIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="15 18 9 12 15 6" />
+    </svg>
+);
+
+const ChevronRightIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="9 18 15 12 9 6" />
     </svg>
 );

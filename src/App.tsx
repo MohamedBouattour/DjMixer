@@ -5,7 +5,7 @@ import { Playlist } from './components/Playlist';
 import { Effects } from './components/Effects';
 import { useDeck } from './hooks/useDeck';
 import type { Track } from './types';
-import { getAllTracksFromDB } from './utils/storage';
+import { getAllTracksFromDB, saveTrackToDB } from './utils/storage';
 import './App.css';
 
 function App() {
@@ -103,6 +103,49 @@ function App() {
     }
   };
 
+  const handleImportTrack = async (track: Track, deckId: 'A' | 'B') => {
+    let finalTrack = { ...track };
+    const deck = deckId === 'A' ? deckA : deckB;
+
+    // Show loading spinner on the deck immediately
+    deck.setIsLoading(true);
+
+    // If it's a YouTube track and doesn't have a file yet, we download it to store in DB
+    if (!track.file && track.url.includes('localhost:3002/stream')) {
+      try {
+        console.log('Downloading track for persistence:', track.name);
+        const res = await fetch(track.url);
+        const blob = await res.blob();
+
+        // Create a File object from the blob
+        const file = new File([blob], `${track.name}.mp3`, { type: 'audio/mpeg' });
+
+        finalTrack = {
+          ...track,
+          file: file,
+          url: URL.createObjectURL(file) // Use local blob URL
+        };
+
+        // Save to IndexedDB
+        await saveTrackToDB(finalTrack);
+        console.log('Track saved to DB:', track.name);
+      } catch (err) {
+        console.error('Failed to persist track:', err);
+      }
+    }
+
+    setTracks(prev => {
+      if (prev.some(t => t.id === finalTrack.id)) {
+        // Update existing track with the new file/url
+        return prev.map(t => t.id === finalTrack.id ? finalTrack : t);
+      }
+      return [...prev, finalTrack];
+    });
+
+    handleLoadToDeck(finalTrack, deckId);
+    // deck.loadTrack will handle setting isLoading to false when done
+  };
+
   return (
     <div className="app">
       <header className="app-header">
@@ -133,6 +176,7 @@ function App() {
             onPitchChange={deckA.setPitch}
             onVolumeChange={deckA.setVolume}
             onEQChange={deckA.setEQ}
+            onLoadTrack={(track) => handleImportTrack(track, 'A')}
             color="#ff0080"
           />
 
@@ -155,6 +199,7 @@ function App() {
             onPitchChange={deckB.setPitch}
             onVolumeChange={deckB.setVolume}
             onEQChange={deckB.setEQ}
+            onLoadTrack={(track) => handleImportTrack(track, 'B')}
             color="#00d4ff"
           />
         </div>
