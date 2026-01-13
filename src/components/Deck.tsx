@@ -123,42 +123,60 @@ export const Deck: React.FC<DeckProps> = ({
                                     onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
                                     className="volume-slider"
                                 />
+                                <div className="volume-level-indicator">
+                                    <div className="volume-level-fill" style={{ height: `${(volume / 150) * 100}%` }} />
+                                </div>
                             </div>
                         </div>
 
                         <div className="eq-controls">
                             <div className="eq-band">
                                 <label className="control-label text-xs">LOW</label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={eq.low}
-                                    onChange={(e) => onEQChange('low', parseFloat(e.target.value))}
-                                    className="eq-slider"
-                                />
+                                <div className="eq-slider-wrapper">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={eq.low}
+                                        onChange={(e) => onEQChange('low', parseFloat(e.target.value))}
+                                        className="eq-slider"
+                                    />
+                                    <div className="eq-level-indicator">
+                                        <div className="eq-level-fill" style={{ height: `${eq.low}%` }} />
+                                    </div>
+                                </div>
                             </div>
                             <div className="eq-band">
                                 <label className="control-label text-xs">MID</label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={eq.mid}
-                                    onChange={(e) => onEQChange('mid', parseFloat(e.target.value))}
-                                    className="eq-slider"
-                                />
+                                <div className="eq-slider-wrapper">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={eq.mid}
+                                        onChange={(e) => onEQChange('mid', parseFloat(e.target.value))}
+                                        className="eq-slider"
+                                    />
+                                    <div className="eq-level-indicator">
+                                        <div className="eq-level-fill" style={{ height: `${eq.mid}%` }} />
+                                    </div>
+                                </div>
                             </div>
                             <div className="eq-band">
                                 <label className="control-label text-xs">HIGH</label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={eq.high}
-                                    onChange={(e) => onEQChange('high', parseFloat(e.target.value))}
-                                    className="eq-slider"
-                                />
+                                <div className="eq-slider-wrapper">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={eq.high}
+                                        onChange={(e) => onEQChange('high', parseFloat(e.target.value))}
+                                        className="eq-slider"
+                                    />
+                                    <div className="eq-level-indicator">
+                                        <div className="eq-level-fill" style={{ height: `${eq.high}%` }} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

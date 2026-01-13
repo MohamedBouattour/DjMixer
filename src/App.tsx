@@ -5,6 +5,7 @@ import { Playlist } from './components/Playlist';
 import { Effects } from './components/Effects';
 import { useDeck } from './hooks/useDeck';
 import type { Track } from './types';
+import { getAllTracksFromDB } from './utils/storage';
 import './App.css';
 
 function App() {
@@ -18,6 +19,19 @@ function App() {
   const deckBGainRef = useRef<GainNode | null>(null);
 
 
+
+  // Load tracks from DB
+  useEffect(() => {
+    const loadTracks = async () => {
+      try {
+        const storedTracks = await getAllTracksFromDB();
+        setTracks(storedTracks);
+      } catch (error) {
+        console.error('Failed to load tracks from DB:', error);
+      }
+    };
+    loadTracks();
+  }, []);
 
   // Initialize audio context
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import type { Track } from '../types';
 import { loadAudioFile } from '../utils/audioUtils';
 import { formatTime } from '../utils/helpers';
+import { saveTrackToDB, deleteTrackFromDB } from '../utils/storage';
 import './Playlist.css';
 
 interface PlaylistProps {
@@ -23,10 +24,20 @@ export const Playlist: React.FC<PlaylistProps> = ({
 
         const newTracks: Track[] = [];
 
+        const existingNames = new Set(tracks.map(t => t.name.toLowerCase()));
+
         for (let i = 0; i < files.length; i++) {
+            const fileName = files[i].name.replace(/\.[^/.]+$/, '').toLowerCase();
+            if (existingNames.has(fileName)) {
+                console.warn(`Track "${files[i].name}" already exists in playlist.`);
+                continue;
+            }
+
             try {
                 const track = await loadAudioFile(files[i]);
+                await saveTrackToDB(track);
                 newTracks.push(track);
+                existingNames.add(track.name.toLowerCase());
             } catch (error) {
                 console.error('Error loading file:', error);
             }
@@ -45,10 +56,20 @@ export const Playlist: React.FC<PlaylistProps> = ({
 
         const newTracks: Track[] = [];
 
+        const existingNames = new Set(tracks.map(t => t.name.toLowerCase()));
+
         for (const file of files) {
+            const fileName = file.name.replace(/\.[^/.]+$/, '').toLowerCase();
+            if (existingNames.has(fileName)) {
+                console.warn(`Track "${file.name}" already exists in playlist.`);
+                continue;
+            }
+
             try {
                 const track = await loadAudioFile(file);
+                await saveTrackToDB(track);
                 newTracks.push(track);
+                existingNames.add(track.name.toLowerCase());
             } catch (error) {
                 console.error('Error loading file:', error);
             }
@@ -62,8 +83,13 @@ export const Playlist: React.FC<PlaylistProps> = ({
         e.stopPropagation();
     };
 
-    const removeTrack = (trackId: string) => {
-        onTracksChange(tracks.filter(t => t.id !== trackId));
+    const removeTrack = async (trackId: string) => {
+        try {
+            await deleteTrackFromDB(trackId);
+            onTracksChange(tracks.filter(t => t.id !== trackId));
+        } catch (error) {
+            console.error('Error removing track:', error);
+        }
     };
 
     return (
