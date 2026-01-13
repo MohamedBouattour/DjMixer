@@ -1,0 +1,244 @@
+.deck {
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    min-width: 320px;
+    flex: 1;
+}
+
+.deck-header {
+    width: 100%;
+}
+
+.deck-label {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 1px;
+}
+
+.track-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+.track-name {
+    font-weight: 600;
+    font-size: 1.125rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bpm-display {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--color-bg-elevated);
+    border-radius: var(--radius-md);
+}
+
+.bpm-label {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.bpm-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--deck-color);
+    min-width: 3ch;
+    text-align: right;
+}
+
+.waveform-placeholder {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-elevated);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.deck-controls {
+    height: 220px;
+}
+
+.deck-transport {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.deck-mixer {
+    display: flex;
+    gap: var(--spacing-md);
+    height: 100%;
+    align-items: flex-end;
+}
+
+.playback-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.btn-play-pause {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--gradient-panel);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    border: 2px solid var(--color-border);
+}
+
+.btn-play-pause:hover:not(:disabled) {
+    transform: scale(1.05);
+    border-color: var(--deck-color);
+    box-shadow: 0 0 20px var(--deck-color);
+}
+
+.btn-play-pause.active {
+    background: var(--deck-color);
+    border-color: var(--deck-color);
+}
+
+.btn-play-pause:disabled {
+    opacity: 0.3;
+}
+
+.time-display {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-xs);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.current-time {
+    font-size: 1.5rem;
+    color: var(--color-text-primary);
+}
+
+.separator {
+    color: var(--color-text-muted);
+}
+
+.total-time {
+    color: var(--color-text-secondary);
+}
+
+.pitch-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    width: 100%;
+}
+
+.volume-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    align-items: center;
+    height: 100%;
+    width: 100px;
+}
+
+.control-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pitch-value {
+    color: var(--deck-color);
+    font-size: 0.875rem;
+}
+
+.pitch-slider {
+    width: 100%;
+}
+
+.volume-slider-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-elevated);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) 0;
+    width: 25px;
+    height: 90px;
+    height: 100%;
+    /* Create a stacking context for the rotated slider */
+    position: relative;
+    overflow: hidden;
+}
+
+.volume-slider {
+    /* Use transform for reliable vertical slider across browsers */
+    width: 15vh;
+    /* This will be the height after rotation */
+    max-width: 150px;
+    height: 10px;
+    /* Touch target size */
+    transform: rotate(-90deg);
+    transform-origin: center;
+    cursor: grab;
+    margin: 0;
+}
+
+.volume-value {
+    color: var(--deck-color);
+    font-size: 0.875rem;
+}
+
+.eq-controls {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: space-around;
+    padding: var(--spacing-md);
+    background: var(--color-bg-elevated);
+    border-radius: var(--radius-md);
+}
+
+.eq-band {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.eq-slider {
+    /* Use transform for reliable vertical slider across browsers */
+    width: 100px;
+    /* This acts as height when rotated */
+    height: 10px;
+    /* Touch target */
+    transform: rotate(-90deg);
+    transform-origin: center;
+    cursor: grab;
+    padding: 0;
+    margin: 30px 0;
+    /* Compensate for rotation layout issues */
+}

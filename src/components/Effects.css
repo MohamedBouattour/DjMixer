@@ -1,0 +1,68 @@
+.effects {
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.effects-title {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.effects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xl);
+}
+
+.effects-deck {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.effects-deck-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.effect-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.effect-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.effect-value {
+    color: var(--color-accent-green);
+    font-weight: 700;
+}
+
+.effect-slider {
+    width: 100%;
+}
+
+@media (max-width: 1024px) {
+    .effects-grid {
+        grid-template-columns: 1fr;
+    }
+}

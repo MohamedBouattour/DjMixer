@@ -1,0 +1,16 @@
+.waveform-container {
+    width: 100%;
+    background: var(--color-bg-elevated);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    overflow: hidden;
+}
+
+.waveform {
+    width: 100%;
+    cursor: pointer;
+}
+
+.waveform wave {
+    overflow: visible !important;
+}

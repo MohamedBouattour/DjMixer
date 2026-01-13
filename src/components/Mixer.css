@@ -1,0 +1,115 @@
+.mixer {
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    min-width: 260px;
+}
+
+.mixer-title {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.crossfader-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.crossfader-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.deck-a-label {
+    color: var(--color-accent-primary);
+}
+
+.deck-b-label {
+    color: var(--color-accent-secondary);
+}
+
+.crossfader {
+    width: 100%;
+    margin: var(--spacing-xs) 0;
+}
+
+.crossfader-indicator {
+    position: relative;
+    height: 4px;
+    background: linear-gradient(90deg,
+            var(--color-accent-primary) 0%,
+            var(--color-bg-elevated) 50%,
+            var(--color-accent-secondary) 100%);
+    border-radius: var(--radius-sm);
+}
+
+.crossfader-position {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: var(--shadow-md);
+    transition: left var(--transition-fast);
+}
+
+.master-volume-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.volume-value {
+    color: var(--color-accent-green);
+    font-weight: 700;
+}
+
+.master-volume-slider {
+    width: 100%;
+}
+
+.volume-bars {
+    display: flex;
+    gap: 2px;
+    height: 60px;
+    align-items: flex-end;
+}
+
+.volume-bar {
+    flex: 1;
+    background: var(--color-bg-elevated);
+    border-radius: 2px;
+    transition: all var(--transition-fast);
+    min-height: 4px;
+}
+
+.volume-bar.active {
+    min-height: 100%;
+}
+
+.volume-bar.active.green {
+    background: var(--color-accent-green);
+    box-shadow: 0 0 8px var(--color-accent-green);
+}
+
+.volume-bar.active.yellow {
+    background: #ffcc00;
+    box-shadow: 0 0 8px #ffcc00;
+}
+
+.volume-bar.active.red {
+    background: var(--color-accent-primary);
+    box-shadow: 0 0 8px var(--color-accent-primary);
+    animation: pulse 0.5s ease-in-out infinite;
+}
