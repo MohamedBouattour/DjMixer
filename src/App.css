@@ -1,5 +1,5 @@
 .app {
-  width: 100vw;
+  width: 98vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -70,15 +70,29 @@
 .decks-section {
   flex: 1;
   display: flex;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
   overflow: hidden;
 }
 
 .center-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  min-width: 260px;
+  gap: var(--spacing-md);
+  min-width: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  /* Space for scrollbar if needed */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.center-section::-webkit-scrollbar {
+  width: 4px;
+}
+
+.center-section::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
 }
 
 /* Decks are now full width */

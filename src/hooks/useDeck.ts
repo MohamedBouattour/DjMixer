@@ -17,7 +17,19 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         currentTime: 0,
         pitch: 0,
         volume: 75,
-        eq: { low: 50, mid: 50, high: 50 }
+        eq: { low: 50, mid: 50, high: 50 },
+        activeLoop: null,
+        cuePoints: [],
+        activeEffects: {
+            reverb: false,
+            delay: false,
+            filter: false,
+            distortion: false,
+            bitcrusher: false,
+            flanger: false,
+            tremolo: false,
+            hpf: false
+        }
     });
 
     const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -27,6 +39,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const animationFrameRef = useRef<number | undefined>(undefined);
 
     const isPlayingRef = useRef(false);
+    const activeLoopRef = useRef<{ start: number; end: number; active: boolean } | null>(null);
 
     useEffect(() => {
         if (!audioContext || !destination) return;
@@ -58,6 +71,15 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
 
     const updateCurrentTime = useCallback(() => {
         if (audioElementRef.current && isPlayingRef.current) {
+            const currentTime = audioElementRef.current.currentTime;
+
+            // Handle Loop
+            if (activeLoopRef.current && activeLoopRef.current.active) {
+                if (currentTime >= activeLoopRef.current.end) {
+                    audioElementRef.current.currentTime = activeLoopRef.current.start;
+                }
+            }
+
             setState(prev => ({ ...prev, currentTime: audioElementRef.current!.currentTime }));
             animationFrameRef.current = requestAnimationFrame(updateCurrentTime);
         }
@@ -111,8 +133,11 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             track: { ...track, bpm },
             currentTime: 0,
             isPlaying: false,
-            isLoading: false
+            isLoading: false,
+            activeLoop: null,
+            cuePoints: []
         }));
+        activeLoopRef.current = null;
     }, [audioContext]);
 
     const play = useCallback(async () => {
@@ -176,7 +201,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         }
     }, []);
 
-    const setEffect = useCallback((effect: 'reverb' | 'delay' | 'filter', value: number) => {
+    const setEffect = useCallback((effect: 'reverb' | 'delay' | 'filter' | 'distortion' | 'bitcrusher' | 'flanger' | 'tremolo' | 'hpf', value: number) => {
         if (effectsRef.current) {
             switch (effect) {
                 case 'reverb':
@@ -188,8 +213,94 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                 case 'filter':
                     effectsRef.current.setFilter(value);
                     break;
+                case 'distortion':
+                    effectsRef.current.setDistortion(value);
+                    break;
+                case 'bitcrusher':
+                    effectsRef.current.setBitcrusher(value);
+                    break;
+                case 'flanger':
+                    effectsRef.current.setFlanger(value);
+                    break;
+                case 'tremolo':
+                    effectsRef.current.setTremolo(value);
+                    break;
+                case 'hpf':
+                    effectsRef.current.setHPF(value);
+                    break;
             }
         }
+    }, []);
+
+    const toggleEffect = useCallback((effect: 'reverb' | 'delay' | 'filter' | 'distortion' | 'bitcrusher' | 'flanger' | 'tremolo' | 'hpf') => {
+        setState(prev => {
+            const isActive = prev.activeEffects[effect];
+            const newValue = !isActive;
+
+            // Apply effect immediately
+            if (effectsRef.current) {
+                const value = newValue ? (effect === 'distortion' || effect === 'bitcrusher' ? 20 : 50) : 0;
+                switch (effect) {
+                    case 'reverb': effectsRef.current.setReverb(value); break;
+                    case 'delay': effectsRef.current.setDelay(value); break;
+                    case 'filter': effectsRef.current.setFilter(newValue ? 20 : 100); break;
+                    case 'distortion': effectsRef.current.setDistortion(value); break;
+                    case 'bitcrusher': effectsRef.current.setBitcrusher(value); break;
+                    case 'flanger': effectsRef.current.setFlanger(value); break;
+                    case 'tremolo': effectsRef.current.setTremolo(value); break;
+                    case 'hpf': effectsRef.current.setHPF(newValue ? 40 : 0); break; // 40 = ~4kHz? 
+                }
+            }
+
+            return {
+                ...prev,
+                activeEffects: {
+                    ...prev.activeEffects,
+                    [effect]: newValue
+                }
+            };
+        });
+    }, []);
+
+    const handleCue = useCallback((index: number) => {
+        setState(prev => {
+            const newCuePoints = [...prev.cuePoints];
+            if (newCuePoints[index] !== undefined) {
+                // Jump
+                if (audioElementRef.current) {
+                    audioElementRef.current.currentTime = newCuePoints[index];
+                }
+                return prev;
+            } else {
+                // Set
+                if (audioElementRef.current) {
+                    newCuePoints[index] = audioElementRef.current.currentTime;
+                }
+                return { ...prev, cuePoints: newCuePoints };
+            }
+        });
+    }, []);
+
+    const deleteCue = useCallback((index: number) => {
+        setState(prev => {
+            const newCues = [...prev.cuePoints];
+            delete newCues[index]; // Use delete to keep index empty? Or filter?
+            // Arrays usually fill with empty or undefined.
+            // Let's just unset it.
+            newCues[index] = undefined as any;
+            return { ...prev, cuePoints: newCues };
+        });
+    }, []);
+
+    const setLoop = useCallback((start: number, end: number) => {
+        const loop = { start, end, active: true };
+        activeLoopRef.current = loop;
+        setState(prev => ({ ...prev, activeLoop: loop }));
+    }, []);
+
+    const clearLoop = useCallback(() => {
+        activeLoopRef.current = null;
+        setState(prev => ({ ...prev, activeLoop: null }));
     }, []);
 
     const setIsLoading = useCallback((isLoading: boolean) => {
@@ -206,6 +317,11 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         setVolume,
         setEQ,
         setEffect,
+        toggleEffect,
+        handleCue,
+        deleteCue,
+        setLoop,
+        clearLoop,
         setIsLoading
     };
 };

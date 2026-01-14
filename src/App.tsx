@@ -174,9 +174,12 @@ function App() {
             onPause={deckA.pause}
             onSeek={deckA.seek}
             onPitchChange={deckA.setPitch}
-            onVolumeChange={deckA.setVolume}
-            onEQChange={deckA.setEQ}
             onLoadTrack={(track) => handleImportTrack(track, 'A')}
+            onToggleEffect={deckA.toggleEffect}
+            onCue={deckA.handleCue}
+            onDeleteCue={deckA.deleteCue}
+            onLoopSet={deckA.setLoop}
+            onLoopClear={deckA.clearLoop}
             color="#ff0080"
           />
 
@@ -186,6 +189,10 @@ function App() {
               onCrossfaderChange={setCrossfader}
               masterVolume={masterVolume}
               onMasterVolumeChange={setMasterVolume}
+              deckAState={deckA.state}
+              deckBState={deckB.state}
+              onVolumeChange={(deck, value) => deck === 'A' ? deckA.setVolume(value) : deckB.setVolume(value)}
+              onEQChange={(deck, band, value) => deck === 'A' ? deckA.setEQ(band, value) : deckB.setEQ(band, value)}
             />
             <Effects onEffectChange={handleEffectChange} />
           </div>
@@ -197,9 +204,12 @@ function App() {
             onPause={deckB.pause}
             onSeek={deckB.seek}
             onPitchChange={deckB.setPitch}
-            onVolumeChange={deckB.setVolume}
-            onEQChange={deckB.setEQ}
             onLoadTrack={(track) => handleImportTrack(track, 'B')}
+            onToggleEffect={deckB.toggleEffect}
+            onCue={deckB.handleCue}
+            onDeleteCue={deckB.deleteCue}
+            onLoopSet={deckB.setLoop}
+            onLoopClear={deckB.clearLoop}
             color="#00d4ff"
           />
         </div>

@@ -12,9 +12,12 @@ interface DeckProps {
     onPause: () => void;
     onSeek: (time: number) => void;
     onPitchChange: (pitch: number) => void;
-    onVolumeChange: (volume: number) => void;
-    onEQChange: (band: 'low' | 'mid' | 'high', value: number) => void;
     onLoadTrack?: (track: Track) => void;
+    onToggleEffect: (effect: 'reverb' | 'delay' | 'filter' | 'distortion' | 'bitcrusher' | 'flanger' | 'tremolo' | 'hpf') => void;
+    onCue: (index: number) => void;
+    onDeleteCue: (index: number) => void;
+    onLoopSet: (start: number, end: number) => void;
+    onLoopClear: () => void;
     color: string;
 }
 
@@ -25,13 +28,54 @@ export const Deck: React.FC<DeckProps> = ({
     onPause,
     onSeek,
     onPitchChange,
-    onVolumeChange,
-    onEQChange,
     onLoadTrack,
+    onToggleEffect,
+    onCue,
+    onDeleteCue,
+    onLoopSet,
+    onLoopClear,
     color
 }) => {
     const [isYouTubeOpen, setIsYouTubeOpen] = useState(false);
-    const { track, isPlaying, currentTime, pitch, volume, eq } = state;
+    const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
+
+    const loopStartRef = React.useRef<number>(0);
+    const ignoreClickRef = React.useRef<boolean>(false);
+    const [isHoldingLoop, setIsHoldingLoop] = useState(false);
+
+    const handleLoopDown = () => {
+        if (!track || !isPlaying) return;
+        if (activeLoop?.active) return; // Allow re-looping only after clearing? Or handle clears in Click.
+
+        loopStartRef.current = currentTime;
+        setIsHoldingLoop(true);
+        ignoreClickRef.current = false;
+    };
+
+    const handleLoopUp = () => {
+        if (!isHoldingLoop) return;
+        setIsHoldingLoop(false);
+
+        // Calculate hold duration
+        const loopDuration = currentTime - loopStartRef.current;
+
+        // If held long enough (e.g. > 200ms), activate loop
+        if (loopDuration > 0.2) {
+            onLoopSet(loopStartRef.current, currentTime);
+            ignoreClickRef.current = true; // Prevent the click from immediately clearing it if it fires after
+        }
+    };
+
+    const handleLoopClick = () => {
+        if (ignoreClickRef.current) {
+            ignoreClickRef.current = false;
+            return;
+        }
+
+        if (activeLoop?.active) {
+            onLoopClear();
+        }
+    };
 
     const effectiveBPM = track?.bpm
         ? Math.round(track.bpm * (1 + pitch / 100))
@@ -124,77 +168,84 @@ export const Deck: React.FC<DeckProps> = ({
                             className="pitch-slider"
                         />
                     </div>
-                </div>
 
-                <div className="deck-mixer">
-                    <div className="volume-control">
-                        <label className="control-label">
-                            Volume
-                            <span className="volume-value">{Math.round(volume)}%</span>
-                        </label>
-                        <div className="volume-slider-container">
-                            <input
-                                type="range"
-                                min="0"
-                                max="150"
-                                value={volume}
-                                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-                                className="volume-slider"
-                            />
-                            <div className="volume-level-indicator">
-                                <div className="volume-level-fill" style={{ height: `${(volume / 150) * 100}%` }} />
-                            </div>
+                    <div className="performance-controls">
+                        <div className="effects-grid-performance">
+                            <button
+                                className={`btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('reverb')}
+                                title="Reverb"
+                            >REV</button>
+                            <button
+                                className={`btn-effect ${activeEffects?.delay ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('delay')}
+                                title="Delay"
+                            >DLY</button>
+                            <button
+                                className={`btn-effect ${activeEffects?.filter ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('filter')}
+                                title="Low Pass Filter"
+                            >LPF</button>
+                            <button
+                                className={`btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('hpf')}
+                                title="High Pass Filter"
+                            >HPF</button>
+                            <button
+                                className={`btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('distortion')}
+                                title="Distortion"
+                            >DST</button>
+                            <button
+                                className={`btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('bitcrusher')}
+                                title="Bitcrusher"
+                            >BIT</button>
+                            <button
+                                className={`btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('flanger')}
+                                title="Flanger"
+                            >FLG</button>
+                            <button
+                                className={`btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
+                                onClick={() => onToggleEffect('tremolo')}
+                                title="Tremolo"
+                            >TRM</button>
                         </div>
-                    </div>
 
-                    <div className="eq-controls">
-                        <div className="eq-band">
-                            <label className="control-label text-xs">LOW</label>
-                            <div className="eq-slider-wrapper">
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={eq.low}
-                                    onChange={(e) => onEQChange('low', parseFloat(e.target.value))}
-                                    className="eq-slider"
-                                />
-                                <div className="eq-level-indicator">
-                                    <div className="eq-level-fill" style={{ height: `${eq.low}%` }} />
-                                </div>
-                            </div>
+                        <div className="cues-row">
+                            {[0, 1].map(index => (
+                                <button
+                                    key={index}
+                                    className={`btn-cue ${cuePoints[index] !== undefined ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                        if (e.shiftKey) {
+                                            onDeleteCue(index);
+                                        } else {
+                                            onCue(index);
+                                        }
+                                    }}
+                                    title={cuePoints[index] !== undefined ? `Jump to ${formatTime(cuePoints[index])} (Shift+Click to clear)` : 'Set Cue'}
+                                >
+                                    {index + 1}
+                                </button>
+                            ))}
                         </div>
-                        <div className="eq-band">
-                            <label className="control-label text-xs">MID</label>
-                            <div className="eq-slider-wrapper">
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={eq.mid}
-                                    onChange={(e) => onEQChange('mid', parseFloat(e.target.value))}
-                                    className="eq-slider"
-                                />
-                                <div className="eq-level-indicator">
-                                    <div className="eq-level-fill" style={{ height: `${eq.mid}%` }} />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="eq-band">
-                            <label className="control-label text-xs">HIGH</label>
-                            <div className="eq-slider-wrapper">
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={eq.high}
-                                    onChange={(e) => onEQChange('high', parseFloat(e.target.value))}
-                                    className="eq-slider"
-                                />
-                                <div className="eq-level-indicator">
-                                    <div className="eq-level-fill" style={{ height: `${eq.high}%` }} />
-                                </div>
-                            </div>
+
+                        <div className="loop-control">
+                            <button
+                                className={`btn-magic-loop ${activeLoop?.active || isHoldingLoop ? 'active' : ''} ${isHoldingLoop ? 'holding' : ''}`}
+                                onMouseDown={handleLoopDown}
+                                onMouseUp={handleLoopUp}
+                                onMouseLeave={handleLoopUp}
+                                onClick={handleLoopClick}
+                                onTouchStart={handleLoopDown}
+                                onTouchEnd={handleLoopUp}
+                                title="Hold to Magic Loop (Release to activate)"
+                            >
+                                <LoopIcon />
+                                <span>MAGIC LOOP</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -204,13 +255,20 @@ export const Deck: React.FC<DeckProps> = ({
 };
 
 const PlayIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
         <path d="M8 5v14l11-7z" />
     </svg>
 );
 
 const PauseIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
         <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+    </svg>
+);
+
+
+const LoopIcon = () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
     </svg>
 );

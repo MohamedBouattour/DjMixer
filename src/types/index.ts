@@ -20,6 +20,22 @@ export interface DeckState {
         mid: number;
         high: number;
     };
+    activeLoop: {
+        start: number;
+        end: number;
+        active: boolean;
+    } | null;
+    cuePoints: number[];
+    activeEffects: {
+        reverb: boolean;
+        delay: boolean;
+        filter: boolean;
+        distortion: boolean;
+        bitcrusher: boolean;
+        flanger: boolean;
+        tremolo: boolean;
+        hpf: boolean;
+    };
 }
 
 export interface EffectState {

@@ -1,37 +1,63 @@
 .mixer {
-    padding: var(--spacing-xl);
+    padding: var(--spacing-lg);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xl);
-    min-width: 280px;
+    gap: var(--spacing-md);
+    min-width: 500px;
+    align-items: stretch;
+    overflow: hidden;
 }
 
 .mixer-title {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 2px;
     color: var(--color-text-primary);
     margin: 0;
     text-align: center;
+    opacity: 0.5;
 }
 
-.crossfader-section {
+.mixer-layout {
     display: flex;
-    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-lg);
+    justify-content: space-between;
+}
+
+.mixer-deck-controls {
+    display: flex;
     gap: var(--spacing-md);
+    align-items: flex-end;
     padding: var(--spacing-md);
     background: rgba(255, 255, 255, 0.02);
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
 }
 
+.mixer-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    align-items: center;
+    padding-bottom: var(--spacing-md);
+}
+
+.crossfader-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
 .crossfader-labels {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 800;
-    letter-spacing: 1px;
+    padding: 0 var(--spacing-xs);
 }
 
 .deck-a-label {
@@ -44,85 +70,188 @@
 
 .crossfader-indicator {
     position: relative;
-    height: 6px;
-    background: linear-gradient(90deg,
-            #ff0080 0%,
-            transparent 50%,
-            #00d4ff 100%);
-    border-radius: 3px;
-    background-color: var(--color-bg-primary);
+    height: 4px;
+    background: var(--color-bg-primary);
+    border-radius: 2px;
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+    margin: var(--spacing-xs) 0;
 }
 
 .crossfader-position {
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 20px;
-    height: 20px;
+    width: 30px;
+    height: 12px;
     background: white;
-    border-radius: 4px;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-    transition: left 0.1s ease-out;
+    border-radius: 2px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    transition: left 0.05s ease-out;
     border: 1px solid var(--color-border);
 }
 
 .master-volume-section {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-}
-
-.volume-value {
-    color: var(--color-accent-green);
-    font-weight: 800;
-    font-size: 1rem;
+    gap: var(--spacing-sm);
+    align-items: center;
+    width: 100%;
 }
 
 .volume-bars {
     display: flex;
-    gap: 4px;
-    height: 80px;
+    gap: 3px;
+    height: 40px;
     align-items: flex-end;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs);
     background: rgba(0, 0, 0, 0.3);
     border-radius: var(--radius-md);
+    width: 100%;
 }
 
 .volume-bar {
     flex: 1;
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 2px;
-    transition: all 0.1s ease-out;
-    min-height: 4px;
+    border-radius: 1px;
+    min-height: 2px;
 }
 
 .volume-bar.active.green {
     background: var(--color-accent-green);
-    box-shadow: 0 0 12px var(--color-accent-green);
+    box-shadow: 0 0 8px var(--color-accent-green);
 }
 
 .volume-bar.active.yellow {
     background: #ffcc00;
-    box-shadow: 0 0 12px #ffcc00;
+    box-shadow: 0 0 8px #ffcc00;
 }
 
 .volume-bar.active.red {
     background: #ff4d4d;
-    box-shadow: 0 0 12px #ff4d4d;
-    animation: flash 0.5s infinite alternate;
+    box-shadow: 0 0 8px #ff4d4d;
 }
 
-@keyframes flash {
-    from {
-        opacity: 0.6;
-    }
+/* Reusing Deck styles but adapted for Mixer */
+.volume-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    align-items: center;
+    height: 160px;
+}
 
-    to {
-        opacity: 1;
-    }
+.volume-slider-container {
+    position: relative;
+    width: 32px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    overflow: hidden;
+}
+
+.volume-slider {
+    position: absolute;
+    width: 160px;
+    height: 32px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    background: transparent !important;
+    cursor: grab;
+    z-index: 5;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 32px;
+    height: 10px;
+    background: #fff;
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.volume-level-indicator {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.volume-level-fill {
+    width: 100%;
+    transition: height 0.05s ease-out;
+}
+
+.eq-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.eq-band {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.eq-slider-wrapper {
+    position: relative;
+    width: 28px;
+    height: 120px;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    overflow: hidden;
+}
+
+.eq-slider {
+    position: absolute;
+    width: 120px;
+    height: 28px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    background: transparent !important;
+    cursor: grab;
+    z-index: 5;
+    -webkit-appearance: none;
+}
+
+.eq-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 28px;
+    height: 8px;
+    background: #fff;
+    border-radius: 2px;
+}
+
+.eq-level-indicator {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+.eq-level-fill {
+    width: 100%;
+    transition: height 0.05s ease-out;
+}
+
+.control-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+}
+
+.volume-value {
+    color: var(--color-accent-green);
+    margin-left: 4px;
 }

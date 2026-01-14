@@ -173,7 +173,7 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                 </div>
 
                 <div className="youtube-input-section">
-                    <form onSubmit={handleUrlSubmit} className="url-form">
+                    {/* <form onSubmit={handleUrlSubmit} className="url-form">
                         <input
                             type="text"
                             value={videoUrl}
@@ -210,7 +210,7 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
 
                     <div className="search-divider">
                         <span>or search</span>
-                    </div>
+                    </div> */}
 
                     <form onSubmit={handleInternalSearch} className="search-form">
                         <input
