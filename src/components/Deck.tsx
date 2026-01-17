@@ -19,6 +19,11 @@ interface DeckProps {
     onLoopSet: (start: number, end: number) => void;
     onLoopClear: () => void;
     color: string;
+    shortcuts?: {
+        play?: string;
+        cue?: string;
+        effect?: string;
+    };
 }
 
 export const Deck: React.FC<DeckProps> = ({
@@ -34,7 +39,9 @@ export const Deck: React.FC<DeckProps> = ({
     onDeleteCue,
     onLoopSet,
     onLoopClear,
-    color
+
+    color,
+    shortcuts
 }) => {
     const [isYouTubeOpen, setIsYouTubeOpen] = useState(false);
     const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
@@ -81,8 +88,15 @@ export const Deck: React.FC<DeckProps> = ({
         ? Math.round(track.bpm * (1 + pitch / 100))
         : null;
 
+    const hexToRgb = (hex: string) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `${r}, ${g}, ${b}`;
+    };
+
     return (
-        <div className="deck glass-panel" style={{ '--deck-color': color } as React.CSSProperties}>
+        <div className={`deck glass-panel ${isPlaying ? 'is-playing' : ''}`} style={{ '--deck-color': color, '--deck-color-rgb': hexToRgb(color) } as React.CSSProperties}>
             <div className="deck-header">
                 <div className="deck-header-left">
                     <YouTubeModal
@@ -135,6 +149,7 @@ export const Deck: React.FC<DeckProps> = ({
                         {isPlaying ? (
                             <button className="btn-play-pause active" onClick={onPause}>
                                 <PauseIcon />
+                                {shortcuts?.play && <span className="shortcut-badge play-badge">{shortcuts.play}</span>}
                             </button>
                         ) : (
                             <button
@@ -143,6 +158,7 @@ export const Deck: React.FC<DeckProps> = ({
                                 disabled={!track}
                             >
                                 <PlayIcon />
+                                {shortcuts?.play && <span className="shortcut-badge play-badge">{shortcuts.play}</span>}
                             </button>
                         )}
 
@@ -185,7 +201,10 @@ export const Deck: React.FC<DeckProps> = ({
                                 className={`btn-effect ${activeEffects?.filter ? 'active' : ''}`}
                                 onClick={() => onToggleEffect('filter')}
                                 title="Low Pass Filter"
-                            >LPF</button>
+                            >
+                                LPF
+                                {shortcuts?.effect && <span className="shortcut-badge tiny">{shortcuts.effect}</span>}
+                            </button>
                             <button
                                 className={`btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
                                 onClick={() => onToggleEffect('hpf')}
@@ -228,6 +247,9 @@ export const Deck: React.FC<DeckProps> = ({
                                     title={cuePoints[index] !== undefined ? `Jump to ${formatTime(cuePoints[index])} (Shift+Click to clear)` : 'Set Cue'}
                                 >
                                     {index + 1}
+                                    {index === 0 && shortcuts?.cue && (
+                                        <span className="shortcut-badge tiny">{shortcuts.cue}</span>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -250,7 +272,7 @@ export const Deck: React.FC<DeckProps> = ({
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

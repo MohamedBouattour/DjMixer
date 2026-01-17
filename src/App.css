@@ -8,13 +8,16 @@
 }
 
 .app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-md) var(--spacing-xl);
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-  min-height: 64px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 2rem !important;
+  background: var(--color-bg-secondary) !important;
+  border-bottom: 2px solid var(--color-accent-primary) !important;
+  height: 70px !important;
+  min-height: 70px !important;
+  z-index: 1000 !important;
+  position: relative;
 }
 
 .app-logo {
@@ -44,20 +47,35 @@
   background-clip: text;
 }
 
-.app-status {
+.settings-btn-container {
+  margin-left: auto;
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
 }
 
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-accent-green);
-  animation: pulse 2s ease-in-out infinite;
+.settings-btn {
+  background: var(--gradient-deck-a) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  width: 44px !important;
+  height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: var(--radius-md) !important;
+  cursor: pointer !important;
+  box-shadow: var(--shadow-glow-pink) !important;
+  transition: all 0.3s ease !important;
+}
+
+.settings-btn:hover {
+  transform: rotate(45deg) scale(1.05) !important;
+  box-shadow: 0 0 20px rgba(255, 0, 128, 0.5) !important;
+}
+
+.settings-btn svg {
+  width: 24px !important;
+  height: 24px !important;
 }
 
 .app-main {

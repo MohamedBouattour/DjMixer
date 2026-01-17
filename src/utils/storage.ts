@@ -1,8 +1,9 @@
 import type { Track } from '../types';
 
 const DB_NAME = 'DJControllerDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'tracks';
+const SETTINGS_STORE_NAME = 'settings';
 
 let db: IDBDatabase | null = null;
 
@@ -29,6 +30,9 @@ const initDB = (): Promise<IDBDatabase> => {
             const db = (event.target as IDBOpenDBRequest).result;
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
+                db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'id' });
             }
         };
     });
@@ -81,6 +85,38 @@ export const deleteTrackFromDB = async (id: string): Promise<void> => {
         const request = store.delete(id);
 
         request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+import type { KeyMap } from '../types';
+
+export const saveKeyMapToDB = async (keyMap: KeyMap): Promise<void> => {
+    const database = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = database.transaction([SETTINGS_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(SETTINGS_STORE_NAME);
+        const request = store.put({ id: 'keyMap', value: keyMap });
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getKeyMapFromDB = async (): Promise<KeyMap | null> => {
+    const database = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = database.transaction([SETTINGS_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(SETTINGS_STORE_NAME);
+        const request = store.get('keyMap');
+
+        request.onsuccess = () => {
+            if (request.result) {
+                resolve(request.result.value as KeyMap);
+            } else {
+                resolve(null);
+            }
+        };
         request.onerror = () => reject(request.error);
     });
 };

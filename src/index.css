@@ -163,6 +163,50 @@ input[type="range"]:hover::-moz-range-thumb {
   transform: scale(1.2);
 }
 
+.app-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.settings-btn {
+  background: var(--gradient-deck-a) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  width: 48px !important;
+  height: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: var(--radius-md) !important;
+  cursor: pointer !important;
+  box-shadow: var(--shadow-glow-pink) !important;
+  transition: all 0.3s ease !important;
+}
+
+.settings-btn:hover {
+  transform: rotate(45deg) scale(1.05) !important;
+  box-shadow: 0 0 25px rgba(255, 0, 128, 0.6) !important;
+}
+
+.settings-btn svg {
+  width: 24px !important;
+  height: 24px !important;
+  stroke: #fff !important;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-xl);
+  background: var(--color-bg-secondary);
+  border-bottom: 2px solid var(--color-accent-primary);
+  height: 70px;
+  z-index: 1000;
+  position: relative;
+}
+
 /* Glassmorphism Panel */
 .glass-panel {
   overflow: auto;
@@ -278,4 +322,91 @@ input[type="range"]:hover::-moz-range-thumb {
 
 .animate-glow {
   animation: glow 1.5s ease-in-out infinite;
+}
+
+
+/* Shortcut Visuals - Theme Consistent & Readable */
+.shortcut-badge {
+  position: absolute !important;
+  top: -12px !important;
+  right: -12px !important;
+  background: var(--color-bg-secondary) !important;
+  color: var(--color-accent-green) !important;
+  font-size: 0.75rem !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--color-accent-green) !important;
+  /* pointer-events: none; removed to allow inspection as requested by user */
+  font-family: inherit !important;
+  z-index: 9999 !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), 0 0 5px rgba(0, 255, 136, 0.3) !important;
+  line-height: 1;
+  text-transform: uppercase;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.btn-play-pause .shortcut-badge.play-badge {
+  top: 0px !important;
+  right: 0px !important;
+  border-color: #fff !important;
+  color: #fff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3) !important;
+}
+
+.shortcut-badge.tiny {
+  font-size: 0.65rem !important;
+  padding: 1px 5px !important;
+  top: -15px !important;
+  background: var(--color-bg-elevated) !important;
+  color: var(--color-accent-secondary) !important;
+  border-color: var(--color-accent-secondary) !important;
+}
+
+/* Fix for overlapping badges in a group */
+.shortcut-group .shortcut-badge {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  margin: 0;
+}
+
+/* Ensure parents don't hide the badges */
+.btn-play-pause,
+.btn-cue,
+.btn-effect,
+.btn-magic-loop,
+.control-label,
+.deck-label,
+.volume-control,
+.mixer-deck-controls,
+.eq-band,
+.performance-controls,
+.crossfader-labels,
+.deck-a-label,
+.deck-b-label {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+/* Specific positioning for Mixer Volume badges */
+.volume-control .shortcut-group {
+  position: absolute !important;
+  top: -10px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  gap: 4px !important;
+  z-index: 9999 !important;
+}
+
+/* Shortcut group container - allows badges to flow naturally without overlapping */
+.shortcut-group {
+  display: flex !important;
+  gap: 4px !important;
+  z-index: 9999 !important;
 }

@@ -5,6 +5,33 @@
     gap: var(--spacing-md);
     min-width: 320px;
     flex: 1;
+    border: 2px solid rgba(255, 255, 255, 0.05);
+    background: radial-gradient(circle at top left, rgba(var(--deck-color-rgb), 0.05), transparent 40%),
+        var(--color-bg-secondary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 0 40px rgba(0, 0, 0, 0.2);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+
+
+.deck.is-playing {
+    border-color: var(--deck-color);
+    box-shadow: 0 0 15px rgba(var(--deck-color-rgb), 0.2), inset 0 0 15px rgba(var(--deck-color-rgb), 0.05);
+    animation: border-blink 4s ease-in-out infinite;
+}
+
+@keyframes border-blink {
+
+    0%,
+    100% {
+        border-color: rgba(var(--deck-color-rgb), 0.15);
+        box-shadow: 0 0 10px rgba(var(--deck-color-rgb), 0.05), inset 0 0 5px rgba(var(--deck-color-rgb), 0.02);
+    }
+
+    50% {
+        border-color: var(--deck-color);
+        box-shadow: 0 0 30px rgba(var(--deck-color-rgb), 0.4), inset 0 0 20px rgba(var(--deck-color-rgb), 0.15);
+    }
 }
 
 .deck-header {
@@ -13,7 +40,7 @@
     align-items: center;
     justify-content: space-between;
     padding-bottom: var(--spacing-sm);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 2px solid rgba(var(--deck-color-rgb), 0.2);
     margin-bottom: var(--spacing-sm);
 }
 

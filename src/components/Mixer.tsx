@@ -11,6 +11,11 @@ interface MixerProps {
     deckBState: DeckState;
     onVolumeChange: (deck: 'A' | 'B', value: number) => void;
     onEQChange: (deck: 'A' | 'B', band: 'low' | 'mid' | 'high', value: number) => void;
+    shortcuts?: {
+        volumeA?: { up: string; down: string };
+        volumeB?: { up: string; down: string };
+        crossfader?: { left: string; right: string };
+    };
 }
 
 export const Mixer: React.FC<MixerProps> = ({
@@ -21,37 +26,67 @@ export const Mixer: React.FC<MixerProps> = ({
     deckAState,
     deckBState,
     onVolumeChange,
-    onEQChange
+    onEQChange,
+    shortcuts
 }) => {
     const renderDeckControls = (deckId: 'A' | 'B', state: DeckState) => {
-        const { volume, eq } = state;
+        const { volume, eq, isPlaying } = state;
         const color = deckId === 'A' ? '#ff0080' : '#00d4ff';
 
         return (
-            <div className={`mixer-deck-controls deck-${deckId.toLowerCase()}`}>
-                <div className="volume-control">
-                    <label className="control-label">
-                        VOL
-                        <span className="volume-value">{Math.round(volume)}%</span>
-                    </label>
-                    <div className="volume-slider-container">
-                        <input
-                            type="range"
-                            min="0"
-                            max="150"
-                            value={volume}
-                            onChange={(e) => onVolumeChange(deckId, parseFloat(e.target.value))}
-                            className="volume-slider"
-                        />
-                        <div className="volume-level-indicator">
-                            <div
-                                className="volume-level-fill"
-                                style={{
-                                    height: `${(volume / 150) * 100}%`,
-                                    background: `linear-gradient(to top, ${color}, var(--color-accent-green))`
-                                }}
+            <div className={`mixer-deck-controls deck-${deckId.toLowerCase()}`} style={{ '--deck-color': color } as React.CSSProperties}>
+                <div className="volume-section">
+                    <div className="volume-control">
+                        <label className="control-label">
+                            VOL
+                            {((deckId === 'A' && shortcuts?.volumeA) || (deckId === 'B' && shortcuts?.volumeB)) && (
+                                <span className="shortcut-group">
+                                    {(deckId === 'A' ? shortcuts?.volumeA?.up : shortcuts?.volumeB?.up) && (
+                                        <span className="shortcut-badge tiny">{deckId === 'A' ? shortcuts?.volumeA?.up : shortcuts?.volumeB?.up}</span>
+                                    )}
+                                    {(deckId === 'A' ? shortcuts?.volumeA?.down : shortcuts?.volumeB?.down) && (
+                                        <span className="shortcut-badge tiny">{deckId === 'A' ? shortcuts?.volumeA?.down : shortcuts?.volumeB?.down}</span>
+                                    )}
+                                </span>
+                            )}
+                            <span className="volume-value">{Math.round(volume)}%</span>
+                        </label>
+                        <div className="volume-slider-container">
+                            <div className="fader-track"></div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="150"
+                                value={volume}
+                                onChange={(e) => onVolumeChange(deckId, parseFloat(e.target.value))}
+                                className="volume-slider"
                             />
+                            <div className="volume-level-indicator">
+                                <div
+                                    className="volume-level-fill"
+                                    style={{
+                                        height: `${(volume / 150) * 100}%`,
+                                        background: `linear-gradient(to top, ${color}, var(--color-accent-green))`
+                                    }}
+                                />
+                            </div>
                         </div>
+                    </div>
+
+                    <div className="vu-meter">
+                        {Array.from({ length: 12 }).map((_, i) => {
+                            // Simulate VU meter peaks when playing
+                            const isActive = isPlaying && volume > 10 && (11 - i) < (volume / 150) * 12 * (0.8 + Math.random() * 0.4);
+                            const isPeak = (11 - i) >= 10;
+                            const isHigh = (11 - i) >= 8;
+
+                            return (
+                                <div
+                                    key={i}
+                                    className={`vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -60,6 +95,7 @@ export const Mixer: React.FC<MixerProps> = ({
                         <div key={band} className="eq-band">
                             <label className="control-label text-xs">{band.toUpperCase()}</label>
                             <div className="eq-slider-wrapper">
+                                <div className="fader-track mini"></div>
                                 <input
                                     type="range"
                                     min="0"
@@ -73,7 +109,7 @@ export const Mixer: React.FC<MixerProps> = ({
                                         className="eq-level-fill"
                                         style={{
                                             height: `${eq[band]}%`,
-                                            background: `linear-gradient(to top, rgba(255, 255, 255, 0.1), ${color})`
+                                            background: `linear-gradient(to top, rgba(255, 255, 255, 0.05), ${color})`
                                         }}
                                     />
                                 </div>
@@ -133,8 +169,12 @@ export const Mixer: React.FC<MixerProps> = ({
                             />
                         </div>
                         <div className="crossfader-labels">
-                            <span className="deck-a-label">A</span>
-                            <span className="deck-b-label">B</span>
+                            <span className="deck-a-label">
+                                A {shortcuts?.crossfader && <span className="shortcut-badge tiny">{shortcuts.crossfader.left}</span>}
+                            </span>
+                            <span className="deck-b-label">
+                                B {shortcuts?.crossfader && <span className="shortcut-badge tiny">{shortcuts.crossfader.right}</span>}
+                            </span>
                         </div>
                     </div>
                 </div>

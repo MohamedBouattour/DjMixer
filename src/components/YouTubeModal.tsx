@@ -12,19 +12,7 @@ interface YouTubeModalProps {
     onLoadTrack?: (track: Track) => void;
 }
 
-// Extract YouTube video ID from various URL formats
-const extractVideoId = (url: string): string | null => {
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([^&\n?#]+)/,
-        /^([a-zA-Z0-9_-]{11})$/ // Direct video ID
-    ];
 
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match) return match[1];
-    }
-    return null;
-};
 
 export const YouTubeModal: React.FC<YouTubeModalProps> = ({
     deckId,
@@ -35,7 +23,6 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
     onLoadTrack
 }) => {
     const modalRef = useRef<HTMLDivElement>(null);
-    const [videoUrl, setVideoUrl] = useState('');
     const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
@@ -76,26 +63,6 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
         };
     }, [isOpen, onClose]);
 
-    const loadVideo = () => {
-        const trimmedUrl = videoUrl.trim();
-        if (!trimmedUrl) return;
-
-        const videoId = extractVideoId(trimmedUrl);
-        console.log('Attempting to load video:', trimmedUrl, '-> Video ID:', videoId);
-
-        if (videoId) {
-            setCurrentVideoId(videoId);
-            setErrorMessage('');
-        } else {
-            setErrorMessage('Invalid YouTube URL. Please paste a valid link.');
-        }
-    };
-
-    const handleUrlSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        loadVideo();
-    };
-
     const handleInternalSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!searchQuery.trim()) return;
@@ -103,7 +70,7 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
         setIsSearching(true);
         setErrorMessage('');
         try {
-            const res = await fetch(`http://localhost:3002/search?q=${encodeURIComponent(searchQuery)}`);
+            const res = await fetch(`/search?q=${encodeURIComponent(searchQuery)}`);
             if (!res.ok) throw new Error('Backend not reachable');
             const data = await res.json();
             setSearchResults(data);
@@ -121,7 +88,7 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                 id: id,
                 name: title,
                 duration: duration || 0,
-                url: `http://localhost:3002/stream?videoId=${id}`,
+                url: `/stream?videoId=${id}`,
                 bpm: undefined
             });
             onClose();
@@ -130,7 +97,6 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
 
     const handleClear = () => {
         setCurrentVideoId(null);
-        setVideoUrl('');
         setErrorMessage('');
     };
 
@@ -173,45 +139,6 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                 </div>
 
                 <div className="youtube-input-section">
-                    {/* <form onSubmit={handleUrlSubmit} className="url-form">
-                        <input
-                            type="text"
-                            value={videoUrl}
-                            onChange={(e) => {
-                                setVideoUrl(e.target.value);
-                                setErrorMessage('');
-                            }}
-                            placeholder="Paste YouTube URL here (e.g., https://youtube.com/watch?v=...)"
-                            className="youtube-url-input"
-                        />
-                        <button
-                            type="button"
-                            className="load-btn"
-                            disabled={!videoUrl.trim()}
-                            onClick={loadVideo}
-                        >
-                            Preview
-                        </button>
-                        {onLoadTrack && currentVideoId && (
-                            <button
-                                type="button"
-                                className="load-btn add-deck-btn"
-                                onClick={() => handleAddToDeck(currentVideoId as string, 'Imported Video')}
-                                style={{ background: color }}
-                            >
-                                Load to Deck
-                            </button>
-                        )}
-                    </form>
-
-                    {errorMessage && (
-                        <div className="error-message">{errorMessage}</div>
-                    )}
-
-                    <div className="search-divider">
-                        <span>or search</span>
-                    </div> */}
-
                     <form onSubmit={handleInternalSearch} className="search-form">
                         <input
                             type="text"
@@ -224,6 +151,11 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                             {isSearching ? 'Searching...' : 'Search'}
                         </button>
                     </form>
+                    {errorMessage && (
+                        <div className="error-message" style={{ color: 'red', marginTop: '8px', fontSize: '0.9em' }}>
+                            {errorMessage}
+                        </div>
+                    )}
                 </div>
 
                 <div className="youtube-modal-content">

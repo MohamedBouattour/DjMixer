@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { Track, DeckState } from '../types';
 import { AudioEffects } from '../audio/AudioEffects';
 import { detectBPM } from '../utils/audioUtils';
@@ -175,20 +175,25 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         }
     }, []);
 
-    const setPitch = useCallback((pitch: number) => {
-        if (audioElementRef.current) {
-            // pitch range: -10 to +10
-            const playbackRate = 1 + (pitch / 100);
-            audioElementRef.current.playbackRate = playbackRate;
-            setState(prev => ({ ...prev, pitch }));
-        }
+    const setPitch = useCallback((update: number | ((prev: number) => number)) => {
+        setState(prev => {
+            const newPitch = typeof update === 'function' ? update(prev.pitch) : update;
+            if (audioElementRef.current) {
+                const playbackRate = 1 + (newPitch / 100);
+                audioElementRef.current.playbackRate = playbackRate;
+            }
+            return { ...prev, pitch: newPitch };
+        });
     }, []);
 
-    const setVolume = useCallback((volume: number) => {
-        if (gainNodeRef.current) {
-            gainNodeRef.current.gain.value = volume / 100;
-            setState(prev => ({ ...prev, volume }));
-        }
+    const setVolume = useCallback((update: number | ((prev: number) => number)) => {
+        setState(prev => {
+            const newVolume = typeof update === 'function' ? update(prev.volume) : update;
+            if (gainNodeRef.current) {
+                gainNodeRef.current.gain.value = newVolume / 100;
+            }
+            return { ...prev, volume: newVolume };
+        });
     }, []);
 
     const setEQ = useCallback((band: 'low' | 'mid' | 'high', value: number) => {
@@ -307,8 +312,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         setState(prev => ({ ...prev, isLoading }));
     }, []);
 
-    return {
-        state,
+    const controls = useMemo(() => ({
         loadTrack,
         play,
         pause,
@@ -323,5 +327,10 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         setLoop,
         clearLoop,
         setIsLoading
+    }), [loadTrack, play, pause, seek, setPitch, setVolume, setEQ, setEffect, toggleEffect, handleCue, deleteCue, setLoop, clearLoop, setIsLoading]);
+
+    return {
+        state,
+        controls
     };
 };

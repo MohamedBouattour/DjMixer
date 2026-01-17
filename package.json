@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy:prep": "node prepare-deploy.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
