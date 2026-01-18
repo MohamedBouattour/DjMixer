@@ -92,14 +92,25 @@ app.get('/stream', async (req, res) => {
         console.log(`Getting stream for video: ${videoId}`);
         const url = `https://www.youtube.com/watch?v=${videoId}`;
 
-        // Get info first to check available formats and get a good title/metadata if needed
-        const output = await youtubedl(url, {
+        // Create cookies file if env var exists
+        if (process.env.YOUTUBE_COOKIES) {
+            fs.writeFileSync('cookies.txt', process.env.YOUTUBE_COOKIES);
+        }
+
+        const ytOptions = {
             dumpSingleJson: true,
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
-            addHeader: ['referer:youtube.com', 'user-agent:googlebot']
-        });
+            addHeader: ['referer:youtube.com']
+        };
+
+        if (fs.existsSync('cookies.txt')) {
+            ytOptions.cookies = 'cookies.txt';
+        }
+
+        // Get info first
+        const output = await youtubedl(url, ytOptions);
 
         // Find best audio format
         const audioFormats = output.formats.filter(f => f.acodec !== 'none' && f.vcodec === 'none');
@@ -111,27 +122,24 @@ app.get('/stream', async (req, res) => {
 
         console.log(`Downloading best audio format: ${bestAudio.format_id}, bitrate: ${bestAudio.abr}kbps, ext: ${bestAudio.ext}`);
 
-        // Download and cache. We use youtube-dl-exec to download the best audio
-        // Note: For true MP3 conversion we would need ffmpeg. 
-        // Without it, we store the best audio available (usually m4a or webm).
-        // To satisfy "stored as mp3", we'll just use the best available audio for now.
-        // If we want to be strict, we'd need ffmpeg.
-
+        // Download and cache
         const tempFilePath = path.join(cacheDir, `${videoId}.download`);
 
-        // Download the stream
-        await youtubedl(url, {
+        const downloadOptions = {
             output: tempFilePath,
             format: 'bestaudio/best',
             noCheckCertificates: true,
             noWarnings: true,
-            addHeader: ['referer:youtube.com', 'user-agent:googlebot']
-        });
+            addHeader: ['referer:youtube.com']
+        };
 
-        // Rename to final path (effectively caching it)
-        // We use .mp3 as requested, even if it's m4a/opus, browsers usually handle it 
-        // but it's better to use correct extension if possible.
-        // However, the user specifically asked for mp3.
+        if (fs.existsSync('cookies.txt')) {
+            downloadOptions.cookies = 'cookies.txt';
+        }
+
+        await youtubedl(url, downloadOptions);
+
+        // Rename to final path
         fs.renameSync(tempFilePath, cacheFilePath);
 
         console.log(`Saved to cache: ${cacheFilePath}`);
