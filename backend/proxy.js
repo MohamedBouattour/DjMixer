@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 
 // Ensure cache directory exists
-const cacheDir = path.join(__dirname, 'cache');
+const cacheDir = process.env.CACHE_DIR || path.join(__dirname, 'cache');
 if (!fs.existsSync(cacheDir)) {
     fs.mkdirSync(cacheDir, { recursive: true });
 }
@@ -93,8 +93,9 @@ app.get('/stream', async (req, res) => {
         const url = `https://www.youtube.com/watch?v=${videoId}`;
 
         // Create cookies file if env var exists
+        const cookiesPath = path.join(cacheDir, 'cookies.txt');
         if (process.env.YOUTUBE_COOKIES) {
-            fs.writeFileSync('cookies.txt', process.env.YOUTUBE_COOKIES);
+            fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
         }
 
         const ytOptions = {
@@ -105,8 +106,8 @@ app.get('/stream', async (req, res) => {
             addHeader: ['referer:youtube.com']
         };
 
-        if (fs.existsSync('cookies.txt')) {
-            ytOptions.cookies = 'cookies.txt';
+        if (fs.existsSync(cookiesPath)) {
+            ytOptions.cookies = cookiesPath;
         }
 
         // Get info first
@@ -133,8 +134,8 @@ app.get('/stream', async (req, res) => {
             addHeader: ['referer:youtube.com']
         };
 
-        if (fs.existsSync('cookies.txt')) {
-            downloadOptions.cookies = 'cookies.txt';
+        if (fs.existsSync(cookiesPath)) {
+            downloadOptions.cookies = cookiesPath;
         }
 
         await youtubedl(url, downloadOptions);
