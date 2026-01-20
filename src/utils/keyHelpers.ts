@@ -16,7 +16,7 @@ export const getKeyLabel = (code: string | undefined | null, layout: 'qwerty' | 
             'Comma': ';',
             'Period': ':',
             'Slash': '!',
-            'Quote': '²',
+            'Quote': 'ù',
             'Backquote': '²',
             'BracketLeft': '^',
             'BracketRight': '$',

@@ -14,10 +14,21 @@ import './App.css';
 function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [crossfader, setCrossfader] = useState(50);
-  const [masterVolume, setMasterVolume] = useState(75);
+  const [masterVolume, setMasterVolume] = useState(100);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const { keyMap, layout } = useSettings();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
@@ -99,6 +110,15 @@ function App() {
 
       // Ignore if user is typing in an input or textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      // Special global shortcut: Space to cancel active loops
+      // We call clearLoop unconditionally because checking deckState.activeLoop might be stale inside this useEffect
+      if (e.code === 'Space') {
+        e.preventDefault();
+        deckA.clearLoop();
+        deckB.clearLoop();
+        return;
+      }
 
       const actionEntry = Object.entries(keyMap).find(([_, key]) => key === e.code);
       if (!actionEntry) return;
@@ -295,11 +315,11 @@ function App() {
             onLoopSet={deckA.setLoop}
             onLoopClear={deckA.clearLoop}
             color="#ff0080"
-            shortcuts={{
+            shortcuts={!isMobile ? {
               play: getKeyLabel(keyMap['DECK_A_PLAY'], layout),
               cue: getKeyLabel(keyMap['DECK_A_CUE'], layout),
               effect: getKeyLabel(keyMap['EFFECT_A_TOGGLE'], layout)
-            }}
+            } : undefined}
           />
 
           <div className="center-section">
@@ -312,11 +332,11 @@ function App() {
               deckBState={deckBState}
               onVolumeChange={(deck, value) => deck === 'A' ? deckA.setVolume(value) : deckB.setVolume(value)}
               onEQChange={(deck, band, value) => deck === 'A' ? deckA.setEQ(band, value) : deckB.setEQ(band, value)}
-              shortcuts={{
+              shortcuts={!isMobile ? {
                 volumeA: { up: getKeyLabel(keyMap['VOLUME_A_UP'], layout), down: getKeyLabel(keyMap['VOLUME_A_DOWN'], layout) },
                 volumeB: { up: getKeyLabel(keyMap['VOLUME_B_UP'], layout), down: getKeyLabel(keyMap['VOLUME_B_DOWN'], layout) },
                 crossfader: { left: getKeyLabel(keyMap['CROSSFADER_LEFT'], layout), right: getKeyLabel(keyMap['CROSSFADER_RIGHT'], layout) }
-              }}
+              } : undefined}
             />
             <Effects onEffectChange={handleEffectChange} />
           </div>
@@ -335,11 +355,11 @@ function App() {
             onLoopSet={deckB.setLoop}
             onLoopClear={deckB.clearLoop}
             color="#00d4ff"
-            shortcuts={{
+            shortcuts={!isMobile ? {
               play: getKeyLabel(keyMap['DECK_B_PLAY'], layout),
               cue: getKeyLabel(keyMap['DECK_B_CUE'], layout),
               effect: getKeyLabel(keyMap['EFFECT_B_TOGGLE'], layout)
-            }}
+            } : undefined}
           />
         </div>
 

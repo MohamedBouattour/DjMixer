@@ -59,6 +59,7 @@ export const Mixer: React.FC<MixerProps> = ({
                                 max="150"
                                 value={volume}
                                 onChange={(e) => onVolumeChange(deckId, parseFloat(e.target.value))}
+                                onMouseUp={(e) => e.currentTarget.blur()}
                                 className="volume-slider"
                             />
                             <div className="volume-level-indicator">
@@ -102,6 +103,7 @@ export const Mixer: React.FC<MixerProps> = ({
                                     max="100"
                                     value={eq[band]}
                                     onChange={(e) => onEQChange(deckId, band, parseFloat(e.target.value))}
+                                    onMouseUp={(e) => e.currentTarget.blur()}
                                     className="eq-slider"
                                 />
                                 <div className="eq-level-indicator">
@@ -140,6 +142,7 @@ export const Mixer: React.FC<MixerProps> = ({
                             max="100"
                             value={masterVolume}
                             onChange={(e) => onMasterVolumeChange(parseFloat(e.target.value))}
+                            onMouseUp={(e) => e.currentTarget.blur()}
                             className="master-volume-slider"
                         />
                         <div className="volume-bars">
@@ -160,6 +163,7 @@ export const Mixer: React.FC<MixerProps> = ({
                             max="100"
                             value={crossfaderValue}
                             onChange={(e) => onCrossfaderChange(parseFloat(e.target.value))}
+                            onMouseUp={(e) => e.currentTarget.blur()}
                             className="crossfader"
                         />
                         <div className="crossfader-indicator">
