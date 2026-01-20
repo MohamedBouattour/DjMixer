@@ -25,3 +25,6 @@ dist-ssr
 
 *.mp3
 backend/cache/
+
+# Electron build output
+release/
