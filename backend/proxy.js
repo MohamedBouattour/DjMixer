@@ -103,11 +103,20 @@ app.get('/stream', async (req, res) => {
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
-            addHeader: ['referer:youtube.com']
+            addHeader: [
+                'referer:https://www.youtube.com/',
+                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ]
         };
 
+        // Add cookies if available
         if (fs.existsSync(cookiesPath)) {
             ytOptions.cookies = cookiesPath;
+        }
+
+        // Add PO token if available (for YouTube bot bypass)
+        if (process.env.YOUTUBE_PO_TOKEN && process.env.YOUTUBE_VISITOR_DATA) {
+            ytOptions.extractorArgs = `youtube:player-client=web,default;po_token=web+${process.env.YOUTUBE_PO_TOKEN};visitor_data=${process.env.YOUTUBE_VISITOR_DATA}`;
         }
 
         // Get info first
@@ -131,11 +140,20 @@ app.get('/stream', async (req, res) => {
             format: 'bestaudio/best',
             noCheckCertificates: true,
             noWarnings: true,
-            addHeader: ['referer:youtube.com']
+            addHeader: [
+                'referer:https://www.youtube.com/',
+                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ]
         };
 
+        // Add cookies if available
         if (fs.existsSync(cookiesPath)) {
             downloadOptions.cookies = cookiesPath;
+        }
+
+        // Add PO token if available (for YouTube bot bypass)
+        if (process.env.YOUTUBE_PO_TOKEN && process.env.YOUTUBE_VISITOR_DATA) {
+            downloadOptions.extractorArgs = `youtube:player-client=web,default;po_token=web+${process.env.YOUTUBE_PO_TOKEN};visitor_data=${process.env.YOUTUBE_VISITOR_DATA}`;
         }
 
         await youtubedl(url, downloadOptions);
