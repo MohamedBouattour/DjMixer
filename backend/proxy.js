@@ -11,19 +11,30 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 
 // Invidious/Piped instances for anonymous YouTube access
-// These rotate to avoid rate limiting
+// Only using instances with API enabled (api: true) and good uptime
+// Updated 2026-01-21 - Most instances have disabled their API
 const INVIDIOUS_INSTANCES = [
-    'https://inv.nadeko.net',
-    'https://invidious.nerdvpn.de',
-    'https://iv.datura.network',
-    'https://invidious.private.coffee',
-    'https://yt.drgnz.club'
+    'https://yewtu.be',  // API enabled, 98% uptime
+    'https://vid.puffyan.us',
+    'https://invidious.fdn.fr',
+    'https://invidious.protokolla.fi'
 ];
 
+// Piped API instances - most are offline, using known working ones
 const PIPED_INSTANCES = [
+    'https://api.piped.private.coffee',  // 99.9% uptime, working as of 2026-01
     'https://pipedapi.kavin.rocks',
-    'https://pipedapi.r4fo.com',
-    'https://api.piped.yt'
+    'https://watchapi.whatever.social'
+];
+
+// Cobalt API instances - anonymous YouTube downloading service
+// Source: https://instances.cobalt.best/ (verified working instances)
+const COBALT_INSTANCES = [
+    'https://cobalt-backend.canine.tools',  // 92% uptime
+    'https://cobalt-api.meowing.de',        // 88% uptime
+    'https://kityune.imput.net',            // 80% uptime (official)
+    'https://blossom.imput.net',            // 80% uptime (official)
+    'https://capi.3kh0.net'                 // 72% uptime
 ];
 
 // Helper to fetch JSON from URL
@@ -55,6 +66,73 @@ async function fetchJSON(url) {
             reject(new Error('Timeout'));
         });
     });
+}
+
+// Helper to POST JSON to URL (for Cobalt API)
+async function postJSON(url, body) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const options = {
+            hostname: urlObj.hostname,
+            port: urlObj.port || 443,
+            path: urlObj.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        };
+
+        const client = url.startsWith('https') ? https : http;
+        const req = client.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    reject(new Error('Invalid JSON'));
+                }
+            });
+        });
+
+        req.on('error', reject);
+        req.setTimeout(15000, () => {
+            req.destroy();
+            reject(new Error('Timeout'));
+        });
+
+        req.write(JSON.stringify(body));
+        req.end();
+    });
+}
+
+// Try to get audio URL from Cobalt API (anonymous, no auth required)
+async function getAudioFromCobalt(videoId) {
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+    for (const instance of COBALT_INSTANCES) {
+        try {
+            console.log(`Trying Cobalt: ${instance}`);
+            const response = await postJSON(instance, {
+                url: youtubeUrl,
+                downloadMode: 'audio',
+                audioFormat: 'mp3',
+                audioBitrate: '128'
+            });
+
+            if (response.status === 'tunnel' || response.status === 'redirect') {
+                console.log(`Found audio from Cobalt: ${response.url}`);
+                return response.url;
+            } else if (response.status === 'error') {
+                console.log(`Cobalt ${instance} error: ${response.error?.code || 'unknown'}`);
+            }
+        } catch (err) {
+            console.log(`Cobalt ${instance} failed: ${err.message}`);
+        }
+    }
+    return null;
 }
 
 // Search using Invidious
@@ -320,17 +398,33 @@ app.get('/stream', async (req, res) => {
         let audioUrl = null;
         let downloadSuccess = false;
 
-        // Strategy 1: Try Invidious (anonymous)
-        console.log('Trying anonymous sources first...');
-        audioUrl = await getAudioFromInvidious(videoId);
+        // Strategy 0: Try Cobalt API first (best for anonymous access, handles bot detection)
+        console.log('Trying Cobalt API (anonymous)...');
+        audioUrl = await getAudioFromCobalt(videoId);
 
         if (audioUrl) {
             try {
-                console.log('Downloading from Invidious...');
+                console.log('Downloading from Cobalt...');
                 await downloadFile(audioUrl, tempFilePath);
                 downloadSuccess = true;
             } catch (err) {
-                console.log(`Invidious download failed: ${err.message}`);
+                console.log(`Cobalt download failed: ${err.message}`);
+            }
+        }
+
+        // Strategy 1: Try Invidious (anonymous)
+        if (!downloadSuccess) {
+            console.log('Trying Invidious sources...');
+            audioUrl = await getAudioFromInvidious(videoId);
+
+            if (audioUrl) {
+                try {
+                    console.log('Downloading from Invidious...');
+                    await downloadFile(audioUrl, tempFilePath);
+                    downloadSuccess = true;
+                } catch (err) {
+                    console.log(`Invidious download failed: ${err.message}`);
+                }
             }
         }
 
@@ -354,8 +448,14 @@ app.get('/stream', async (req, res) => {
             const url = `https://www.youtube.com/watch?v=${videoId}`;
 
             const cookiesPath = path.join(cacheDir, 'cookies.txt');
-            if (process.env.YOUTUBE_COOKIES) {
+            const hasCookiesEnv = !!process.env.YOUTUBE_COOKIES;
+            const hasPoToken = !!(process.env.YOUTUBE_PO_TOKEN && process.env.YOUTUBE_VISITOR_DATA);
+
+            console.log(`Authentication status: YOUTUBE_COOKIES=${hasCookiesEnv ? 'SET' : 'NOT SET'}, PO_TOKEN=${hasPoToken ? 'SET' : 'NOT SET'}`);
+
+            if (hasCookiesEnv) {
                 fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
+                console.log('Cookies file written from environment variable');
             }
 
             const downloadOptions = {
@@ -365,20 +465,35 @@ app.get('/stream', async (req, res) => {
                 noWarnings: true,
                 addHeader: [
                     'referer:https://www.youtube.com/',
-                    'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
                 ]
             };
 
             if (fs.existsSync(cookiesPath)) {
                 downloadOptions.cookies = cookiesPath;
+                console.log('Using cookies file for authentication');
+            } else if (!hasCookiesEnv) {
+                console.warn('WARNING: No cookies available! YouTube will likely require authentication.');
+                console.warn('Set YOUTUBE_COOKIES environment variable with your cookies.txt content.');
             }
 
-            if (process.env.YOUTUBE_PO_TOKEN && process.env.YOUTUBE_VISITOR_DATA) {
+            if (hasPoToken) {
                 downloadOptions.extractorArgs = `youtube:player-client=web,default;po_token=web+${process.env.YOUTUBE_PO_TOKEN};visitor_data=${process.env.YOUTUBE_VISITOR_DATA}`;
+                console.log('Using PO Token for authentication');
             }
 
-            await youtubedl(url, downloadOptions);
-            downloadSuccess = true;
+            try {
+                await youtubedl(url, downloadOptions);
+                downloadSuccess = true;
+                console.log('yt-dlp download successful');
+            } catch (ytdlpError) {
+                console.error('yt-dlp error:', ytdlpError.message);
+                if (ytdlpError.message.includes('Sign in to confirm')) {
+                    console.error('YouTube bot detection triggered. Authentication required.');
+                    console.error('Please set YOUTUBE_COOKIES environment variable on Render.');
+                }
+                throw ytdlpError;
+            }
         }
 
         if (!downloadSuccess) {
