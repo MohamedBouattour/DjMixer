@@ -14,7 +14,15 @@ if (!fs.existsSync(cacheDir)) {
 }
 
 // Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../dist')));
+// Priority: local 'public' folder (deployment) -> parent 'dist' folder (local fallback)
+const publicDir = path.join(__dirname, 'public');
+const distDir = path.join(__dirname, '../dist');
+
+if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+} else {
+    app.use(express.static(distDir));
+}
 
 app.use(cors());
 app.use(express.json());
@@ -116,7 +124,11 @@ app.get('/stream', async (req, res) => {
 
 // The catch-all handler for any request that doesn't match the one above
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+    if (fs.existsSync(path.join(publicDir, 'index.html'))) {
+        res.sendFile(path.join(publicDir, 'index.html'));
+    } else {
+        res.sendFile(path.join(distDir, 'index.html'));
+    }
 });
 
 app.listen(PORT, () => {
