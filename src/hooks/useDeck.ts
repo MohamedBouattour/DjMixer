@@ -117,9 +117,14 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         let bpm = track.bpm;
         if (!bpm) {
             try {
-                // Fetch for BPM detection
-                const response = await fetch(track.url);
-                const arrayBuffer = await response.arrayBuffer();
+                let arrayBuffer: ArrayBuffer;
+                if (track.file) {
+                    arrayBuffer = await track.file.arrayBuffer();
+                } else {
+                    // Fetch for BPM detection
+                    const response = await fetch(track.url);
+                    arrayBuffer = await response.arrayBuffer();
+                }
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
                 bpm = await detectBPM(audioBuffer);
             } catch (error) {

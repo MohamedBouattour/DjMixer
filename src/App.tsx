@@ -9,6 +9,7 @@ import type { Track } from './types';
 import { getAllTracksFromDB, saveTrackToDB } from './utils/storage';
 import { useSettings } from './contexts/SettingsContext';
 import { getKeyLabel } from './utils/keyHelpers';
+import { detectBPM } from './utils/audioUtils';
 import './App.css';
 
 function App() {
@@ -34,6 +35,8 @@ function App() {
   const masterGainRef = useRef<GainNode | null>(null);
   const deckAGainRef = useRef<GainNode | null>(null);
   const deckBGainRef = useRef<GainNode | null>(null);
+
+  const downloadingTracksRef = useRef<Set<string>>(new Set());
 
 
 
@@ -232,19 +235,68 @@ function App() {
   };
 
   const handleImportTrack = async (track: Track, deckId: 'A' | 'B') => {
+    // Check if track is already in our library (has a file/blob)
+    const existingTrack = tracks.find(t => t.id === track.id);
+    if (existingTrack && existingTrack.file) {
+      console.log('Track already in library, using local file:', existingTrack.name);
+
+      let trackToLoad = existingTrack;
+
+      // Backfill BPM if missing
+      if (!existingTrack.bpm && audioContextRef.current) {
+        try {
+          console.log('Backfilling BPM for cached track...');
+          const arrayBuffer = await existingTrack.file.arrayBuffer();
+          const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+          const bpm = await detectBPM(audioBuffer);
+
+          trackToLoad = { ...existingTrack, bpm };
+          await saveTrackToDB(trackToLoad);
+          setTracks(prev => prev.map(t => t.id === trackToLoad.id ? trackToLoad : t));
+          console.log('BPM Backfilled:', bpm);
+        } catch (e) {
+          console.warn('Failed to backfill BPM:', e);
+        }
+      }
+
+      handleLoadToDeck(trackToLoad, deckId);
+      return;
+    }
+
+    // Prevent duplicate downloads
+    if (downloadingTracksRef.current.has(track.id)) {
+      console.log('Track is already downloading:', track.name);
+      return;
+    }
+
     let finalTrack = { ...track };
     const deck = deckId === 'A' ? deckA : deckB;
 
     // Show loading spinner on the deck immediately
     deck.setIsLoading(true);
 
-    // If it's a YouTube track and doesn't have a file yet, we download it to store in DB
+    // If it's a stream URL and we don't have the file yet
     if (!track.file && (track.url.includes('localhost:3002/stream') || track.url.includes('/stream'))) {
       try {
+        downloadingTracksRef.current.add(track.id);
         console.log('Downloading track for persistence:', track.name);
+
         const res = await fetch(track.url);
         if (!res.ok) throw new Error(`Stream fetch failed: ${res.status} ${res.statusText}`);
+
         const blob = await res.blob();
+
+        let bpm = track.bpm;
+        if (!bpm && audioContextRef.current) {
+          try {
+            const arrayBuffer = await blob.arrayBuffer();
+            const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+            bpm = await detectBPM(audioBuffer);
+            console.log('Detected BPM:', bpm);
+          } catch (bpmErr) {
+            console.warn('Failed to detect BPM:', bpmErr);
+          }
+        }
 
         // Create a File object from the blob
         const file = new File([blob], `${track.name}.mp3`, { type: 'audio/mpeg' });
@@ -252,25 +304,30 @@ function App() {
         finalTrack = {
           ...track,
           file: file,
+          bpm: bpm,
           url: URL.createObjectURL(file) // Use local blob URL
         };
 
         // Save to IndexedDB
         await saveTrackToDB(finalTrack);
         console.log('Track saved to DB:', track.name);
+
+        setTracks(prev => {
+          if (prev.some(t => t.id === finalTrack.id)) {
+            return prev.map(t => t.id === finalTrack.id ? finalTrack : t);
+          }
+          return [...prev, finalTrack];
+        });
+
       } catch (err) {
         console.error('Failed to persist track:', err);
+        deck.setIsLoading(false); // Ensure loading stops on error
+      } finally {
+        downloadingTracksRef.current.delete(track.id);
       }
     }
 
-    setTracks(prev => {
-      if (prev.some(t => t.id === finalTrack.id)) {
-        // Update existing track with the new file/url
-        return prev.map(t => t.id === finalTrack.id ? finalTrack : t);
-      }
-      return [...prev, finalTrack];
-    });
-
+    // Load the final track (or the original if download failed/skipped)
     handleLoadToDeck(finalTrack, deckId);
     // deck.loadTrack will handle setting isLoading to false when done
   };

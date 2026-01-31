@@ -6,12 +6,15 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 
 const cacheDir = path.join(__dirname, 'cache');
 if (!fs.existsSync(cacheDir)) {
     fs.mkdirSync(cacheDir, { recursive: true });
 }
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../dist')));
 
 app.use(cors());
 app.use(express.json());
@@ -111,9 +114,14 @@ app.get('/stream', async (req, res) => {
     }
 });
 
+// The catch-all handler for any request that doesn't match the one above
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+});
+
 app.listen(PORT, () => {
     console.log(`\n============================================`);
     console.log(`   🚀 PROXY v3.0 - ANDROID BYPASS ACTIVE`);
-    console.log(`   The bypass protocol is running.`);
+    console.log(`   The bypass protocol is running on port ${PORT}.`);
     console.log(`============================================\n`);
 });
