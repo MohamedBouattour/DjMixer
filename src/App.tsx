@@ -239,10 +239,11 @@ function App() {
     deck.setIsLoading(true);
 
     // If it's a YouTube track and doesn't have a file yet, we download it to store in DB
-    if (!track.file && track.url.includes('localhost:3002/stream')) {
+    if (!track.file && (track.url.includes('localhost:3002/stream') || track.url.includes('/stream'))) {
       try {
         console.log('Downloading track for persistence:', track.name);
         const res = await fetch(track.url);
+        if (!res.ok) throw new Error(`Stream fetch failed: ${res.status} ${res.statusText}`);
         const blob = await res.blob();
 
         // Create a File object from the blob

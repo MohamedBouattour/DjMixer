@@ -141,7 +141,7 @@ export const SpotifyModal: React.FC<SpotifyModalProps> = ({
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="What do you want to play?"
+                            placeholder="Search song or paste Spotify URL"
                             className="spotify-search-input"
                         />
                         <button type="submit" className="spotify-search-btn" disabled={!searchQuery.trim() || isSearching}>

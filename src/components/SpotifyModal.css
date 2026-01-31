@@ -7,7 +7,8 @@
     height: 36px;
     background: linear-gradient(135deg, #1DB954 0%, #178f42 100%);
     border: none;
-    border-radius: 50%; /* Spotify is often circular */
+    border-radius: 50%;
+    /* Spotify is often circular */
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
@@ -49,7 +50,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.85); /* Slightly darker for contrast */
+    background: rgba(0, 0, 0, 0.85);
+    /* Slightly darker for contrast */
     backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
@@ -59,8 +61,13 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* Modal Container */
@@ -69,7 +76,8 @@
     max-width: 900px;
     height: 85vh;
     max-height: 750px;
-    background: linear-gradient(180deg, #121212 0%, #000000 100%); /* Spotify Dark theme */
+    background: linear-gradient(180deg, #121212 0%, #000000 100%);
+    /* Spotify Dark theme */
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -84,6 +92,7 @@
         opacity: 0;
         transform: translateY(30px) scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -96,7 +105,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 24px;
-    background: linear-gradient(180deg, rgba(40,40,40,0.8) 0%, rgba(18,18,18,0.8) 100%);
+    background: linear-gradient(180deg, rgba(40, 40, 40, 0.8) 0%, rgba(18, 18, 18, 0.8) 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -156,7 +165,8 @@
     padding: 14px 48px 14px 20px;
     background: #242424;
     border: none;
-    border-radius: 500px; /* Spotify pill shape */
+    border-radius: 500px;
+    /* Spotify pill shape */
     color: #fff;
     font-size: 0.95rem;
     transition: all 0.2s ease;
@@ -195,8 +205,8 @@
     opacity: 0.5;
     cursor: not-allowed;
     background: #121212;
-    color: rgba(255,255,255,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .error-message {
@@ -264,13 +274,13 @@
     position: sticky;
     top: 0;
     z-index: 5;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .close-results {
     background: none;
     border: none;
-    color: rgba(255,255,255,0.7);
+    color: rgba(255, 255, 255, 0.7);
     font-size: 1.2rem;
     cursor: pointer;
     padding: 4px;
@@ -299,8 +309,9 @@
     width: 48px;
     height: 48px;
     object-fit: cover;
-    border-radius: 4px; /* Square artwork usually */
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    border-radius: 4px;
+    /* Square artwork usually */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .result-info {
@@ -328,7 +339,7 @@
 
 .result-add-btn {
     padding: 6px 20px;
-    border: 1px solid rgba(255,255,255,0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 500px;
     background: transparent;
     color: white;
@@ -372,7 +383,7 @@
         max-height: none;
         border-radius: 0;
     }
-    
+
     .spotify-trigger-btn {
         width: 30px;
         height: 30px;

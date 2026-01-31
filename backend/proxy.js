@@ -23,9 +23,11 @@ app.get('/search', async (req, res) => {
         const source = req.query.source;
         if (!query) return res.status(400).json({ error: 'Query required' });
 
-        console.log(`[SEARCH] Query: "${query}" | Mode: ${source || 'youtube'}`);
 
-        const searchQuery = source === 'spotify' ? `${query} official audio` : query;
+
+        const searchQuery = `${query} official audio`;
+        console.log(`[SEARCH] Query: "${searchQuery}"`);
+
         const r = await yts(searchQuery);
 
         const videos = r.videos.slice(0, 10).map(v => {
