@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { DeckState, Track } from '../types';
 import { Waveform } from './Waveform';
 import { YouTubeModal } from './YouTubeModal';
+import { SpotifyModal } from './SpotifyModal';
 import { formatTime, formatTotalSeconds } from '../utils/helpers';
 import './Deck.css';
 
@@ -44,6 +45,7 @@ export const Deck: React.FC<DeckProps> = ({
     shortcuts
 }) => {
     const [isYouTubeOpen, setIsYouTubeOpen] = useState(false);
+    const [isSpotifyOpen, setIsSpotifyOpen] = useState(false);
     const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
 
     const loopStartRef = React.useRef<number>(0);
@@ -105,6 +107,14 @@ export const Deck: React.FC<DeckProps> = ({
                         isOpen={isYouTubeOpen}
                         onToggle={() => setIsYouTubeOpen(!isYouTubeOpen)}
                         onClose={() => setIsYouTubeOpen(false)}
+                        onLoadTrack={onLoadTrack}
+                    />
+                    <SpotifyModal
+                        deckId={deckId}
+                        color={color}
+                        isOpen={isSpotifyOpen}
+                        onToggle={() => setIsSpotifyOpen(!isSpotifyOpen)}
+                        onClose={() => setIsSpotifyOpen(false)}
                         onLoadTrack={onLoadTrack}
                     />
                     <div className="deck-label" style={{ background: color }}>

@@ -2,15 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const yts = require('yt-search');
 const youtubedl = require('youtube-dl-exec');
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = 3002;
 
-// Ensure cache directory exists
-const cacheDir = process.env.CACHE_DIR || path.join(__dirname, 'cache');
+const cacheDir = path.join(__dirname, 'cache');
 if (!fs.existsSync(cacheDir)) {
     fs.mkdirSync(cacheDir, { recursive: true });
 }
@@ -18,165 +16,102 @@ if (!fs.existsSync(cacheDir)) {
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the frontend build
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Search endpoint
+// SEARCH - Spotify Optimized
 app.get('/search', async (req, res) => {
     try {
         const query = req.query.q;
-        if (!query) {
-            return res.status(400).json({ error: 'Query parameter "q" is required' });
-        }
+        const source = req.query.source;
+        if (!query) return res.status(400).json({ error: 'Query required' });
 
-        const r = await yts(query);
-        const videos = r.videos.slice(0, 10).map(v => ({
-            id: v.videoId,
-            title: v.title,
-            timestamp: v.timestamp,
-            duration: v.seconds,
-            thumbnail: v.thumbnail,
-            author: v.author.name
-        }));
+        console.log(`[SEARCH] Query: "${query}" | Mode: ${source || 'youtube'}`);
 
-        res.json(videos);
+        const searchQuery = source === 'spotify' ? `${query} official audio` : query;
+        const r = await yts(searchQuery);
+
+        const videos = r.videos.slice(0, 10).map(v => {
+            let title = v.title;
+            if (source === 'spotify') {
+                title = title.replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Official Audio|Lyric Video|Lyrics/gi, '').trim();
+            }
+            return {
+                id: v.videoId,
+                title: title,
+                timestamp: v.timestamp,
+                duration: v.seconds,
+                thumbnail: v.thumbnail,
+                author: v.author.name
+            };
+        });
+        res.status(200).json(videos);
     } catch (error) {
-        console.error('Search error:', error);
+        console.error('Search failed:', error);
         res.status(500).json({ error: 'Search failed' });
     }
 });
 
-// Stream endpoint with caching
+// STREAM - Original Stable Logic + Android Flow
 app.get('/stream', async (req, res) => {
+    const videoId = req.query.videoId;
+    if (!videoId) return res.status(400).json({ error: 'videoId required' });
+
+    const cacheFilePath = path.join(cacheDir, `${videoId}.mp3`);
+
+    // 1. Serve from cache
+    if (fs.existsSync(cacheFilePath) && fs.statSync(cacheFilePath).size > 0) {
+        const stat = fs.statSync(cacheFilePath);
+        const range = req.headers.range;
+
+        console.log(`[CACHE] Providing: ${videoId}`);
+
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+            res.writeHead(206, {
+                'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': (end - start) + 1,
+                'Content-Type': 'audio/mpeg'
+            });
+            return fs.createReadStream(cacheFilePath, { start, end }).pipe(res);
+        } else {
+            res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': 'audio/mpeg', 'Accept-Ranges': 'bytes' });
+            return fs.createReadStream(cacheFilePath).pipe(res);
+        }
+    }
+
+    // 2. Download using Android Client (The bypass)
     try {
-        const videoId = req.query.videoId;
-        if (!videoId) {
-            return res.status(400).json({ error: 'Query parameter "videoId" is required' });
-        }
-
-        const cacheFilePath = path.join(cacheDir, `${videoId}.mp3`);
-
-        // Check if file is already in cache
-        if (fs.existsSync(cacheFilePath)) {
-            console.log(`Serving from cache: ${videoId}`);
-            const stat = fs.statSync(cacheFilePath);
-            const fileSize = stat.size;
-            const range = req.headers.range;
-
-            if (range) {
-                const parts = range.replace(/bytes=/, "").split("-");
-                const start = parseInt(parts[0], 10);
-                const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-                const chunksize = (end - start) + 1;
-                const file = fs.createReadStream(cacheFilePath, { start, end });
-                const head = {
-                    'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-                    'Accept-Ranges': 'bytes',
-                    'Content-Length': chunksize,
-                    'Content-Type': 'audio/mpeg',
-                };
-                res.writeHead(206, head);
-                file.pipe(res);
-            } else {
-                const head = {
-                    'Content-Length': fileSize,
-                    'Content-Type': 'audio/mpeg',
-                    'Accept-Ranges': 'bytes',
-                };
-                res.writeHead(200, head);
-                fs.createReadStream(cacheFilePath).pipe(res);
-            }
-            return;
-        }
-
-        console.log(`Getting stream for video: ${videoId}`);
         const url = `https://www.youtube.com/watch?v=${videoId}`;
+        console.log(`[BYPASS-v3] Attempting Bypass for: ${videoId} (No Cookies Mode)`);
 
-        // Create cookies file if env var exists
-        const cookiesPath = path.join(cacheDir, 'cookies.txt');
-        if (process.env.YOUTUBE_COOKIES) {
-            fs.writeFileSync(cookiesPath, process.env.YOUTUBE_COOKIES);
-        }
+        if (fs.existsSync(cacheFilePath)) fs.unlinkSync(cacheFilePath);
 
-        const ytOptions = {
-            dumpSingleJson: true,
-            noCheckCertificates: true,
-            noWarnings: true,
-            preferFreeFormats: true,
-            addHeader: ['referer:youtube.com']
-        };
-
-        if (fs.existsSync(cookiesPath)) {
-            ytOptions.cookies = cookiesPath;
-        }
-
-        // Get info first
-        const output = await youtubedl(url, ytOptions);
-
-        // Find best audio format
-        const audioFormats = output.formats.filter(f => f.acodec !== 'none' && f.vcodec === 'none');
-        const bestAudio = audioFormats.sort((a, b) => (b.abr || 0) - (a.abr || 0))[0];
-
-        if (!bestAudio) {
-            return res.status(404).json({ error: 'No audio format found' });
-        }
-
-        console.log(`Downloading best audio format: ${bestAudio.format_id}, bitrate: ${bestAudio.abr}kbps, ext: ${bestAudio.ext}`);
-
-        // Download and cache
-        const tempFilePath = path.join(cacheDir, `${videoId}.download`);
-
-        const downloadOptions = {
-            output: tempFilePath,
+        // We use extractor-args to tell YouTube we are an Android device
+        // This is a known technique to skip 403 blocks on many official tracks
+        await youtubedl(url, {
+            output: cacheFilePath,
             format: 'bestaudio/best',
             noCheckCertificates: true,
             noWarnings: true,
-            addHeader: ['referer:youtube.com']
-        };
-
-        if (fs.existsSync(cookiesPath)) {
-            downloadOptions.cookies = cookiesPath;
-        }
-
-        await youtubedl(url, downloadOptions);
-
-        // Rename to final path
-        fs.renameSync(tempFilePath, cacheFilePath);
-
-        console.log(`Saved to cache: ${cacheFilePath}`);
-
-        // Serve the newly cached file
-        const stat = fs.statSync(cacheFilePath);
-        res.writeHead(200, {
-            'Content-Length': stat.size,
-            'Content-Type': 'audio/mpeg',
-            'Accept-Ranges': 'bytes',
+            addHeader: ['referer:youtube.com'],
+            extractorArgs: 'youtube:player_client=android'
         });
-        fs.createReadStream(cacheFilePath).pipe(res);
 
+        const stat = fs.statSync(cacheFilePath);
+        console.log(`[SUCCESS] Downloaded: ${videoId} (${stat.size} bytes)`);
+
+        res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': 'audio/mpeg', 'Accept-Ranges': 'bytes' });
+        fs.createReadStream(cacheFilePath).pipe(res);
     } catch (error) {
-        console.error('Stream error:', error);
-        if (!res.headersSent) {
-            res.status(500).json({ error: 'Stream failed' });
-        }
+        console.error('[BYPASS FAILED]:', error.message);
+        if (!res.headersSent) res.status(500).send('Stream error');
     }
 });
 
-// Global error handlers
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-// Handle React routing, return all requests to React app
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 app.listen(PORT, () => {
-    console.log(`Proxy server running on http://localhost:${PORT}`);
+    console.log(`\n============================================`);
+    console.log(`   🚀 PROXY v3.0 - ANDROID BYPASS ACTIVE`);
+    console.log(`   The bypass protocol is running.`);
+    console.log(`============================================\n`);
 });
-
