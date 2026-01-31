@@ -14,7 +14,6 @@ interface SpotifyModalProps {
 
 export const SpotifyModal: React.FC<SpotifyModalProps> = ({
     deckId,
-    color,
     isOpen,
     onToggle,
     onClose,
