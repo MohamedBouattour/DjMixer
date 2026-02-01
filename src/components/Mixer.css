@@ -330,3 +330,342 @@
     font-weight: 800;
     text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
 }
+
+/* ============================================
+   TABLET MODE - MIXER COMPONENT OVERRIDES
+   ============================================ */
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+    .mixer {
+        padding: 4px;
+        gap: 2px;
+        min-width: auto;
+        overflow: visible;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mixer-title {
+        display: none;
+    }
+
+    /* Row layout: [Deck A] [Center] [Deck B] - Traditional mixer style */
+    .mixer-layout {
+        width: 100%;
+        flex-direction: row;
+        gap: 4px;
+        flex: 1;
+        align-items: stretch;
+    }
+
+    /* Deck controls - Vertical channel strip */
+    .mixer-deck-controls {
+        padding: 6px 4px;
+        gap: 6px;
+        flex-direction: column !important;
+        align-items: center;
+        flex: 1;
+        border-radius: var(--radius-sm);
+        background: rgba(0, 0, 0, 0.2);
+        min-width: 50px;
+    }
+
+    /* Make EQ toggle a full-width header bar */
+    .eq-toggle-btn {
+        display: flex !important;
+        width: 100%;
+        height: 20px;
+        min-height: 20px;
+        padding: 0;
+        font-size: 0.55rem;
+        border-radius: var(--radius-xs);
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .eq-toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .eq-toggle-btn svg {
+        width: 10px;
+        height: 10px;
+        margin-right: 4px;
+    }
+
+    /* Volume section - Vertical fader layout */
+    .volume-section {
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        align-items: center;
+        width: 100%;
+        min-height: 0;
+    }
+
+    /* Hide VU meter on tablet to save space */
+    .vu-meter {
+        display: none;
+    }
+
+    .volume-control {
+        flex: 1;
+        width: 100%;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        min-height: 0;
+    }
+
+    .control-label {
+        font-size: 0.6rem;
+        white-space: nowrap;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        display: flex;
+    }
+
+    .volume-value {
+        font-size: 0.7rem;
+        color: var(--color-accent-green);
+        font-weight: 700;
+    }
+
+    /* Vertical slider container - the fader track */
+    .volume-slider-container {
+        width: 32px;
+        height: 100%;
+        flex: 1;
+        min-height: 80px;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--color-border);
+        box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .fader-track {
+        display: block !important;
+        position: absolute;
+        width: 4px;
+        height: calc(100% - 20px);
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    /* The actual slider input - Rotated for vertical use */
+    .volume-slider {
+        position: absolute !important;
+        width: 100px !important;
+        /* Becomes the vertical height */
+        height: 32px !important;
+        /* Becomes the horizontal touch area */
+        transform: rotate(-90deg);
+        transform-origin: center;
+        background: transparent !important;
+        margin: 0;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+        z-index: 5;
+    }
+
+    /* Fader cap thumb style */
+    .volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 28px;
+        height: 14px;
+        background: linear-gradient(to bottom, #fff 0%, #ddd 50%, #ccc 100%);
+        border-radius: 3px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        border: none;
+        cursor: pointer;
+    }
+
+    .volume-slider::-moz-range-thumb {
+        width: 28px;
+        height: 14px;
+        background: linear-gradient(to bottom, #fff 0%, #ddd 50%, #ccc 100%);
+        border-radius: 3px;
+        border: none;
+        cursor: pointer;
+    }
+
+    .volume-level-indicator {
+        display: none;
+    }
+
+    /* volume-value styles are defined above */
+
+    /* HIDE EQ CONTROLS ON TABLET */
+    .eq-controls {
+        display: none !important;
+    }
+
+    /* EQ toggle styles handled above */
+
+    /* Center section - crossfader and master */
+    .mixer-center {
+        width: auto;
+        gap: 8px;
+        padding: 6px;
+        flex: 1.5;
+        /* Give center more space than deck columns */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-width: 80px;
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: var(--radius-sm);
+    }
+
+    /* No reordering needed - DOM order is correct for row layout */
+    .mixer-deck-controls.deck-a {
+        order: 0;
+    }
+
+    .mixer-deck-controls.deck-b {
+        order: 0;
+    }
+
+    .master-volume-section {
+        gap: 2px;
+    }
+
+    .master-volume-section .control-label {
+        font-size: 0.55rem;
+    }
+
+    .master-volume-slider {
+        height: 8px;
+    }
+
+    .volume-bars {
+        height: 20px;
+        padding: 2px;
+        gap: 1px;
+    }
+
+    .volume-bar {
+        min-width: 4px;
+    }
+
+    .crossfader-section {
+        gap: 3px;
+    }
+
+    .crossfader {
+        height: 10px;
+    }
+
+    .crossfader-labels {
+        font-size: 0.6rem;
+        padding: 0;
+        font-weight: 700;
+    }
+
+    .crossfader-indicator {
+        height: 5px;
+        margin: 2px 0;
+    }
+
+    .crossfader-position {
+        width: 28px;
+        height: 14px;
+    }
+
+    /* EQ Slider compact styles when shown in popup */
+    .eq-slider-wrapper {
+        width: 20px;
+        height: 80px;
+    }
+
+    .eq-slider {
+        width: 80px;
+        height: 20px;
+    }
+
+    .eq-slider::-webkit-slider-thumb {
+        width: 20px;
+        height: 8px;
+    }
+}
+
+/* EQ Toggle Button - Hidden by default, shown on tablet */
+.eq-toggle-btn {
+    display: none;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+}
+
+.eq-toggle-btn:hover {
+    border-color: var(--deck-color, var(--color-accent-primary));
+    color: var(--deck-color, var(--color-accent-primary));
+}
+
+.eq-toggle-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* EQ Popup Grid Styles */
+.eq-popup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-md);
+}
+
+.eq-controls-popup-deck {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(var(--deck-color-rgb, 255, 255, 255), 0.05);
+    border: 1px solid var(--deck-color);
+    border-radius: var(--radius-md);
+}
+
+.eq-controls-popup-deck .effects-deck-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    text-transform: uppercase;
+    color: white;
+}
+
+.eq-controls-row {
+    display: flex;
+    gap: var(--spacing-lg);
+    justify-content: center;
+    align-items: stretch;
+    padding: var(--spacing-md);
+    min-height: 140px;
+}

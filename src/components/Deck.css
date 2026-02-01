@@ -525,3 +525,195 @@
         box-shadow: 0 0 20px var(--deck-color);
     }
 }
+
+/* ============================================
+   TABLET MODE - DECK COMPONENT OVERRIDES
+   ============================================ */
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+    .deck {
+        padding: 4px;
+        gap: 4px;
+        min-width: 200px;
+        overflow: hidden;
+    }
+
+    .deck-header {
+        padding-bottom: 2px;
+        margin-bottom: 2px;
+    }
+
+    .deck-label {
+        padding: 3px 6px;
+        font-size: 0.6rem;
+        letter-spacing: 0.5px;
+    }
+
+    .track-info {
+        gap: 4px;
+        padding-left: 4px;
+    }
+
+    .track-name {
+        font-size: 0.75rem;
+    }
+
+    .bpm-display {
+        min-width: 35px;
+    }
+
+    .bpm-label {
+        font-size: 0.5rem;
+    }
+
+    .bpm-value {
+        font-size: 0.9rem;
+    }
+
+    .waveform-placeholder,
+    .waveform-loading {
+        height: 50px;
+        font-size: 0.65rem;
+    }
+
+    .loading-spinner {
+        width: 14px;
+        height: 14px;
+        border-width: 2px;
+    }
+
+    .deck-transport {
+        gap: 4px;
+    }
+
+    .playback-controls {
+        gap: 4px;
+        margin-top: 2px;
+    }
+
+    .btn-play-pause {
+        width: 36px;
+        height: 36px;
+    }
+
+    .btn-play-pause svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .time-display {
+        gap: 2px;
+    }
+
+    .current-time {
+        font-size: 1rem;
+    }
+
+    .current-time .text-xs {
+        font-size: 0.5rem;
+    }
+
+    .separator {
+        font-size: 0.75rem;
+    }
+
+    .total-time {
+        font-size: 0.75rem;
+    }
+
+    .pitch-control {
+        padding: 2px 0;
+    }
+
+    .control-label {
+        font-size: 0.6rem;
+    }
+
+    .pitch-value {
+        font-size: 0.7rem;
+    }
+
+    .pitch-slider {
+        height: 4px;
+    }
+
+    .performance-controls {
+        gap: 3px;
+        margin-top: 4px;
+    }
+
+    .effects-grid-performance {
+        gap: 3px;
+    }
+
+    .btn-effect,
+    .btn-cue {
+        height: 26px;
+        font-size: 0.6rem;
+    }
+
+    .cues-row {
+        gap: 3px;
+    }
+
+    .loop-control {
+        margin-top: 3px;
+    }
+
+    .btn-magic-loop {
+        height: 28px;
+        font-size: 0.65rem;
+        gap: 4px;
+        padding: 0 8px;
+    }
+
+    .btn-magic-loop svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Volume and EQ controls in deck - more compact */
+    .volume-control {
+        width: 35px;
+        height: 60px;
+    }
+
+    .volume-slider-container {
+        width: 22px;
+    }
+
+    .volume-slider {
+        width: 60px;
+        height: 22px;
+    }
+
+    .eq-controls {
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .eq-slider-wrapper {
+        width: 20px;
+        height: 60px;
+    }
+
+    .eq-slider {
+        width: 60px;
+        height: 20px;
+    }
+
+    /* Hide advanced effect buttons on tablet to save space */
+    .effects-grid-performance {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    /* Hide second row of effects (DST, BIT, FLG, TRM) on tablet */
+    .effects-grid-performance .btn-effect:nth-child(n+5) {
+        display: none;
+    }
+
+    /* Make cue buttons smaller */
+    .cues-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

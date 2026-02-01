@@ -8,14 +8,10 @@
     "description": "Professional DJ controller web app",
     "icons": [
         {
-            "src": "vite.svg",
-            "sizes": "192x192",
-            "type": "image/svg+xml"
-        },
-        {
-            "src": "vite.svg",
-            "sizes": "512x512",
-            "type": "image/svg+xml"
+            "src": "dj-icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
         }
     ]
 }

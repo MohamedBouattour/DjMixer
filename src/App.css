@@ -136,3 +136,69 @@
 .effects {
   animation: slideIn 0.3s ease-out;
 }
+
+/* ============================================
+   TABLET MODE - APP LAYOUT OVERRIDES
+   ============================================ */
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+  .app {
+    width: calc(100vw - 35px);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .app-main {
+    padding: 4px;
+    gap: 4px;
+    overflow: hidden;
+    height: calc(100vh - 40px);
+  }
+
+  .decks-section {
+    gap: 4px;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .center-section {
+    min-width: 260px;
+    max-width: 300px;
+    width: 280px;
+    gap: 4px;
+    overflow: visible;
+    padding-right: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    height: 100%;
+  }
+
+  /* Mixer takes available space */
+  .center-section .mixer {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* Effects toggle button styling */
+  .center-section .effects-toggle-btn {
+    flex: 0 0 auto;
+  }
+
+  /* Hide the effects panel completely on tablet */
+  .center-section .effects {
+    display: none !important;
+  }
+
+  /* Prevent scrolling in center section */
+  .center-section::-webkit-scrollbar {
+    display: none;
+  }
+
+  .center-section {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

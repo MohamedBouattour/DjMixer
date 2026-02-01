@@ -238,3 +238,61 @@
     color: #ff4d4d;
     background: rgba(255, 77, 77, 0.1);
 }
+
+/* ============================================
+   TABLET MODE - PLAYLIST COMPONENT OVERRIDES
+   ============================================ */
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+    .playlist-drawer {
+        width: 350px;
+        transform: translateX(calc(100% - 32px));
+    }
+
+    .playlist-handle {
+        width: 32px;
+    }
+
+    .handle-text {
+        font-size: 0.65rem;
+        letter-spacing: 1px;
+    }
+
+    .playlist-content {
+        padding: var(--spacing-md);
+        gap: var(--spacing-sm);
+    }
+
+    .playlist-title {
+        font-size: 1rem;
+        letter-spacing: 1px;
+    }
+
+    .btn-add-tracks {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.7rem;
+    }
+
+    .track-item {
+        padding: var(--spacing-sm);
+    }
+
+    .track-name {
+        font-size: 0.8rem;
+    }
+
+    .track-meta {
+        font-size: 0.65rem;
+    }
+
+    .btn-load-deck {
+        width: 28px;
+        height: 28px;
+        font-size: 0.65rem;
+    }
+
+    .btn-remove {
+        width: 28px;
+        height: 28px;
+    }
+}

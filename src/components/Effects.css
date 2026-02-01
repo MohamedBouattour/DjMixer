@@ -69,3 +69,116 @@
 .effect-slider {
     width: 100%;
 }
+
+/* ============================================
+   TABLET MODE - EFFECTS COMPONENT OVERRIDES
+   ============================================ */
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+
+    /* HIDE EFFECTS PANEL ON TABLET - Move to popup */
+    .effects {
+        display: none !important;
+    }
+
+    /* When shown in popup, use compact styles */
+    .effects.in-popup {
+        display: flex !important;
+        padding: var(--spacing-md);
+        gap: var(--spacing-sm);
+    }
+
+    .effects.in-popup .effects-title {
+        font-size: 1rem;
+        letter-spacing: 1px;
+    }
+
+    .effects.in-popup .effects-deck-label {
+        font-size: 0.7rem;
+        padding: 3px 10px;
+    }
+
+    .effects.in-popup .effect-label {
+        font-size: 0.6rem;
+    }
+
+    .effects.in-popup .effect-value {
+        font-size: 0.75rem;
+    }
+
+    .effects.in-popup .effect-slider {
+        height: 4px;
+    }
+}
+
+/* Effects Toggle Button - Hidden by default, shown on tablet */
+.effects-toggle-btn {
+    display: none;
+    background: linear-gradient(135deg, rgba(180, 0, 255, 0.2), rgba(0, 212, 255, 0.2));
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+}
+
+.effects-toggle-btn:hover {
+    border-color: var(--color-accent-purple);
+    background: linear-gradient(135deg, rgba(180, 0, 255, 0.3), rgba(0, 212, 255, 0.3));
+    box-shadow: 0 0 15px rgba(180, 0, 255, 0.3);
+}
+
+.effects-toggle-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+    .effects-toggle-btn {
+        display: flex !important;
+        padding: 6px 10px;
+        font-size: 0.55rem;
+        letter-spacing: 0.5px;
+        gap: 4px;
+        border-radius: var(--radius-sm);
+    }
+
+    .effects-toggle-btn svg {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+/* Effects Content Wrapper */
+.effects-content {
+    width: 100%;
+}
+
+.effects-content.in-popup .effects-grid {
+    gap: var(--spacing-md);
+}
+
+.effects-content.in-popup .effects-deck {
+    padding: var(--spacing-md);
+}
+
+.effects-content.in-popup .effects-deck-label {
+    font-size: 0.8rem;
+}
+
+.effects-content.in-popup .effect-label {
+    font-size: 0.7rem;
+}
+
+.effects-content.in-popup .effect-value {
+    font-size: 0.8rem;
+}

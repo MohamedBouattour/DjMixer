@@ -410,3 +410,161 @@ input[type="range"]:hover::-moz-range-thumb {
   gap: 4px !important;
   z-index: 9999 !important;
 }
+
+/* ============================================
+   TABLET MODE RESPONSIVE OVERRIDES
+   Target: 768px - 1200px width
+   Goal: No scroll, compact layout
+   ============================================ */
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+  :root {
+    /* Reduced spacing for tablet */
+    --spacing-xs: 0.1rem;
+    --spacing-sm: 0.25rem;
+    --spacing-md: 0.4rem;
+    --spacing-lg: 0.6rem;
+    --spacing-xl: 0.8rem;
+  }
+
+  body {
+    overflow: hidden;
+  }
+
+  #root {
+    overflow: hidden;
+  }
+
+  .app-header {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 8px !important;
+  }
+
+  .app-title {
+    font-size: 0.9rem;
+  }
+
+  .logo-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .settings-btn {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .settings-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* Hide shortcut badges on tablet for cleaner UI */
+  .shortcut-badge {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   POPUP / MODAL STYLES FOR ADVANCED CONTROLS
+   ============================================ */
+
+.advanced-controls-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.advanced-controls-popup.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.advanced-controls-content {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.advanced-controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.advanced-controls-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.advanced-controls-close {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.advanced-controls-close:hover {
+  background: var(--color-accent-primary);
+  color: white;
+}
+
+/* Toggle button to open advanced controls */
+.btn-advanced-toggle {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-advanced-toggle:hover {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+/* Tablet-specific: hide elements that will be in popups */
+@media screen and (max-width: 1200px) and (min-width: 768px) {
+  .hide-on-tablet {
+    display: none !important;
+  }
+
+  .show-on-tablet {
+    display: flex !important;
+  }
+}

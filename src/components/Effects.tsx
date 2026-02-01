@@ -18,6 +18,8 @@ export const Effects: React.FC<EffectsProps> = ({ onEffectChange }) => {
         filter: 100
     });
 
+    const [isEffectsPopupOpen, setIsEffectsPopupOpen] = useState(false);
+
     const handleEffectChange = (
         deck: 'A' | 'B',
         effect: 'reverb' | 'delay' | 'filter',
@@ -31,10 +33,8 @@ export const Effects: React.FC<EffectsProps> = ({ onEffectChange }) => {
         onEffectChange(deck, effect, value);
     };
 
-    return (
-        <div className="effects glass-panel">
-            <h3 className="effects-title">Effects</h3>
-
+    const renderEffectsContent = (inPopup = false) => (
+        <div className={`effects-content ${inPopup ? 'in-popup' : ''}`}>
             <div className="effects-grid">
                 <div className="effects-deck">
                     <div className="effects-deck-label deck-a-label">DECK A</div>
@@ -135,5 +135,48 @@ export const Effects: React.FC<EffectsProps> = ({ onEffectChange }) => {
                 </div>
             </div>
         </div>
+    );
+
+    return (
+        <>
+            {/* Main Effects Panel - Hidden on tablet */}
+            <div className="effects glass-panel">
+                <h3 className="effects-title">Effects</h3>
+                {renderEffectsContent()}
+            </div>
+
+            {/* Effects Toggle Button - Only shown on tablet */}
+            <button
+                className="effects-toggle-btn"
+                onClick={() => setIsEffectsPopupOpen(true)}
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v8M8 12h8" />
+                </svg>
+                Effects
+            </button>
+
+            {/* Effects Popup Modal - Only shown on tablet */}
+            <div
+                className={`advanced-controls-popup ${isEffectsPopupOpen ? 'open' : ''}`}
+                onClick={(e) => e.target === e.currentTarget && setIsEffectsPopupOpen(false)}
+            >
+                <div className="advanced-controls-content">
+                    <div className="advanced-controls-header">
+                        <h4 className="advanced-controls-title">Effects Controls</h4>
+                        <button
+                            className="advanced-controls-close"
+                            onClick={() => setIsEffectsPopupOpen(false)}
+                        >
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    {renderEffectsContent(true)}
+                </div>
+            </div>
+        </>
     );
 };
