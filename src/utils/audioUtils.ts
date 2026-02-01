@@ -54,11 +54,22 @@ export const detectBPM = async (audioBuffer: AudioBuffer): Promise<number> => {
         }
 
         const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-        const bpm = Math.round((60 * 1000) / ((avgInterval * windowSize) / sampleRate * 1000));
+        let bpm = Math.round((60 * 1000) / ((avgInterval * windowSize) / sampleRate * 1000));
 
-        // Ensure BPM is in reasonable range
-        if (bpm < 60) return bpm * 2;
-        if (bpm > 200) return Math.round(bpm / 2);
+        // Normalize BPM to reasonable DJ range (60-180)
+        // Keep halving if too high
+        while (bpm > 180) {
+            bpm = Math.round(bpm / 2);
+        }
+        // Keep doubling if too low
+        while (bpm < 60 && bpm > 0) {
+            bpm = Math.round(bpm * 2);
+        }
+
+        // Final sanity check
+        if (bpm < 60 || bpm > 180 || isNaN(bpm)) {
+            return 120; // Default fallback
+        }
 
         return bpm;
     } catch (error) {

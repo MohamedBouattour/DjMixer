@@ -107,29 +107,40 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         audio.crossOrigin = 'anonymous';
         audioElementRef.current = audio;
 
+        // Listen for track end
+        audio.addEventListener('ended', () => {
+            isPlayingRef.current = false;
+            setState(prev => ({ ...prev, isPlaying: false, currentTime: 0 }));
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        });
+
         // Create source node and connect
         sourceNodeRef.current = audioContext.createMediaElementSource(audio);
         if (effectsRef.current) {
             effectsRef.current.connect(sourceNodeRef.current);
         }
 
-        // Detect BPM if not already set
+        // Process audio buffer for BPM
         let bpm = track.bpm;
+
         if (!bpm) {
             try {
                 let arrayBuffer: ArrayBuffer;
                 if (track.file) {
                     arrayBuffer = await track.file.arrayBuffer();
                 } else {
-                    // Fetch for BPM detection
+                    // Fetch if not local file
                     const response = await fetch(track.url);
                     arrayBuffer = await response.arrayBuffer();
                 }
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
                 bpm = await detectBPM(audioBuffer);
             } catch (error) {
                 console.error('BPM detection failed:', error);
-                bpm = 120;
+                if (!bpm) bpm = 120;
             }
         }
 

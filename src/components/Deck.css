@@ -104,18 +104,90 @@
     line-height: 1;
 }
 
+/* Horizontal Waveform Bar */
+.waveform-bar {
+    position: relative;
+    width: 100%;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: var(--spacing-sm);
+}
+
+.waveform-peaks {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 100%;
+    padding: 0 4px;
+}
+
+.peak-bar {
+    flex: 1;
+    min-width: 2px;
+    max-width: 4px;
+    background: linear-gradient(to top,
+            rgba(255, 255, 255, 0.3) 0%,
+            rgba(255, 255, 255, 0.6) 50%,
+            var(--deck-color, #ff0080) 100%);
+    border-radius: 1px;
+    transition: height 0.1s ease;
+}
+
+.waveform-peaks.playing .peak-bar {
+    animation: peak-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes peak-pulse {
+    0% {
+        opacity: 0.6;
+        transform: scaleY(0.8);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scaleY(1);
+    }
+}
+
+.waveform-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.15);
+    pointer-events: none;
+    transition: width 0.1s linear;
+}
+
+.waveform-cursor {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--deck-color, #ff0080);
+    box-shadow: 0 0 8px var(--deck-color, #ff0080);
+    pointer-events: none;
+    transition: left 0.1s linear;
+}
+
 .waveform-placeholder,
 .waveform-loading {
-    height: 120px;
+    aspect-ratio: 1;
+    max-width: 180px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: var(--color-bg-elevated);
-    border-radius: var(--radius-md);
+    border-radius: 50%;
     color: var(--color-text-muted);
     font-size: 0.875rem;
     gap: var(--spacing-sm);
+    border: 2px solid rgba(255, 255, 255, 0.05);
 }
 
 .loading-spinner {
@@ -570,9 +642,19 @@
         font-size: 0.9rem;
     }
 
+    .waveform-bar {
+        height: 35px;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .peak-bar {
+        min-width: 1px;
+        max-width: 2px;
+    }
+
     .waveform-placeholder,
     .waveform-loading {
-        height: 50px;
+        max-width: 100px;
         font-size: 0.65rem;
     }
 
@@ -583,22 +665,23 @@
     }
 
     .deck-transport {
-        gap: 4px;
+        gap: 8px;
+        height: 100%;
     }
 
     .playback-controls {
-        gap: 4px;
-        margin-top: 2px;
+        gap: 8px;
+        margin-top: 4px;
     }
 
     .btn-play-pause {
-        width: 36px;
-        height: 36px;
+        width: 48px;
+        height: 48px;
     }
 
     .btn-play-pause svg {
-        width: 18px;
-        height: 18px;
+        width: 24px;
+        height: 24px;
     }
 
     .time-display {
@@ -622,7 +705,7 @@
     }
 
     .pitch-control {
-        padding: 2px 0;
+        padding: 4px 0;
     }
 
     .control-label {
@@ -634,42 +717,44 @@
     }
 
     .pitch-slider {
-        height: 4px;
+        height: 6px;
     }
 
     .performance-controls {
-        gap: 3px;
-        margin-top: 4px;
+        gap: 6px;
+        margin-top: 6px;
+        flex: 1;
+        justify-content: flex-end;
     }
 
     .effects-grid-performance {
-        gap: 3px;
+        gap: 4px;
     }
 
     .btn-effect,
     .btn-cue {
-        height: 26px;
-        font-size: 0.6rem;
+        height: 34px;
+        font-size: 0.7rem;
     }
 
     .cues-row {
-        gap: 3px;
+        gap: 4px;
     }
 
     .loop-control {
-        margin-top: 3px;
+        margin-top: 4px;
     }
 
     .btn-magic-loop {
-        height: 28px;
-        font-size: 0.65rem;
-        gap: 4px;
-        padding: 0 8px;
+        height: 38px;
+        font-size: 0.7rem;
+        gap: 6px;
+        padding: 0 10px;
     }
 
     .btn-magic-loop svg {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
 
     /* Volume and EQ controls in deck - more compact */
@@ -700,11 +785,6 @@
     .eq-slider {
         width: 60px;
         height: 20px;
-    }
-
-    /* Hide advanced effect buttons on tablet to save space */
-    .effects-grid-performance {
-        grid-template-columns: repeat(4, 1fr);
     }
 
     /* Hide second row of effects (DST, BIT, FLG, TRM) on tablet */

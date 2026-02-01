@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { DeckState, Track } from '../types';
 import { Waveform } from './Waveform';
+import { WaveformBar } from './WaveformBar';
 import { SpotifyModal } from './SpotifyModal';
 import { formatTime, formatTotalSeconds } from '../utils/helpers';
 import './Deck.css';
@@ -124,6 +125,20 @@ export const Deck: React.FC<DeckProps> = ({
                 )}
             </div>
 
+            {/* Horizontal Waveform Bar */}
+            {/* Horizontal Waveform Bar */}
+            {/* Horizontal Waveform Bar */}
+            {track && (
+                <WaveformBar
+                    audioUrl={track.url}
+                    currentTime={currentTime}
+                    duration={track.duration}
+                    onSeek={onSeek}
+                    color={color}
+                    height={window.innerWidth < 1200 && window.innerWidth >= 768 ? 35 : 50}
+                />
+            )}
+
             {state.isLoading ? (
                 <div className="waveform-loading">
                     <div className="loading-spinner"></div>
@@ -133,6 +148,7 @@ export const Deck: React.FC<DeckProps> = ({
                 <Waveform
                     audioUrl={track.url}
                     currentTime={currentTime}
+                    duration={track.duration}
                     onSeek={onSeek}
                     isPlaying={isPlaying}
                     color={color}

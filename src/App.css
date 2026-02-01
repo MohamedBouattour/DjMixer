@@ -1,3 +1,7 @@
+* {
+  outline: none;
+}
+
 .app {
   width: 98vw;
   height: 100vh;
