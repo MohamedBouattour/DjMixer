@@ -206,3 +206,26 @@
     scrollbar-width: none;
   }
 }
+
+/* ============================================
+   MOBILE MODE - APP LAYOUT OVERRIDES
+   ============================================ */
+
+/* ============================================
+   MOBILE & TABLET - HEADER VISIBILITY
+   ============================================ */
+
+@media screen and (max-width: 1200px) {
+  .app-header {
+    display: none !important;
+  }
+
+  .app-main {
+    height: 100vh !important;
+    padding-top: 0 !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  /* Additional mobile-specific overrides */
+}

@@ -245,16 +245,16 @@
 
 @media screen and (max-width: 1200px) and (min-width: 768px) {
     .playlist-drawer {
-        width: 350px;
-        transform: translateX(calc(100% - 32px));
+        width: 400px;
+        transform: translateX(calc(100% - 40px));
     }
 
     .playlist-handle {
-        width: 32px;
+        width: 40px;
     }
 
     .handle-text {
-        font-size: 0.65rem;
+        font-size: 0.7rem;
         letter-spacing: 1px;
     }
 
@@ -264,35 +264,48 @@
     }
 
     .playlist-title {
-        font-size: 1rem;
+        font-size: 1.1rem;
         letter-spacing: 1px;
     }
 
     .btn-add-tracks {
-        padding: var(--spacing-xs) var(--spacing-sm);
-        font-size: 0.7rem;
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 0.8rem;
+        min-height: 44px;
     }
 
     .track-item {
-        padding: var(--spacing-sm);
+        padding: var(--spacing-md);
     }
 
     .track-name {
-        font-size: 0.8rem;
+        font-size: 0.9rem;
     }
 
     .track-meta {
-        font-size: 0.65rem;
+        font-size: 0.75rem;
+    }
+
+    .track-actions {
+        gap: var(--spacing-sm);
     }
 
     .btn-load-deck {
-        width: 28px;
-        height: 28px;
-        font-size: 0.65rem;
+        width: 48px;
+        height: 48px;
+        font-size: 1rem;
+        font-weight: 800;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
 
     .btn-remove {
-        width: 28px;
-        height: 28px;
+        width: 48px;
+        height: 48px;
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-remove svg {
+        width: 20px;
+        height: 20px;
     }
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { DeckState } from '../types';
+import HorizontalSlider from './HorizontalSlider';
 import VerticalSlider from './VerticalSlider';
 import './Mixer.css';
 
@@ -63,17 +64,6 @@ export const Mixer: React.FC<MixerProps> = ({
 
         return (
             <div className={`mixer-deck-controls deck-${deckId.toLowerCase()}`} style={{ '--deck-color': color } as React.CSSProperties}>
-                {/* EQ Toggle Button - Only shown on tablet */}
-                <button
-                    className="eq-toggle-btn"
-                    onClick={() => setIsEQPopupOpen(true)}
-                    style={{ '--deck-color': color } as React.CSSProperties}
-                >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
-                    </svg>
-                    EQ
-                </button>
                 <div className="volume-section">
                     <VerticalSlider
                         value={volume}
@@ -136,19 +126,19 @@ export const Mixer: React.FC<MixerProps> = ({
 
                     <div className="mixer-center">
                         <div className="master-volume-section">
-                            <label className="control-label">
-                                MASTER
-                                <span className="volume-value">{Math.round(masterVolume)}%</span>
-                            </label>
-                            <input
-                                type="range"
-                                min="0"
-                                max="100"
+                            <HorizontalSlider
                                 value={masterVolume}
-                                onChange={(e) => onMasterVolumeChange(parseFloat(e.target.value))}
-                                onMouseUp={(e) => e.currentTarget.blur()}
-                                className="master-volume-slider"
+                                min={0}
+                                max={100}
+                                onChange={onMasterVolumeChange}
+                                label="MASTER"
+                                valueFormatter={(v) => `${Math.round(v)}%`}
+                                color="var(--color-accent-green)"
+                                height={24}
+                                thumbWidth={24}
+                                className="master-volume-slider-container"
                             />
+
                             <div className="volume-bars">
                                 {Array.from({ length: 15 }, (_, i) => (
                                     <div
@@ -160,22 +150,32 @@ export const Mixer: React.FC<MixerProps> = ({
                             </div>
                         </div>
 
+                        {/* EQ Toggle Button - Unified for both decks */}
+                        <button
+                            className="eq-toggle-btn main-eq-btn"
+                            onClick={() => setIsEQPopupOpen(true)}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+                            </svg>
+                            EQ
+                        </button>
+
                         <div className="crossfader-section">
-                            <input
-                                type="range"
-                                min="0"
-                                max="100"
+                            <HorizontalSlider
                                 value={crossfaderValue}
-                                onChange={(e) => onCrossfaderChange(parseFloat(e.target.value))}
-                                onMouseUp={(e) => e.currentTarget.blur()}
-                                className="crossfader"
+                                min={0}
+                                max={100}
+                                onChange={onCrossfaderChange}
+                                label=""
+                                showValue={false}
+                                color="#ffffff"
+                                height={32}
+                                thumbWidth={40}
+                                showCenterLine={true}
+                                className="crossfader-slider-container"
                             />
-                            <div className="crossfader-indicator">
-                                <div
-                                    className="crossfader-position"
-                                    style={{ left: `${crossfaderValue}%` }}
-                                />
-                            </div>
+
                             <div className="crossfader-labels">
                                 <span className="deck-a-label">
                                     A {shortcuts?.crossfader && <span className="shortcut-badge tiny">{shortcuts.crossfader.left}</span>}

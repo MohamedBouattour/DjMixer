@@ -28,4 +28,4 @@ This workflow prepares the application for deployment (e.g., to Render.com) by b
 ## Render Configuration
 - **Root Directory**: `backend`
 - **Build Command**: `npm install`
-- **Start Command**: `node server.js`
+- **Start Command**: `node proxy.js`

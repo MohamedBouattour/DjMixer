@@ -3,6 +3,7 @@ import type { DeckState, Track } from '../types';
 import { Waveform } from './Waveform';
 import { WaveformBar } from './WaveformBar';
 import { SpotifyModal } from './SpotifyModal';
+import VerticalSlider from './VerticalSlider';
 import { formatTime, formatTotalSeconds } from '../utils/helpers';
 import './Deck.css';
 
@@ -125,8 +126,9 @@ export const Deck: React.FC<DeckProps> = ({
                 )}
             </div>
 
-            {/* Horizontal Waveform Bar */}
-            {/* Horizontal Waveform Bar */}
+
+
+
             {/* Horizontal Waveform Bar */}
             {track && (
                 <WaveformBar
@@ -135,155 +137,175 @@ export const Deck: React.FC<DeckProps> = ({
                     duration={track.duration}
                     onSeek={onSeek}
                     color={color}
-                    height={window.innerWidth < 1200 && window.innerWidth >= 768 ? 35 : 50}
+                    height={window.innerWidth < 1200 && window.innerWidth >= 768 ? 40 : 50}
                 />
             )}
 
-            {state.isLoading ? (
-                <div className="waveform-loading">
-                    <div className="loading-spinner"></div>
-                    <span>Downloading track...</span>
-                </div>
-            ) : track ? (
-                <Waveform
-                    audioUrl={track.url}
-                    currentTime={currentTime}
-                    duration={track.duration}
-                    onSeek={onSeek}
-                    isPlaying={isPlaying}
-                    color={color}
-                />
-            ) : (
-                <div className="waveform-placeholder">
-                    <span>Load a track to begin</span>
-                </div>
-            )}
+            <div className="deck-vinyl-row">
+                {deckId === 'A' && (
+                    <div className="pitch-control-vertical" style={{ marginRight: 'var(--spacing-md)' }}>
+                        <VerticalSlider
+                            value={pitch}
+                            min={-10}
+                            max={10}
+                            onChange={(val) => onPitchChange(parseFloat(val.toFixed(2)))}
+                            label="PITCH"
+                            showValue={true}
+                            valueFormatter={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
+                            color={color}
+                            className="pitch-slider-vertical"
+                        />
+                    </div>
+                )}
+
+                {state.isLoading ? (
+                    <div className="waveform-loading">
+                        <div className="loading-spinner"></div>
+                        <span>Downloading track...</span>
+                    </div>
+                ) : track ? (
+                    <Waveform
+                        audioUrl={track.url}
+                        currentTime={currentTime}
+                        duration={track.duration}
+                        onSeek={onSeek}
+                        isPlaying={isPlaying}
+                        color={color}
+                    />
+                ) : (
+                    <div className="waveform-placeholder">
+                        <span>Load a track to begin</span>
+                    </div>
+                )}
+
+                {deckId === 'B' && (
+                    <div className="pitch-control-vertical" style={{ marginLeft: 'var(--spacing-md)' }}>
+                        <VerticalSlider
+                            value={pitch}
+                            min={-10}
+                            max={10}
+                            onChange={(val) => onPitchChange(parseFloat(val.toFixed(2)))}
+                            label="PITCH"
+                            showValue={true}
+                            valueFormatter={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
+                            color={color}
+                            className="pitch-slider-vertical"
+                        />
+                    </div>
+                )}
+            </div>
 
             <div className="deck-controls">
                 <div className="deck-transport">
-                    <div className="playback-controls">
-                        {isPlaying ? (
-                            <button className="btn-play-pause active" onClick={onPause}>
-                                <PauseIcon />
-                                {shortcuts?.play && <span className="shortcut-badge play-badge">{shortcuts.play}</span>}
-                            </button>
-                        ) : (
-                            <button
-                                className="btn-play-pause"
-                                onClick={onPlay}
-                                disabled={!track}
-                            >
-                                <PlayIcon />
-                                {shortcuts?.play && <span className="shortcut-badge play-badge">{shortcuts.play}</span>}
-                            </button>
-                        )}
-
-                        <div className="time-display">
-                            <span className="current-time">{formatTime(currentTime)} <span className="text-xs opacity-50">({formatTotalSeconds(currentTime)})</span></span>
-                            <span className="separator">/</span>
-                            <span className="total-time">{formatTime(track?.duration || 0)}</span>
-                        </div>
-                    </div>
-
-                    <div className="pitch-control">
-                        <label className="control-label">
-                            Pitch
-                            <span className="pitch-value">{pitch > 0 ? '+' : ''}{pitch}%</span>
-                        </label>
-                        <input
-                            type="range"
-                            min="-10"
-                            max="10"
-                            step="0.1"
-                            value={pitch}
-                            onChange={(e) => onPitchChange(parseFloat(e.target.value))}
-                            className="pitch-slider"
-                        />
-                    </div>
-
-                    <div className="performance-controls">
-                        <div className="effects-grid-performance">
-                            <button
-                                className={`btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('reverb')}
-                                title="Reverb"
-                            >REV</button>
-                            <button
-                                className={`btn-effect ${activeEffects?.delay ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('delay')}
-                                title="Delay"
-                            >DLY</button>
-                            <button
-                                className={`btn-effect ${activeEffects?.filter ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('filter')}
-                                title="Low Pass Filter"
-                            >
-                                LPF
-                                {shortcuts?.effect && <span className="shortcut-badge tiny">{shortcuts.effect}</span>}
-                            </button>
-                            <button
-                                className={`btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('hpf')}
-                                title="High Pass Filter"
-                            >HPF</button>
-                            <button
-                                className={`btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('distortion')}
-                                title="Distortion"
-                            >DST</button>
-                            <button
-                                className={`btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('bitcrusher')}
-                                title="Bitcrusher"
-                            >BIT</button>
-                            <button
-                                className={`btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('flanger')}
-                                title="Flanger"
-                            >FLG</button>
-                            <button
-                                className={`btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
-                                onClick={() => onToggleEffect('tremolo')}
-                                title="Tremolo"
-                            >TRM</button>
-                        </div>
-
-                        <div className="cues-row">
-                            {[0, 1].map(index => (
-                                <button
-                                    key={index}
-                                    className={`btn-cue ${cuePoints[index] !== undefined ? 'active' : ''}`}
-                                    onClick={(e) => {
-                                        if (e.shiftKey) {
-                                            onDeleteCue(index);
-                                        } else {
-                                            onCue(index);
-                                        }
-                                    }}
-                                    title={cuePoints[index] !== undefined ? `Jump to ${formatTime(cuePoints[index])} (Shift+Click to clear)` : 'Set Cue'}
-                                >
-                                    {index + 1}
-                                    {index === 0 && shortcuts?.cue && (
-                                        <span className="shortcut-badge tiny">{shortcuts.cue}</span>
-                                    )}
+                    <div className="deck-transport-main">
+                        <div className="playback-controls">
+                            {isPlaying ? (
+                                <button className="btn-play-pause active" onClick={onPause}>
+                                    <PauseIcon />
+                                    {shortcuts?.play && <span className="shortcut-badge play-badge">{shortcuts.play}</span>}
                                 </button>
-                            ))}
+                            ) : (
+                                <button
+                                    className="btn-play-pause"
+                                    onClick={onPlay}
+                                    disabled={!track}
+                                >
+                                    <PlayIcon />
+                                    {shortcuts?.play && <span className="shortcut-badge play-badge">{shortcuts.play}</span>}
+                                </button>
+                            )}
+
+                            <div className="time-display">
+                                <span className="current-time">{formatTime(currentTime)} <span className="text-xs opacity-50">({formatTotalSeconds(currentTime)})</span></span>
+                                <span className="separator">/</span>
+                                <span className="total-time">{formatTime(track?.duration || 0)}</span>
+                            </div>
                         </div>
 
-                        <div className="loop-control">
-                            <button
-                                className={`btn-magic-loop ${activeLoop?.active || isHoldingLoop ? 'active' : ''} ${isHoldingLoop ? 'holding' : ''}`}
-                                onMouseDown={handleLoopDown}
-                                onMouseUp={handleLoopUp}
-                                onMouseLeave={handleLoopUp}
-                                onClick={handleLoopClick}
-                                onTouchStart={handleLoopDown}
-                                onTouchEnd={handleLoopUp}
-                                title="Hold to Magic Loop (Release to activate)"
-                            >
-                                <LoopIcon />
-                                <span>MAGIC LOOP</span>
-                            </button>
+                        <div className="performance-controls">
+                            <div className="effects-grid-performance">
+                                <button
+                                    className={`btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('reverb')}
+                                    title="Reverb"
+                                >REV</button>
+                                <button
+                                    className={`btn-effect ${activeEffects?.delay ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('delay')}
+                                    title="Delay"
+                                >DLY</button>
+                                <button
+                                    className={`btn-effect ${activeEffects?.filter ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('filter')}
+                                    title="Low Pass Filter"
+                                >
+                                    LPF
+                                    {shortcuts?.effect && <span className="shortcut-badge tiny">{shortcuts.effect}</span>}
+                                </button>
+                                <button
+                                    className={`btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('hpf')}
+                                    title="High Pass Filter"
+                                >HPF</button>
+                                <button
+                                    className={`btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('distortion')}
+                                    title="Distortion"
+                                >DST</button>
+                                <button
+                                    className={`btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('bitcrusher')}
+                                    title="Bitcrusher"
+                                >BIT</button>
+                                <button
+                                    className={`btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('flanger')}
+                                    title="Flanger"
+                                >FLG</button>
+                                <button
+                                    className={`btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
+                                    onClick={() => onToggleEffect('tremolo')}
+                                    title="Tremolo"
+                                >TRM</button>
+                            </div>
+
+                            <div className="cues-row">
+                                {[0, 1].map(index => (
+                                    <button
+                                        key={index}
+                                        className={`btn-cue ${cuePoints[index] !== undefined ? 'active' : ''}`}
+                                        onClick={(e) => {
+                                            if (e.shiftKey) {
+                                                onDeleteCue(index);
+                                            } else {
+                                                onCue(index);
+                                            }
+                                        }}
+                                        title={cuePoints[index] !== undefined ? `Jump to ${formatTime(cuePoints[index])} (Shift+Click to clear)` : 'Set Cue'}
+                                    >
+                                        {index + 1}
+                                        {index === 0 && shortcuts?.cue && (
+                                            <span className="shortcut-badge tiny">{shortcuts.cue}</span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="loop-control">
+                                <button
+                                    className={`btn-magic-loop ${activeLoop?.active || isHoldingLoop ? 'active' : ''} ${isHoldingLoop ? 'holding' : ''}`}
+                                    onMouseDown={handleLoopDown}
+                                    onMouseUp={handleLoopUp}
+                                    onMouseLeave={handleLoopUp}
+                                    onClick={handleLoopClick}
+                                    onTouchStart={handleLoopDown}
+                                    onTouchEnd={handleLoopUp}
+                                    title="Hold to Magic Loop (Release to activate)"
+                                >
+                                    <LoopIcon />
+                                    <span>MAGIC LOOP</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
