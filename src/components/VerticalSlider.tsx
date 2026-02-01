@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import './VerticalSlider.css';
 
 interface VerticalSliderProps {
@@ -26,7 +26,60 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
     height = 120,
     className = '',
 }) => {
-    const percentage = ((value - min) / (max - min)) * 100;
+    const trackRef = useRef<HTMLDivElement>(null);
+    const isDragging = useRef(false);
+
+    const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+
+    const calculateValue = (clientY: number) => {
+        if (!trackRef.current) return;
+
+        const rect = trackRef.current.getBoundingClientRect();
+        // Calculate height from bottom, since slider goes up
+        const relativeY = rect.bottom - clientY;
+        const clampedY = Math.max(0, Math.min(relativeY, rect.height));
+        const newPercentage = clampedY / rect.height;
+        const newValue = min + (newPercentage * (max - min));
+
+        onChange(newValue);
+    };
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isDragging.current = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        calculateValue(e.clientY);
+        // Prevent text selection while dragging
+        document.body.style.userSelect = 'none';
+    };
+
+    const handlePointerMove = (e: React.PointerEvent) => {
+        if (!isDragging.current) return;
+        e.preventDefault();
+        calculateValue(e.clientY);
+    };
+
+    const handlePointerUp = (e: React.PointerEvent) => {
+        if (!isDragging.current) return;
+        isDragging.current = false;
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+            // Pointer capture may already be released
+        }
+        document.body.style.userSelect = '';
+    };
+
+    const handlePointerCancel = (e: React.PointerEvent) => {
+        isDragging.current = false;
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+            // Pointer capture may already be released
+        }
+        document.body.style.userSelect = '';
+    };
 
     return (
         <div className={`vertical-slider ${className}`} style={{ '--slider-height': `${height}px` } as React.CSSProperties}>
@@ -34,7 +87,17 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
                 <span className="vertical-slider-label">{label}</span>
             )}
 
-            <div className="vertical-slider-track" style={{ '--slider-color': color } as React.CSSProperties}>
+            <div
+                className="vertical-slider-track"
+                ref={trackRef}
+                style={{ '--slider-color': color, touchAction: 'none' } as React.CSSProperties}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                onDoubleClick={(e) => e.preventDefault()}
+            >
                 {/* Colored fill indicator */}
                 <div
                     className="vertical-slider-fill"
@@ -46,17 +109,6 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
 
                 {/* Center line */}
                 <div className="vertical-slider-line" />
-
-                {/* The actual range input */}
-                <input
-                    type="range"
-                    min={min}
-                    max={max}
-                    value={value}
-                    onChange={(e) => onChange(parseFloat(e.target.value))}
-                    onMouseUp={(e) => e.currentTarget.blur()}
-                    className="vertical-slider-input"
-                />
 
                 {/* White dot indicator */}
                 <div

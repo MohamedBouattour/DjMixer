@@ -6,6 +6,9 @@
     align-items: center;
     gap: 6px;
     height: 100%;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .vertical-slider-label {
@@ -31,6 +34,8 @@
         inset 0 2px 8px rgba(0, 0, 0, 0.6),
         0 2px 4px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    cursor: pointer;
+    touch-action: none;
 }
 
 .vertical-slider-fill {
@@ -54,23 +59,6 @@
     border-radius: 1px;
     transform: translateX(-50%);
     pointer-events: none;
-}
-
-.vertical-slider-input {
-    position: absolute;
-    width: calc(var(--slider-height, 120px) - 16px);
-    height: 28px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    background: transparent !important;
-    cursor: pointer;
-    z-index: 10;
-    -webkit-appearance: none;
-    appearance: none;
-    margin: 0;
-    opacity: 0;
-    /* Hide the native slider, we use custom thumb */
 }
 
 .vertical-slider-thumb {

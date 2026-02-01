@@ -28,7 +28,14 @@ function App() {
 
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+
+    const preventContextMenu = (e: Event) => e.preventDefault();
+    window.addEventListener('contextmenu', preventContextMenu);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('contextmenu', preventContextMenu);
+    };
   }, []);
 
   const audioContextRef = useRef<AudioContext | null>(null);
