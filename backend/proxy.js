@@ -1,9 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const yts = require('yt-search');
-const youtubedl = require('youtube-dl-exec');
+const { YtDlp, helpers } = require('ytdlp-nodejs');
 const fs = require('fs');
 const path = require('path');
+
+// Initialize ytdlp instance
+const ytdlp = new YtDlp();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -93,32 +96,60 @@ app.get('/stream', async (req, res) => {
         }
     }
 
-    // 2. Download using Android Client (The bypass)
+    // 2. Download using ytdlp-nodejs
     try {
         const url = `https://www.youtube.com/watch?v=${videoId}`;
-        console.log(`[BYPASS-v3] Attempting Bypass for: ${videoId} (No Cookies Mode)`);
+        console.log(`[YTDLP-v4] Downloading audio for: ${videoId}`);
 
         if (fs.existsSync(cacheFilePath)) fs.unlinkSync(cacheFilePath);
 
-        // We use extractor-args to tell YouTube we are an Android device
-        // This is a known technique to skip 403 blocks on many official tracks
-        await youtubedl(url, {
-            output: cacheFilePath,
-            format: 'bestaudio/best',
-            noCheckCertificates: true,
-            noWarnings: true,
-            addHeader: ['referer:youtube.com'],
-            extractorArgs: 'youtube:player_client=android'
+        // Use ytdlp-nodejs with raw args to avoid postprocessing (no FFmpeg needed)
+        const outputTemplate = path.join(cacheDir, `${videoId}.%(ext)s`);
+        const result = await ytdlp.downloadAsync(url, {
+            output: outputTemplate,
+            rawArgs: [
+                '-f', 'bestaudio/best',
+                '--no-post-overwrites',
+                '--extractor-args', 'youtube:player_client=android'
+            ],
+            onProgress: (p) => console.log(`[PROGRESS] ${videoId}: ${p.percentage_str || p.percent || '...'}`)
         });
 
-        const stat = fs.statSync(cacheFilePath);
-        console.log(`[SUCCESS] Downloaded: ${videoId} (${stat.size} bytes)`);
+        console.log(`[SUCCESS] Downloaded: ${videoId}`, result.filePaths);
 
-        res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': 'audio/mpeg', 'Accept-Ranges': 'bytes' });
-        fs.createReadStream(cacheFilePath).pipe(res);
+        // Find the downloaded file (might be different extension)
+        let finalPath = cacheFilePath;
+        if (result.filePaths && result.filePaths.length > 0) {
+            finalPath = result.filePaths[0];
+        }
+
+        if (!fs.existsSync(finalPath)) {
+            // Try to find any file with the videoId prefix
+            const files = fs.readdirSync(cacheDir).filter(f => f.startsWith(videoId));
+            if (files.length > 0) {
+                finalPath = path.join(cacheDir, files[0]);
+            }
+        }
+
+        const stat = fs.statSync(finalPath);
+        console.log(`[SERVING] File: ${finalPath} (${stat.size} bytes)`);
+
+        // Determine content type based on extension
+        const ext = path.extname(finalPath).toLowerCase();
+        const contentTypes = {
+            '.mp3': 'audio/mpeg',
+            '.m4a': 'audio/mp4',
+            '.webm': 'audio/webm',
+            '.ogg': 'audio/ogg',
+            '.opus': 'audio/opus',
+            '.wav': 'audio/wav'
+        };
+        const contentType = contentTypes[ext] || 'audio/mpeg';
+        res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': contentType, 'Accept-Ranges': 'bytes' });
+        fs.createReadStream(finalPath).pipe(res);
     } catch (error) {
-        console.error('[BYPASS FAILED]:', error.message);
-        if (!res.headersSent) res.status(500).send('Stream error');
+        console.error('[YTDLP FAILED]:', error.message || error);
+        if (!res.headersSent) res.status(500).json({ error: 'Stream error', details: error.message });
     }
 });
 
@@ -131,9 +162,50 @@ app.get('*', (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`\n============================================`);
-    console.log(`   🚀 PROXY v3.0 - ANDROID BYPASS ACTIVE`);
-    console.log(`   The bypass protocol is running on port ${PORT}.`);
-    console.log(`============================================\n`);
-});
+// Startup function to ensure yt-dlp is installed
+async function startServer() {
+    try {
+        // Check if yt-dlp is installed, if not download it
+        const installed = await ytdlp.checkInstallationAsync();
+        if (!installed) {
+            console.log('[SETUP] yt-dlp not found, downloading...');
+            await helpers.downloadYtDlp();
+            console.log('[SETUP] yt-dlp installed successfully!');
+        } else {
+            console.log('[SETUP] yt-dlp binary found.');
+        }
+
+        // Try to update yt-dlp to latest version
+        try {
+            const updateResult = await ytdlp.updateYtDlpAsync();
+            console.log(`[SETUP] yt-dlp version: ${updateResult.version}`);
+        } catch (e) {
+            console.log('[SETUP] Could not update yt-dlp, using current version.');
+        }
+
+        // Try to download FFmpeg if not present
+        try {
+            const ffmpegInstalled = await ytdlp.checkInstallationAsync({ ffmpeg: true });
+            if (!ffmpegInstalled) {
+                console.log('[SETUP] FFmpeg not found, downloading...');
+                await ytdlp.downloadFFmpeg();
+                console.log('[SETUP] FFmpeg installed successfully!');
+            } else {
+                console.log('[SETUP] FFmpeg found.');
+            }
+        } catch (e) {
+            console.log('[SETUP] Could not install FFmpeg, audio conversion may be limited.');
+        }
+    } catch (error) {
+        console.error('[SETUP] Warning: Could not verify yt-dlp installation:', error.message);
+    }
+
+    app.listen(PORT, () => {
+        console.log(`\n============================================`);
+        console.log(`   🚀 PROXY v4.0 - YTDLP-NODEJS ACTIVE`);
+        console.log(`   Server running on port ${PORT}`);
+        console.log(`============================================\n`);
+    });
+}
+
+startServer();
