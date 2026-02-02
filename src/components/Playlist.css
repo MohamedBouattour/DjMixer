@@ -270,11 +270,11 @@
 }
 
 /* ============================================
-   RESPONSIVE MODE - ALL SCREENS UNDER 1200px
+   RESPONSIVE MODE - ALL SCREENS UNDER 1366px
    Unified approach for tablet and phone
    ============================================ */
 
-@media screen and (max-width: 1200px) {
+@media screen and (max-width: 1366px) {
 
     /* Show floating button on ALL responsive screens */
     .playlist-float-btn {
@@ -318,11 +318,11 @@
 }
 
 /* ============================================
-   TABLET MODE (768px - 1200px)
+   TABLET MODE (768px - 1366px)
    Moderate sizing adjustments
    ============================================ */
 
-@media screen and (max-width: 1200px) and (min-width: 768px) {
+@media screen and (max-width: 1366px) and (min-width: 768px) {
     .playlist-drawer {
         width: 400px;
         max-width: 90vw;

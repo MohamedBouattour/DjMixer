@@ -1004,9 +1004,17 @@
         font-size: 0.7rem;
     }
 
-    /* Hide deck mixer controls on phone - move to popup */
+    /* Show deck mixer controls on phone (compact) */
     .deck-mixer {
-        display: none;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 2px;
+        gap: 4px;
+        height: auto;
+        min-height: 0;
+        flex-shrink: 0;
     }
 
     /* Performance controls - ultra compact */
@@ -1056,14 +1064,109 @@
         height: 14px;
     }
 
-    /* Volume control - hidden on phone by default */
+    /* Volume control - compact on phone */
     .volume-control {
-        display: none;
+        display: flex;
+        height: 100px;
+        width: 30px;
+        padding: 0;
     }
 
-    /* EQ controls - hidden on phone */
+    .volume-slider-container {
+        width: 24px;
+    }
+
+    /* EQ controls - visible but compact on phone */
     .eq-controls {
-        display: none !important;
+        display: flex !important;
+        flex-direction: column;
+        gap: 2px;
+        width: 30px;
+    }
+
+    .eq-knob {
+        width: 28px;
+        height: 28px;
+    }
+
+    .knob-svg {
+        width: 28px;
+        height: 28px;
+    }
+}
+
+/* ============================================
+   PHONE LANDSCAPE OPTIMIZATIONS
+   Target: Short screens (height < 600px)
+   ============================================ */
+
+@media screen and (max-height: 600px) and (orientation: landscape) {
+    .deck {
+        padding: 2px;
+        gap: 2px;
+    }
+
+    /* Reduce header height */
+    .deck-header {
+        padding-bottom: 2px;
+        margin-bottom: 2px;
+    }
+
+    .track-name {
+        font-size: 0.8rem;
+    }
+
+    /* Compact vinyl row */
+    .deck-vinyl-row {
+        height: 90px;
+        /* Reduce from standard */
+        margin-bottom: 2px;
+    }
+
+    .vinyl-container {
+        max-width: 80px;
+        min-height: 80px;
+        width: 80px;
+    }
+
+    /* Compact transport controls */
+    .playback-controls {
+        margin-top: 2px;
+        gap: 6px;
+    }
+
+    .btn-play-pause {
+        width: 44px;
+        height: 44px;
+    }
+
+    /* Hide less critical cues/effects to save space */
+    .performance-controls {
+        gap: 2px;
+        margin-top: 2px;
+    }
+
+    .btn-effect,
+    .btn-cue {
+        height: 30px;
+        font-size: 0.65rem;
+    }
+
+    /* Hide cues row if height is VERY small */
+    @media screen and (max-height: 400px) {
+        .cues-row {
+            display: none;
+        }
+
+        .deck-vinyl-row {
+            height: 70px;
+        }
+
+        .vinyl-container {
+            max-width: 60px;
+            min-height: 60px;
+            width: 60px;
+        }
     }
 }
 

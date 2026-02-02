@@ -216,7 +216,7 @@
    MOBILE & TABLET - HEADER VISIBILITY
    ============================================ */
 
-@media screen and (max-width: 1200px) {
+@media screen and (max-width: 3000px) {
   .app-header {
     display: none !important;
   }
@@ -366,5 +366,46 @@
     font-size: 0.65rem;
     bottom: 8px;
     border-radius: 16px;
+  }
+}
+
+/* ============================================
+   LANDSCAPE MOBILE OPTIMIZATIONS
+   Target: Short screens (orientation: landscape)
+   e.g. iPhone Landscape (height < 600px)
+   ============================================ */
+
+@media screen and (max-height: 600px) and (orientation: landscape) {
+  .app-header {
+    display: none !important;
+  }
+
+  .app-main {
+    padding: 2px;
+    height: 100vh;
+  }
+
+  .decks-section {
+    flex-direction: row !important;
+    /* Force side-by-side */
+    gap: 4px;
+    align-items: stretch;
+  }
+
+  .decks-section>.deck {
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Hide center section toggle if it gets in the way */
+  .center-toggle-btn {
+    bottom: 5px;
+    padding: 4px 12px;
+    font-size: 0.6rem;
+    opacity: 0.7;
+  }
+
+  .center-toggle-btn:hover {
+    opacity: 1;
   }
 }

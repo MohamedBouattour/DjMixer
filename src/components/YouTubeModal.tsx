@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import type { Track } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { AuthModal } from './AuthModal';
 import './YouTubeModal.css';
 
 interface YouTubeModalProps {
@@ -22,12 +24,14 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
     onClose,
     onLoadTrack
 }) => {
+    const { isAuthenticated, user } = useAuth();
     const modalRef = useRef<HTMLDivElement>(null);
     const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     // Handle click outside to minimize
     useEffect(() => {
@@ -88,7 +92,7 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                 id: id,
                 name: title,
                 duration: duration || 0,
-                url: `/stream?videoId=${id}`,
+                url: `/stream?videoId=${id}&userId=${user?.id || ''}`,
                 bpm: undefined
             });
             onClose();
@@ -138,82 +142,114 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                     </div>
                 </div>
 
-                <div className="youtube-input-section">
-                    <form onSubmit={handleInternalSearch} className="search-form">
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search songs on YouTube..."
-                            className="youtube-search-input"
-                        />
-                        <button type="submit" className="search-btn" disabled={!searchQuery.trim() || isSearching}>
-                            {isSearching ? 'Searching...' : 'Search'}
-                        </button>
-                    </form>
-                    {errorMessage && (
-                        <div className="error-message" style={{ color: 'red', marginTop: '8px', fontSize: '0.9em' }}>
-                            {errorMessage}
-                        </div>
-                    )}
-                </div>
-
-                <div className="youtube-modal-content">
-                    {/* Search Results Overlay */}
-                    {searchResults.length > 0 ? (
-                        <div className="search-results-list">
-                            <div className="results-header">
-                                <span>Found {searchResults.length} videos</span>
-                                <button className="close-results" onClick={() => setSearchResults([])}>✕</button>
+                {/* Show Auth Required Screen if not authenticated */}
+                {!isAuthenticated ? (
+                    <div className="youtube-auth-required">
+                        <div className="auth-required-content">
+                            <div className="auth-icon">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="#ff0000">
+                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                </svg>
                             </div>
-                            {searchResults.map(video => (
-                                <div key={video.id} className="search-result-item" onClick={() => setCurrentVideoId(video.id)}>
-                                    <img src={video.thumbnail} alt={video.title} className="result-thumb" />
-                                    <div className="result-info">
-                                        <div className="result-title">{video.title}</div>
-                                        <div className="result-meta">
-                                            {video.author} • {video.timestamp}
-                                        </div>
-                                    </div>
-                                    {onLoadTrack && (
-                                        <button
-                                            className="result-add-btn"
-                                            style={{ background: color }}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleAddToDeck(video.id, video.title, video.duration);
-                                            }}
-                                        >
-                                            Load
-                                        </button>
-                                    )}
+                            <h3>Authentication Required</h3>
+                            <p>Sign in to search and stream videos from YouTube</p>
+                            <button
+                                className="auth-login-btn youtube-gradient"
+                                onClick={() => setShowAuthModal(true)}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                                </svg>
+                                Sign In to Continue
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="youtube-input-section">
+                            <div className="user-badge" style={{ borderColor: 'rgba(255, 0, 0, 0.3)', background: 'rgba(255, 0, 0, 0.1)' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#ff0000">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                                </svg>
+                                <span>{user?.username}</span>
+                            </div>
+                            <form onSubmit={handleInternalSearch} className="search-form">
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search songs on YouTube..."
+                                    className="youtube-search-input"
+                                />
+                                <button type="submit" className="search-btn" disabled={!searchQuery.trim() || isSearching}>
+                                    {isSearching ? 'Searching...' : 'Search'}
+                                </button>
+                            </form>
+                            {errorMessage && (
+                                <div className="error-message" style={{ color: 'red', marginTop: '8px', fontSize: '0.9em' }}>
+                                    {errorMessage}
                                 </div>
-                            ))}
+                            )}
                         </div>
-                    ) : null}
 
-                    {currentVideoId ? (
-                        <iframe
-                            src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1`}
-                            className="youtube-iframe"
-                            title={`YouTube for Deck ${deckId}`}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                        />
-                    ) : (
-                        <div className="youtube-placeholder">
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="#ff0000" opacity="0.5">
-                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                            </svg>
-                            <p>Paste a URL or Search for a song</p>
+                        <div className="youtube-modal-content">
+                            {/* Search Results Overlay */}
+                            {searchResults.length > 0 ? (
+                                <div className="search-results-list">
+                                    <div className="results-header">
+                                        <span>Found {searchResults.length} videos</span>
+                                        <button className="close-results" onClick={() => setSearchResults([])}>✕</button>
+                                    </div>
+                                    {searchResults.map(video => (
+                                        <div key={video.id} className="search-result-item" onClick={() => setCurrentVideoId(video.id)}>
+                                            <img src={video.thumbnail} alt={video.title} className="result-thumb" />
+                                            <div className="result-info">
+                                                <div className="result-title">{video.title}</div>
+                                                <div className="result-meta">
+                                                    {video.author} • {video.timestamp}
+                                                </div>
+                                            </div>
+                                            {onLoadTrack && (
+                                                <button
+                                                    className="result-add-btn"
+                                                    style={{ background: color }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAddToDeck(video.id, video.title, video.duration);
+                                                    }}
+                                                >
+                                                    Load
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
+
+                            {currentVideoId ? (
+                                <iframe
+                                    src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1`}
+                                    className="youtube-iframe"
+                                    title={`YouTube for Deck ${deckId}`}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                                />
+                            ) : (
+                                <div className="youtube-placeholder">
+                                    <svg width="80" height="80" viewBox="0 0 24 24" fill="#ff0000" opacity="0.5">
+                                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                    </svg>
+                                    <p>Paste a URL or Search for a song</p>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
 
-                <div className="youtube-modal-footer">
-                    <p className="youtube-hint">
-                        🎵 Backend Proxy enabled: Direct mp3 streaming available
-                    </p>
-                </div>
+                        <div className="youtube-modal-footer">
+                            <p className="youtube-hint">
+                                🎵 Backend Proxy enabled: Direct mp3 streaming available
+                            </p>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     ) : null;
@@ -241,6 +277,13 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
 
             {/* Render modal using Portal to document.body */}
             {ReactDOM.createPortal(modalContent, document.body)}
+
+            {/* AuthModal for login/register */}
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onSuccess={() => setShowAuthModal(false)}
+            />
         </>
     );
 };

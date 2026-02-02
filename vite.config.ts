@@ -34,7 +34,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/search': 'http://localhost:3002',
-      '/stream': 'http://localhost:3002'
+      '/stream': 'http://localhost:3002',
+      '/auth': 'http://localhost:3002'
     }
   }
 })

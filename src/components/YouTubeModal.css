@@ -717,3 +717,95 @@
         font-size: 0.85rem;
     }
 }
+
+/* ============================================
+   Authentication Required View
+   ============================================ */
+
+.youtube-auth-required {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+    background: radial-gradient(circle at center, rgba(255, 0, 0, 0.05) 0%, transparent 60%);
+    animation: fadeIn 0.4s ease-out;
+}
+
+.auth-required-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    max-width: 320px;
+}
+
+.auth-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 0, 0, 0.1);
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.1);
+    margin-bottom: 8px;
+    animation: pulse 2s infinite ease-in-out;
+}
+
+.youtube-auth-required h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.youtube-auth-required p {
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.5;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.auth-login-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    border: none;
+    border-radius: 500px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 12px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.auth-login-btn.youtube-gradient {
+    background: linear-gradient(135deg, #ff0000, #cc0000);
+}
+
+.auth-login-btn.youtube-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(255, 0, 0, 0.3);
+    background: linear-gradient(135deg, #ff1a1a, #e60000);
+}
+
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+    padding: 6px 12px;
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.2);
+    border-radius: 20px;
+    color: #ff0000;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: -4px;
+}
