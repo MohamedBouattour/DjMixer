@@ -28,7 +28,6 @@ if (!fs.existsSync(cacheDir)) {
 }
 
 // Serve static files from the React app
-// Priority: local 'public' folder (deployment) -> parent 'dist' folder (local fallback)
 const publicDir = path.join(__dirname, 'public');
 const distDir = path.join(__dirname, '../dist');
 
@@ -74,24 +73,21 @@ app.get('/search', async (req, res) => {
     }
 });
 
-// STREAM - InnerTube (youtubei.js) Logic
+// STREAM - InnerTube (youtubei.js) Logic with Client Fallback
 app.get('/stream', async (req, res) => {
     const videoId = req.query.videoId;
     if (!videoId) return res.status(400).json({ error: 'videoId required' });
 
-    // Check if any file with videoId exists
+    // Check cache
     let existingFile = null;
     if (fs.existsSync(cacheDir)) {
         const files = fs.readdirSync(cacheDir).filter(f => f.startsWith(videoId));
         if (files.length > 0) existingFile = path.join(cacheDir, files[0]);
     }
 
-    // 1. Serve from cache
     if (existingFile && fs.statSync(existingFile).size > 0) {
         const stat = fs.statSync(existingFile);
         const range = req.headers.range;
-
-        // console.log(`[CACHE] Providing: ${videoId} (${path.basename(existingFile)})`);
 
         if (range) {
             const parts = range.replace(/bytes=/, "").split("-");
@@ -105,7 +101,6 @@ app.get('/stream', async (req, res) => {
             });
             return fs.createReadStream(existingFile, { start, end }).pipe(res);
         } else {
-            // Determine content type
             const ext = path.extname(existingFile).toLowerCase();
             const contentTypes = {
                 '.mp3': 'audio/mpeg',
@@ -121,7 +116,7 @@ app.get('/stream', async (req, res) => {
         }
     }
 
-    // 2. Download using InnerTube
+    // Download
     try {
         if (!yt) {
             yt = await Innertube.create({
@@ -131,13 +126,26 @@ app.get('/stream', async (req, res) => {
         }
 
         console.log(`[YOUTUBEI] Downloading audio for: ${videoId}`);
-        const outputFilePath = path.join(cacheDir, `${videoId}.m4a`); // Default to m4a
+        const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
 
-        const stream = await yt.download(videoId, {
-            type: 'audio',
-            quality: 'best',
-            format: 'mp4'
-        });
+        let stream;
+        try {
+            console.log('[YOUTUBEI] Attempting with ANDROID client...');
+            stream = await yt.download(videoId, {
+                type: 'audio',
+                quality: 'best',
+                format: 'mp4',
+                client: 'ANDROID'
+            });
+        } catch (e) {
+            console.warn(`[YOUTUBEI] ANDROID failed (${e.message}). Retrying with WEB_CREATOR...`);
+            stream = await yt.download(videoId, {
+                type: 'audio',
+                quality: 'best',
+                format: 'mp4',
+                client: 'WEB_CREATOR'
+            });
+        }
 
         const file = fs.createWriteStream(outputFilePath);
         for await (const chunk of stream) {
@@ -152,7 +160,6 @@ app.get('/stream', async (req, res) => {
 
         console.log(`[SUCCESS] Downloaded: ${videoId}`);
 
-        // Serve
         const stat = fs.statSync(outputFilePath);
         res.writeHead(200, {
             'Content-Length': stat.size,
@@ -163,7 +170,7 @@ app.get('/stream', async (req, res) => {
 
     } catch (error) {
         console.error('[STREAM ERROR]:', error.message || error);
-        // Clean up partial file if needed
+
         const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
         if (fs.existsSync(outputFilePath)) fs.unlinkSync(outputFilePath);
 
@@ -171,7 +178,6 @@ app.get('/stream', async (req, res) => {
     }
 });
 
-// The catch-all handler for any request that doesn't match the one above
 app.get('*', (req, res) => {
     if (fs.existsSync(path.join(publicDir, 'index.html'))) {
         res.sendFile(path.join(publicDir, 'index.html'));
@@ -182,7 +188,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`\n============================================`);
-    console.log(`   🚀 PROXY v5.0 - YOUTUBEI ACTIVE`);
+    console.log(`   🚀 PROXY v5.1 - YOUTUBEI w/ CLIENT SWITCH`);
     console.log(`   Server running on port ${PORT}`);
     console.log(`============================================\n`);
 });
