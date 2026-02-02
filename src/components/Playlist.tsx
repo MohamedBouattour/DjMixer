@@ -112,88 +112,99 @@ export const Playlist: React.FC<PlaylistProps> = ({
     };
 
     return (
-        <div ref={drawerRef} className={`playlist-drawer ${isOpen ? 'open' : ''}`}>
+        <>
+            {/* Floating button for phone mode (when handle is hidden) */}
             <button
-                className="playlist-handle"
+                className="playlist-float-btn"
                 onClick={() => setIsOpen(!isOpen)}
                 title={isOpen ? "Close Playlist" : "Open Playlist"}
             >
-                <span className="handle-text">PLAYLIST</span>
-                <div className="handle-icon">
-                    {isOpen ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-                </div>
+                {isOpen ? <ChevronRightIcon /> : <ChevronLeftIcon />}
             </button>
 
-            <div className="playlist-content glass-panel">
-                <div className="playlist-header">
-                    <h3 className="playlist-title">Playlist</h3>
-                    <button
-                        className="btn-add-tracks"
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        <PlusIcon />
-                        Add Tracks
-                    </button>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="audio/*"
-                        multiple
-                        onChange={handleFileSelect}
-                        style={{ display: 'none' }}
-                    />
-                </div>
-
-                <div
-                    className="track-list"
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
+            <div ref={drawerRef} className={`playlist-drawer ${isOpen ? 'open' : ''}`}>
+                <button
+                    className="playlist-handle"
+                    onClick={() => setIsOpen(!isOpen)}
+                    title={isOpen ? "Close Playlist" : "Open Playlist"}
                 >
-                    {tracks.length === 0 ? (
-                        <div className="empty-playlist">
-                            <UploadIcon />
-                            <p>Drop audio files here or click "Add Tracks"</p>
-                            <p className="text-sm text-muted">Supports MP3, WAV, OGG, and more</p>
-                        </div>
-                    ) : (
-                        tracks.map((track) => (
-                            <div key={track.id} className="track-item">
-                                <div className="track-details">
-                                    <div className="track-name">{track.name}</div>
-                                    <div className="track-meta">
-                                        <span>{formatTime(track.duration)}</span>
-                                        {track.bpm && <span className="track-bpm">{track.bpm} BPM</span>}
+                    <span className="handle-text">PLAYLIST</span>
+                    <div className="handle-icon">
+                        {isOpen ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+                    </div>
+                </button>
+
+                <div className="playlist-content glass-panel">
+                    <div className="playlist-header">
+                        <h3 className="playlist-title">Playlist</h3>
+                        <button
+                            className="btn-add-tracks"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <PlusIcon />
+                            Add Tracks
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="audio/*"
+                            multiple
+                            onChange={handleFileSelect}
+                            style={{ display: 'none' }}
+                        />
+                    </div>
+
+                    <div
+                        className="track-list"
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                    >
+                        {tracks.length === 0 ? (
+                            <div className="empty-playlist">
+                                <UploadIcon />
+                                <p>Drop audio files here or click "Add Tracks"</p>
+                                <p className="text-sm text-muted">Supports MP3, WAV, OGG, and more</p>
+                            </div>
+                        ) : (
+                            tracks.map((track) => (
+                                <div key={track.id} className="track-item">
+                                    <div className="track-details">
+                                        <div className="track-name">{track.name}</div>
+                                        <div className="track-meta">
+                                            <span>{formatTime(track.duration)}</span>
+                                            {track.bpm && <span className="track-bpm">{track.bpm} BPM</span>}
+                                        </div>
+                                    </div>
+                                    <div className="track-actions">
+                                        <button
+                                            className="btn-load-deck deck-a"
+                                            onClick={() => onLoadToDeck(track, 'A')}
+                                            title="Load to Deck A"
+                                        >
+                                            A
+                                        </button>
+                                        <button
+                                            className="btn-load-deck deck-b"
+                                            onClick={() => onLoadToDeck(track, 'B')}
+                                            title="Load to Deck B"
+                                        >
+                                            B
+                                        </button>
+                                        <button
+                                            className="btn-remove"
+                                            onClick={() => removeTrack(track.id)}
+                                            title="Remove track"
+                                        >
+                                            <TrashIcon />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="track-actions">
-                                    <button
-                                        className="btn-load-deck deck-a"
-                                        onClick={() => onLoadToDeck(track, 'A')}
-                                        title="Load to Deck A"
-                                    >
-                                        A
-                                    </button>
-                                    <button
-                                        className="btn-load-deck deck-b"
-                                        onClick={() => onLoadToDeck(track, 'B')}
-                                        title="Load to Deck B"
-                                    >
-                                        B
-                                    </button>
-                                    <button
-                                        className="btn-remove"
-                                        onClick={() => removeTrack(track.id)}
-                                        title="Remove track"
-                                    >
-                                        <TrashIcon />
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

@@ -137,7 +137,7 @@ export const Deck: React.FC<DeckProps> = ({
                     duration={track.duration}
                     onSeek={onSeek}
                     color={color}
-                    height={window.innerWidth < 1200 && window.innerWidth >= 768 ? 40 : 50}
+                    height={window.innerWidth <= 767 ? 35 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 40 : 50)}
                 />
             )}
 

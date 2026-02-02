@@ -182,3 +182,83 @@
 .effects-content.in-popup .effect-value {
     font-size: 0.8rem;
 }
+
+/* ============================================
+   PHONE MODE - EFFECTS COMPONENT OVERRIDES
+   Target: iPhone 15 family (393px - 430px width)
+   ============================================ */
+
+@media screen and (max-width: 767px) {
+
+    /* Hide effects panel on phone - move to popup */
+    .effects {
+        display: none !important;
+    }
+
+    /* When shown in popup, use ultra-compact styles */
+    .effects.in-popup {
+        display: flex !important;
+        padding: var(--spacing-sm);
+        gap: 2px;
+    }
+
+    .effects.in-popup .effects-title {
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+
+    .effects.in-popup .effects-grid {
+        gap: 4px;
+    }
+
+    .effects.in-popup .effects-deck {
+        padding: 4px;
+    }
+
+    .effects.in-popup .effects-deck-label {
+        font-size: 0.6rem;
+        padding: 2px 8px;
+    }
+
+    .effects.in-popup .effect-label {
+        font-size: 0.55rem;
+    }
+
+    .effects.in-popup .effect-value {
+        font-size: 0.65rem;
+    }
+
+    .effects.in-popup .effect-slider {
+        height: 3px;
+    }
+
+    /* Effects toggle button - ultra compact */
+    .effects-toggle-btn {
+        display: flex !important;
+        padding: 4px 8px;
+        font-size: 0.5rem;
+        letter-spacing: 0.3px;
+        gap: 3px;
+        border-radius: var(--radius-sm);
+        height: 24px;
+    }
+
+    .effects-toggle-btn svg {
+        width: 8px;
+        height: 8px;
+    }
+}
+
+/* iPhone 15 Pro Max / Plus effects adjustments */
+@media screen and (min-width: 414px) and (max-width: 767px) {
+    .effects-toggle-btn {
+        padding: 5px 10px;
+        font-size: 0.55rem;
+        height: 28px;
+    }
+
+    .effects-toggle-btn svg {
+        width: 10px;
+        height: 10px;
+    }
+}

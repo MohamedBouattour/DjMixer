@@ -147,7 +147,8 @@
 
 @media screen and (max-width: 1200px) and (min-width: 768px) {
   .app {
-    width: calc(100vw - 35px);
+    width: 100vw;
+    max-width: 100vw;
     height: 100vh;
     overflow: hidden;
   }
@@ -228,4 +229,112 @@
 
 @media screen and (max-width: 768px) {
   /* Additional mobile-specific overrides */
+}
+
+/* ============================================
+   PHONE MODE - APP LAYOUT OVERRIDES
+   Target: Phones and small tablets (up to 767px)
+   iPhone 15/Pro: 393 x 852, iPhone 15 Plus/Pro Max: 430 x 932
+   ============================================ */
+
+@media screen and (max-width: 767px) {
+  .app {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    /* Dynamic viewport height for mobile Safari */
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+  }
+
+  .app-main {
+    padding: 2px;
+    gap: 2px;
+    overflow: hidden;
+    height: 100vh;
+    flex-direction: column;
+  }
+
+  .decks-section {
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+  }
+
+  /* Stack decks vertically on phone */
+  .decks-section>.deck {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .center-section {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    max-height: 50vh;
+    min-width: unset;
+    max-width: unset;
+    width: 100%;
+    gap: 2px;
+    padding: 4px;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border);
+    z-index: 100;
+    overflow-y: auto;
+    display: none;
+    /* Hidden by default, toggle visible */
+  }
+
+  .center-section.visible {
+    display: flex;
+  }
+
+  /* Floating toggle button for center section */
+  .center-toggle-btn {
+    display: flex !important;
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99;
+    background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(255, 0, 128, 0.4);
+    cursor: pointer;
+  }
+
+  .center-toggle-btn:hover {
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 0, 128, 0.5);
+  }
+
+  /* Hide center section scrollbar */
+  .center-section::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mixer takes available space in phone mode */
+  .center-section .mixer {
+    flex: 0 0 auto;
+    min-height: unset;
+  }
+
+  /* Hide effects panel on phone */
+  .center-section .effects {
+    display: none !important;
+  }
 }

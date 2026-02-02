@@ -89,6 +89,7 @@ export const WaveformBar: React.FC<WaveformBarProps> = ({
     return (
         <div
             ref={containerRef}
+            className="waveform-bar"
             style={{
                 width: '100%',
                 height: `${height}px`,

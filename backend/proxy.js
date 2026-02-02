@@ -31,7 +31,6 @@ app.use(express.json());
 app.get('/search', async (req, res) => {
     try {
         const query = req.query.q;
-        const source = req.query.source;
         if (!query) return res.status(400).json({ error: 'Query required' });
 
 
@@ -43,9 +42,7 @@ app.get('/search', async (req, res) => {
 
         const videos = r.videos.slice(0, 10).map(v => {
             let title = v.title;
-            if (source === 'spotify') {
-                title = title.replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Official Audio|Lyric Video|Lyrics/gi, '').trim();
-            }
+            title = title.replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Official Audio|Lyric Video|Lyrics/gi, '').trim();
             return {
                 id: v.videoId,
                 title: title,

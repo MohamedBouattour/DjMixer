@@ -506,3 +506,164 @@
         position: relative;
     }
 }
+
+/* ============================================
+   PHONE MODE - SPOTIFY MODAL OVERRIDES
+   Target: iPhone 15 family (393px - 430px width)
+   ============================================ */
+
+@media screen and (max-width: 767px) {
+    .spotify-trigger-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .spotify-trigger-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .spotify-badge {
+        font-size: 0.45rem;
+        padding: 1px 2px;
+        top: -5px;
+        right: -5px;
+    }
+
+    .spotify-modal {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        max-width: none;
+        border-radius: 0;
+    }
+
+    .spotify-modal-header {
+        padding: 8px 12px;
+        min-height: 44px;
+    }
+
+    .spotify-modal-title {
+        font-size: 0.9rem;
+        gap: 8px;
+    }
+
+    .spotify-modal-title svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .modal-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .spotify-input-section {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .search-form {
+        gap: 8px;
+    }
+
+    .spotify-search-input {
+        padding: 10px 14px;
+        height: 40px;
+        font-size: 0.85rem;
+        border-radius: 20px;
+    }
+
+    .spotify-search-btn {
+        padding: 0 14px;
+        height: 40px;
+        font-size: 0.75rem;
+    }
+
+    .error-message {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+
+    /* Search results - compact list */
+    .search-results-list {
+        padding: 0 8px 10px;
+    }
+
+    .results-header {
+        padding: 10px 8px;
+        font-size: 0.85rem;
+    }
+
+    .close-results {
+        font-size: 1rem;
+    }
+
+    .search-result-item {
+        padding: 8px 6px;
+        gap: 10px;
+    }
+
+    .result-thumb {
+        width: 40px;
+        height: 40px;
+    }
+
+    .result-info {
+        gap: 2px;
+    }
+
+    .result-title {
+        font-size: 0.85rem;
+        margin-bottom: 2px;
+    }
+
+    .result-meta {
+        font-size: 0.7rem;
+    }
+
+    .result-add-btn {
+        padding: 5px 12px;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+    }
+
+    .spotify-modal-footer {
+        padding: 8px 12px;
+    }
+
+    .spotify-hint {
+        font-size: 0.65rem;
+        gap: 4px;
+    }
+
+    .spotify-placeholder {
+        padding: 20px;
+    }
+
+    .spotify-placeholder p {
+        font-size: 0.9rem;
+    }
+}
+
+/* iPhone 15 Pro Max / Plus - slightly larger elements */
+@media screen and (min-width: 414px) and (max-width: 767px) {
+    .spotify-search-input {
+        height: 44px;
+        font-size: 0.9rem;
+    }
+
+    .spotify-search-btn {
+        height: 44px;
+        font-size: 0.8rem;
+    }
+
+    .result-title {
+        font-size: 0.9rem;
+    }
+
+    .result-add-btn {
+        padding: 6px 14px;
+        font-size: 0.7rem;
+    }
+}

@@ -538,3 +538,182 @@
         overflow-y: auto;
     }
 }
+
+/* ============================================
+   PHONE MODE - YOUTUBE MODAL OVERRIDES
+   Target: iPhone 15 family (393px - 430px width)
+   ============================================ */
+
+@media screen and (max-width: 767px) {
+    .youtube-trigger-btn {
+        width: 26px;
+        height: 26px;
+    }
+
+    .youtube-trigger-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .youtube-badge {
+        font-size: 0.4rem;
+        padding: 1px 2px;
+        top: -4px;
+        right: -4px;
+    }
+
+    .youtube-modal {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        max-width: none;
+        border-radius: 0;
+    }
+
+    .youtube-modal-header {
+        padding: 8px 12px;
+        min-height: 44px;
+    }
+
+    .modal-title {
+        font-size: 0.85rem;
+        gap: 8px;
+    }
+
+    .modal-title svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .modal-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .youtube-input-section {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .url-form,
+    .search-form {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .youtube-url-input,
+    .youtube-search-input {
+        padding: 10px 12px;
+        height: 40px;
+        font-size: 0.85rem;
+        width: 100%;
+    }
+
+    .load-btn,
+    .search-btn {
+        padding: 10px 16px;
+        height: 40px;
+        font-size: 0.8rem;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .search-divider {
+        font-size: 0.65rem;
+        gap: 8px;
+        margin: 4px 0;
+    }
+
+    .error-message {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+
+    /* Search results - compact list */
+    .search-results-list {
+        padding-bottom: 10px;
+    }
+
+    .results-header {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+
+    .close-results {
+        font-size: 1rem;
+        padding: 4px 6px;
+    }
+
+    .search-result-item {
+        padding: 8px 10px;
+        gap: 10px;
+    }
+
+    .result-thumb {
+        width: 80px;
+        height: 45px;
+    }
+
+    .result-info {
+        gap: 2px;
+    }
+
+    .result-title {
+        font-size: 0.8rem;
+        margin-bottom: 2px;
+    }
+
+    .result-meta {
+        font-size: 0.65rem;
+    }
+
+    .result-add-btn,
+    .add-deck-btn {
+        padding: 5px 10px;
+        font-size: 0.65rem;
+    }
+
+    .youtube-modal-footer {
+        padding: 8px 12px;
+    }
+
+    .youtube-hint {
+        font-size: 0.65rem;
+    }
+
+    .youtube-placeholder {
+        padding: 20px;
+    }
+
+    .youtube-placeholder p {
+        font-size: 0.85rem;
+    }
+
+    .youtube-placeholder .hint {
+        font-size: 0.7rem;
+    }
+}
+
+/* iPhone 15 Pro Max / Plus - slightly larger elements */
+@media screen and (min-width: 414px) and (max-width: 767px) {
+
+    .youtube-url-input,
+    .youtube-search-input {
+        height: 44px;
+        font-size: 0.9rem;
+    }
+
+    .load-btn,
+    .search-btn {
+        height: 44px;
+    }
+
+    .result-thumb {
+        width: 90px;
+        height: 51px;
+    }
+
+    .result-title {
+        font-size: 0.85rem;
+    }
+}

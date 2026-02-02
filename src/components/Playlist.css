@@ -15,6 +15,36 @@
     transform: translateX(0);
 }
 
+/* Floating button - hidden by default, shown on phone */
+.playlist-float-btn {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--color-accent-purple);
+    border: none;
+    color: white;
+    z-index: 999;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.playlist-float-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(138, 43, 226, 0.5);
+}
+
+.playlist-float-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
 .playlist-handle {
     width: 44px;
     height: 100vh;
@@ -244,18 +274,26 @@
    ============================================ */
 
 @media screen and (max-width: 1200px) and (min-width: 768px) {
+
+    /* Show floating button on tablet */
+    .playlist-float-btn {
+        display: flex;
+    }
+
     .playlist-drawer {
         width: 400px;
-        transform: translateX(calc(100% - 40px));
+        max-width: 90vw;
+        transform: translateX(100%);
+        /* Completely hidden */
     }
 
+    .playlist-drawer.open {
+        transform: translateX(0);
+    }
+
+    /* Hide handle on tablet too */
     .playlist-handle {
-        width: 40px;
-    }
-
-    .handle-text {
-        font-size: 0.7rem;
-        letter-spacing: 1px;
+        display: none !important;
     }
 
     .playlist-content {
@@ -307,5 +345,141 @@
     .btn-remove svg {
         width: 20px;
         height: 20px;
+    }
+}
+
+/* ============================================
+   PHONE MODE - PLAYLIST COMPONENT OVERRIDES
+   Target: iPhone 15 family (393px - 430px width)
+   ============================================ */
+
+@media screen and (max-width: 767px) {
+
+    /* Show floating button on phone */
+    .playlist-float-btn {
+        display: flex;
+    }
+
+    .playlist-drawer {
+        width: 100%;
+        max-width: 100vw;
+        transform: translateX(100%);
+        /* Completely hidden off-screen */
+    }
+
+    .playlist-drawer.open {
+        transform: translateX(0);
+    }
+
+    /* Hide the handle on phone - use floating button instead */
+    .playlist-handle {
+        display: none !important;
+    }
+
+    .handle-text {
+        font-size: 0.6rem;
+        letter-spacing: 1px;
+    }
+
+    .handle-icon {
+        margin-top: var(--spacing-xs);
+    }
+
+    .handle-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .playlist-content {
+        padding: var(--spacing-sm) var(--spacing-md);
+        gap: var(--spacing-sm);
+    }
+
+    .playlist-header {
+        padding-bottom: var(--spacing-sm);
+        gap: var(--spacing-sm);
+    }
+
+    .playlist-title {
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+    }
+
+    .btn-add-tracks {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.7rem;
+        min-height: 36px;
+    }
+
+    .btn-add-tracks svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .track-list {
+        gap: var(--spacing-xs);
+    }
+
+    .empty-playlist {
+        padding: var(--spacing-md);
+        gap: var(--spacing-sm);
+    }
+
+    .empty-playlist p {
+        font-size: 0.8rem;
+    }
+
+    .track-item {
+        padding: var(--spacing-sm) var(--spacing-md);
+        gap: var(--spacing-sm);
+    }
+
+    .track-name {
+        font-size: 0.8rem;
+        margin-bottom: 2px;
+    }
+
+    .track-meta {
+        font-size: 0.65rem;
+        gap: var(--spacing-sm);
+    }
+
+    .track-actions {
+        gap: var(--spacing-sm);
+    }
+
+    /* Large touch-friendly deck buttons */
+    .btn-load-deck {
+        width: 40px;
+        height: 40px;
+        font-size: 0.85rem;
+        font-weight: 800;
+    }
+
+    .btn-remove {
+        width: 36px;
+        height: 36px;
+    }
+
+    .btn-remove svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* iPhone 15 Pro Max / Plus - slightly larger elements */
+@media screen and (min-width: 414px) and (max-width: 767px) {
+    .playlist-handle {
+        width: 40px;
+    }
+
+    .btn-load-deck {
+        width: 44px;
+        height: 44px;
+        font-size: 0.9rem;
+    }
+
+    .track-name {
+        font-size: 0.85rem;
     }
 }

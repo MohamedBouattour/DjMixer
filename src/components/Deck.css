@@ -829,3 +829,258 @@
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* ============================================
+   PHONE MODE - DECK COMPONENT OVERRIDES
+   Target: iPhone 15 family (393px - 430px width)
+   ============================================ */
+
+@media screen and (max-width: 767px) {
+    .deck {
+        padding: 4px;
+        gap: 2px;
+        min-width: unset;
+        overflow: hidden;
+        /* No scroll */
+        border-radius: var(--radius-sm);
+        flex: 1;
+        min-height: 0;
+        /* Allow flex shrinking */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .deck-header {
+        padding-bottom: 2px;
+        margin-bottom: 2px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+    }
+
+    .deck-header-left {
+        gap: 4px;
+    }
+
+    .deck-label {
+        padding: 2px 6px;
+        font-size: 0.6rem;
+        letter-spacing: 0.3px;
+    }
+
+    .track-info {
+        gap: 4px;
+        padding-left: 4px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .track-name {
+        font-size: 0.75rem;
+        max-width: 100px;
+    }
+
+    .bpm-display {
+        min-width: 35px;
+    }
+
+    .bpm-label {
+        font-size: 0.5rem;
+    }
+
+    .bpm-value {
+        font-size: 0.85rem;
+    }
+
+    /* Horizontal waveform bar - visible and compact for phone */
+    .waveform-bar {
+        display: block !important;
+        height: 35px;
+        min-height: 35px;
+        margin-bottom: 4px;
+        flex-shrink: 0;
+    }
+
+    .peak-bar {
+        min-width: 1px;
+        max-width: 2px;
+    }
+
+    .waveform-placeholder,
+    .waveform-loading {
+        max-width: 80px;
+        font-size: 0.65rem;
+        flex-shrink: 0;
+    }
+
+    .loading-spinner {
+        width: 14px;
+        height: 14px;
+        border-width: 2px;
+    }
+
+    /* Deck transport - horizontal layout */
+    .deck-transport {
+        flex-direction: row;
+        gap: 4px;
+        flex: 1;
+        min-height: 0;
+        align-items: stretch;
+    }
+
+    .deck-transport-main {
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Vinyl row - compact horizontal */
+    .deck-vinyl-row {
+        height: 90px;
+        gap: 4px;
+        margin-bottom: 2px;
+        flex-shrink: 0;
+    }
+
+    .pitch-control-vertical {
+        min-width: 30px;
+        padding: 0;
+    }
+
+    .deck-vinyl-row>.pitch-control-vertical:first-child {
+        padding-right: 2px;
+        border-right: none;
+    }
+
+    .deck-vinyl-row>.pitch-control-vertical:last-child {
+        padding-left: 2px;
+        border-left: none;
+    }
+
+    .pitch-slider-vertical .vertical-slider-track {
+        width: 22px;
+    }
+
+    .pitch-slider-vertical .vertical-slider-thumb {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Playback controls - compact row */
+    .playback-controls {
+        gap: 6px;
+        margin-top: 2px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .btn-play-pause {
+        width: 48px;
+        height: 48px;
+    }
+
+    .btn-play-pause svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .time-display {
+        gap: 1px;
+    }
+
+    .current-time {
+        font-size: 0.9rem;
+    }
+
+    .current-time .text-xs {
+        font-size: 0.55rem;
+    }
+
+    .separator {
+        font-size: 0.7rem;
+    }
+
+    .total-time {
+        font-size: 0.7rem;
+    }
+
+    /* Hide deck mixer controls on phone - move to popup */
+    .deck-mixer {
+        display: none;
+    }
+
+    /* Performance controls - ultra compact */
+    .performance-controls {
+        gap: 4px;
+        margin-top: 4px;
+        flex: 0 0 auto;
+    }
+
+    /* Effects grid - 2 columns on phone */
+    .effects-grid-performance {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 3px;
+    }
+
+    .btn-effect,
+    .btn-cue {
+        height: 32px;
+        font-size: 0.65rem;
+        padding: 2px 4px;
+    }
+
+    /* Hide effects after first 4 on phone */
+    .effects-grid-performance .btn-effect:nth-child(n+5) {
+        display: none;
+    }
+
+    /* Cues row - 2 columns */
+    .cues-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 3px;
+    }
+
+    .loop-control {
+        margin-top: 3px;
+    }
+
+    .btn-magic-loop {
+        height: 36px;
+        font-size: 0.7rem;
+        gap: 4px;
+        padding: 0 8px;
+    }
+
+    .btn-magic-loop svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Volume control - hidden on phone by default */
+    .volume-control {
+        display: none;
+    }
+
+    /* EQ controls - hidden on phone */
+    .eq-controls {
+        display: none !important;
+    }
+}
+
+/* iPhone 15 Pro Max / Plus - slightly larger elements */
+@media screen and (min-width: 414px) and (max-width: 767px) {
+    .btn-play-pause {
+        width: 52px;
+        height: 52px;
+    }
+
+    .btn-effect,
+    .btn-cue {
+        height: 36px;
+        font-size: 0.7rem;
+    }
+
+    .deck-vinyl-row {
+        height: 100px;
+    }
+}
