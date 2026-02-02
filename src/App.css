@@ -338,3 +338,33 @@
     display: none !important;
   }
 }
+
+/* ============================================
+   SMALL PHONE MODE (up to 430px)
+   Ultra-compact for iPhone 15 portrait
+   ============================================ */
+
+@media screen and (max-width: 430px) {
+  .app {
+    padding: 0;
+    margin: 0;
+  }
+
+  .app-main {
+    padding: 0;
+    gap: 1px;
+    height: 100dvh;
+  }
+
+  .decks-section {
+    gap: 1px;
+    padding: 1px;
+  }
+
+  .center-toggle-btn {
+    padding: 8px 16px;
+    font-size: 0.65rem;
+    bottom: 8px;
+    border-radius: 16px;
+  }
+}

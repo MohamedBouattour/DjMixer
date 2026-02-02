@@ -369,21 +369,67 @@
     }
 }
 
-/* iPhone 15 Pro Max / Plus - slightly larger vinyl */
-@media screen and (min-width: 414px) and (max-width: 767px) {
+/* ============================================
+   SMALL PHONE MODE (up to 430px)
+   Ultra-compact vinyl for iPhone 15 portrait
+   ============================================ */
+
+@media screen and (max-width: 430px) {
     .vinyl-container {
-        max-width: 90px;
-        min-height: 90px;
-        width: 90px;
+        max-width: 60px;
+        min-height: 60px;
+        width: 60px;
+    }
+
+    .vinyl-disc {
+        inset: 10%;
+    }
+
+    .vinyl-label {
+        inset: 32%;
     }
 
     .mini-waveform {
-        height: 24px;
+        gap: 1px;
+        height: 14px;
     }
 
     .wave-bar {
-        width: 3.5px;
-        min-width: 3.5px;
-        height: 8px;
+        width: 2px;
+        min-width: 2px;
+        height: 4px;
+        border-radius: 1px;
+    }
+
+    @keyframes wave-bounce {
+
+        0%,
+        100% {
+            height: 3px;
+            opacity: 0.7;
+        }
+
+        50% {
+            height: 10px;
+            opacity: 1;
+        }
+    }
+
+    .label-spindle {
+        width: 8%;
+        height: 8%;
+    }
+
+    .progress-ring-fill {
+        stroke-width: 3;
+    }
+
+    .progress-ring-bg {
+        stroke-width: 1.5;
+    }
+
+    /* Hide all grooves on small phones */
+    .vinyl-groove {
+        display: none;
     }
 }
