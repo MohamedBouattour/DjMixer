@@ -1,12 +1,23 @@
 const express = require('express');
 const cors = require('cors');
 const yts = require('yt-search');
-const { YtDlp, helpers } = require('ytdlp-nodejs');
+const { Innertube, UniversalCache } = require('youtubei.js');
 const fs = require('fs');
 const path = require('path');
 
-// Initialize ytdlp instance
-const ytdlp = new YtDlp();
+// Initialize Innertube
+let yt = null;
+(async () => {
+    try {
+        yt = await Innertube.create({
+            cache: new UniversalCache(false),
+            generate_session_locally: true
+        });
+        console.log('[SETUP] InnerTube (youtubei.js) initialized.');
+    } catch (e) {
+        console.error('[SETUP] Failed to initialize InnerTube:', e);
+    }
+})();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -37,8 +48,6 @@ app.get('/search', async (req, res) => {
         const source = req.query.source;
         if (!query) return res.status(400).json({ error: 'Query required' });
 
-
-
         const searchQuery = `${query} official audio`;
         console.log(`[SEARCH] Query: "${searchQuery}"`);
 
@@ -65,19 +74,24 @@ app.get('/search', async (req, res) => {
     }
 });
 
-// STREAM - Original Stable Logic + Android Flow
+// STREAM - InnerTube (youtubei.js) Logic
 app.get('/stream', async (req, res) => {
     const videoId = req.query.videoId;
     if (!videoId) return res.status(400).json({ error: 'videoId required' });
 
-    const cacheFilePath = path.join(cacheDir, `${videoId}.mp3`);
+    // Check if any file with videoId exists
+    let existingFile = null;
+    if (fs.existsSync(cacheDir)) {
+        const files = fs.readdirSync(cacheDir).filter(f => f.startsWith(videoId));
+        if (files.length > 0) existingFile = path.join(cacheDir, files[0]);
+    }
 
     // 1. Serve from cache
-    if (fs.existsSync(cacheFilePath) && fs.statSync(cacheFilePath).size > 0) {
-        const stat = fs.statSync(cacheFilePath);
+    if (existingFile && fs.statSync(existingFile).size > 0) {
+        const stat = fs.statSync(existingFile);
         const range = req.headers.range;
 
-        console.log(`[CACHE] Providing: ${videoId}`);
+        // console.log(`[CACHE] Providing: ${videoId} (${path.basename(existingFile)})`);
 
         if (range) {
             const parts = range.replace(/bytes=/, "").split("-");
@@ -89,66 +103,70 @@ app.get('/stream', async (req, res) => {
                 'Content-Length': (end - start) + 1,
                 'Content-Type': 'audio/mpeg'
             });
-            return fs.createReadStream(cacheFilePath, { start, end }).pipe(res);
+            return fs.createReadStream(existingFile, { start, end }).pipe(res);
         } else {
-            res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': 'audio/mpeg', 'Accept-Ranges': 'bytes' });
-            return fs.createReadStream(cacheFilePath).pipe(res);
+            // Determine content type
+            const ext = path.extname(existingFile).toLowerCase();
+            const contentTypes = {
+                '.mp3': 'audio/mpeg',
+                '.m4a': 'audio/mp4',
+                '.webm': 'audio/webm',
+                '.ogg': 'audio/ogg',
+                '.wav': 'audio/wav'
+            };
+            const contentType = contentTypes[ext] || 'audio/mpeg';
+
+            res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': contentType, 'Accept-Ranges': 'bytes' });
+            return fs.createReadStream(existingFile).pipe(res);
         }
     }
 
-    // 2. Download using ytdlp-nodejs
+    // 2. Download using InnerTube
     try {
-        const url = `https://www.youtube.com/watch?v=${videoId}`;
-        console.log(`[YTDLP-v4] Downloading audio for: ${videoId}`);
+        if (!yt) {
+            yt = await Innertube.create({
+                cache: new UniversalCache(false),
+                generate_session_locally: true
+            });
+        }
 
-        if (fs.existsSync(cacheFilePath)) fs.unlinkSync(cacheFilePath);
+        console.log(`[YOUTUBEI] Downloading audio for: ${videoId}`);
+        const outputFilePath = path.join(cacheDir, `${videoId}.m4a`); // Default to m4a
 
-        // Use ytdlp-nodejs with raw args to avoid postprocessing (no FFmpeg needed)
-        const outputTemplate = path.join(cacheDir, `${videoId}.%(ext)s`);
-        const result = await ytdlp.downloadAsync(url, {
-            output: outputTemplate,
-            rawArgs: [
-                '-f', 'bestaudio/best',
-                '--no-post-overwrites',
-                '--extractor-args', 'youtube:player_client=android'
-            ],
-            onProgress: (p) => console.log(`[PROGRESS] ${videoId}: ${p.percentage_str || p.percent || '...'}`)
+        const stream = await yt.download(videoId, {
+            type: 'audio',
+            quality: 'best',
+            format: 'mp4'
         });
 
-        console.log(`[SUCCESS] Downloaded: ${videoId}`, result.filePaths);
-
-        // Find the downloaded file (might be different extension)
-        let finalPath = cacheFilePath;
-        if (result.filePaths && result.filePaths.length > 0) {
-            finalPath = result.filePaths[0];
+        const file = fs.createWriteStream(outputFilePath);
+        for await (const chunk of stream) {
+            file.write(chunk);
         }
 
-        if (!fs.existsSync(finalPath)) {
-            // Try to find any file with the videoId prefix
-            const files = fs.readdirSync(cacheDir).filter(f => f.startsWith(videoId));
-            if (files.length > 0) {
-                finalPath = path.join(cacheDir, files[0]);
-            }
-        }
+        await new Promise((resolve, reject) => {
+            file.on('finish', resolve);
+            file.on('error', reject);
+            file.end();
+        });
 
-        const stat = fs.statSync(finalPath);
-        console.log(`[SERVING] File: ${finalPath} (${stat.size} bytes)`);
+        console.log(`[SUCCESS] Downloaded: ${videoId}`);
 
-        // Determine content type based on extension
-        const ext = path.extname(finalPath).toLowerCase();
-        const contentTypes = {
-            '.mp3': 'audio/mpeg',
-            '.m4a': 'audio/mp4',
-            '.webm': 'audio/webm',
-            '.ogg': 'audio/ogg',
-            '.opus': 'audio/opus',
-            '.wav': 'audio/wav'
-        };
-        const contentType = contentTypes[ext] || 'audio/mpeg';
-        res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': contentType, 'Accept-Ranges': 'bytes' });
-        fs.createReadStream(finalPath).pipe(res);
+        // Serve
+        const stat = fs.statSync(outputFilePath);
+        res.writeHead(200, {
+            'Content-Length': stat.size,
+            'Content-Type': 'audio/mp4',
+            'Accept-Ranges': 'bytes'
+        });
+        fs.createReadStream(outputFilePath).pipe(res);
+
     } catch (error) {
-        console.error('[YTDLP FAILED]:', error.message || error);
+        console.error('[STREAM ERROR]:', error.message || error);
+        // Clean up partial file if needed
+        const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
+        if (fs.existsSync(outputFilePath)) fs.unlinkSync(outputFilePath);
+
         if (!res.headersSent) res.status(500).json({ error: 'Stream error', details: error.message });
     }
 });
@@ -162,50 +180,9 @@ app.get('*', (req, res) => {
     }
 });
 
-// Startup function to ensure yt-dlp is installed
-async function startServer() {
-    try {
-        // Check if yt-dlp is installed, if not download it
-        const installed = await ytdlp.checkInstallationAsync();
-        if (!installed) {
-            console.log('[SETUP] yt-dlp not found, downloading...');
-            await helpers.downloadYtDlp();
-            console.log('[SETUP] yt-dlp installed successfully!');
-        } else {
-            console.log('[SETUP] yt-dlp binary found.');
-        }
-
-        // Try to update yt-dlp to latest version
-        try {
-            const updateResult = await ytdlp.updateYtDlpAsync();
-            console.log(`[SETUP] yt-dlp version: ${updateResult.version}`);
-        } catch (e) {
-            console.log('[SETUP] Could not update yt-dlp, using current version.');
-        }
-
-        // Try to download FFmpeg if not present
-        try {
-            const ffmpegInstalled = await ytdlp.checkInstallationAsync({ ffmpeg: true });
-            if (!ffmpegInstalled) {
-                console.log('[SETUP] FFmpeg not found, downloading...');
-                await ytdlp.downloadFFmpeg();
-                console.log('[SETUP] FFmpeg installed successfully!');
-            } else {
-                console.log('[SETUP] FFmpeg found.');
-            }
-        } catch (e) {
-            console.log('[SETUP] Could not install FFmpeg, audio conversion may be limited.');
-        }
-    } catch (error) {
-        console.error('[SETUP] Warning: Could not verify yt-dlp installation:', error.message);
-    }
-
-    app.listen(PORT, () => {
-        console.log(`\n============================================`);
-        console.log(`   🚀 PROXY v4.0 - YTDLP-NODEJS ACTIVE`);
-        console.log(`   Server running on port ${PORT}`);
-        console.log(`============================================\n`);
-    });
-}
-
-startServer();
+app.listen(PORT, () => {
+    console.log(`\n============================================`);
+    console.log(`   🚀 PROXY v5.0 - YOUTUBEI ACTIVE`);
+    console.log(`   Server running on port ${PORT}`);
+    console.log(`============================================\n`);
+});
