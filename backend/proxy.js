@@ -4,7 +4,6 @@ const yts = require('yt-search');
 const youtubedl = require('youtube-dl-exec');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -13,47 +12,6 @@ const cacheDir = path.join(__dirname, 'cache');
 if (!fs.existsSync(cacheDir)) {
     fs.mkdirSync(cacheDir, { recursive: true });
 }
-
-// ============================================
-// User Authentication System
-// ============================================
-const usersFile = path.join(__dirname, 'users.json');
-
-// Load users from file
-const loadUsers = () => {
-    try {
-        if (fs.existsSync(usersFile)) {
-            return JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
-        }
-    } catch (error) {
-        console.error('Error loading users:', error);
-    }
-    return [];
-};
-
-// Save users to file
-const saveUsers = (users) => {
-    try {
-        fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
-    } catch (error) {
-        console.error('Error saving users:', error);
-    }
-};
-
-// Simple password hashing (using crypto for compatibility)
-const hashPassword = (password) => {
-    return crypto.createHash('sha256').update(password).digest('hex');
-};
-
-// Verify password
-const verifyPassword = (password, hash) => {
-    return hashPassword(password) === hash;
-};
-
-// Generate unique ID
-const generateId = () => {
-    return crypto.randomBytes(16).toString('hex');
-};
 
 // Serve static files from the React app
 // Priority: local 'public' folder (deployment) -> parent 'dist' folder (local fallback)
@@ -69,94 +27,11 @@ if (fs.existsSync(publicDir)) {
 app.use(cors());
 app.use(express.json());
 
-// ============================================
-// Authentication Routes
-// ============================================
-
-// Register new user
-app.post('/auth/register', (req, res) => {
-    const { email, username, password } = req.body;
-
-    // Validate input
-    if (!email || !username || !password) {
-        return res.status(400).json({ error: 'Email, username, and password are required' });
-    }
-
-    if (!email.includes('@')) {
-        return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    if (password.length < 6) {
-        return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-
-    const users = loadUsers();
-
-    // Check if email already exists
-    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
-        return res.status(400).json({ error: 'Email already registered' });
-    }
-
-    // Check if username already exists
-    if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-        return res.status(400).json({ error: 'Username already taken' });
-    }
-
-    // Create new user
-    const newUser = {
-        id: generateId(),
-        email: email.toLowerCase(),
-        username,
-        passwordHash: hashPassword(password),
-        createdAt: new Date().toISOString()
-    };
-
-    users.push(newUser);
-    saveUsers(users);
-
-    console.log(`[AUTH] New user registered: ${username} (${email})`);
-
-    // Return user data (without password hash)
-    res.status(201).json({
-        id: newUser.id,
-        email: newUser.email,
-        username: newUser.username
-    });
-});
-
-// Login user
-app.post('/auth/login', (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    const users = loadUsers();
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-    if (!user) {
-        return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    if (!verifyPassword(password, user.passwordHash)) {
-        return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    console.log(`[AUTH] User logged in: ${user.username} (${email})`);
-
-    // Return user data (without password hash)
-    res.json({
-        id: user.id,
-        email: user.email,
-        username: user.username
-    });
-});
-
 // SEARCH - Spotify Optimized
 app.get('/search', async (req, res) => {
     try {
         const query = req.query.q;
+        const source = req.query.source;
         if (!query) return res.status(400).json({ error: 'Query required' });
 
 
@@ -168,7 +43,9 @@ app.get('/search', async (req, res) => {
 
         const videos = r.videos.slice(0, 10).map(v => {
             let title = v.title;
-            title = title.replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Official Audio|Lyric Video|Lyrics/gi, '').trim();
+            if (source === 'spotify') {
+                title = title.replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Official Audio|Lyric Video|Lyrics/gi, '').trim();
+            }
             return {
                 id: v.videoId,
                 title: title,
@@ -188,21 +65,7 @@ app.get('/search', async (req, res) => {
 // STREAM - Original Stable Logic + Android Flow
 app.get('/stream', async (req, res) => {
     const videoId = req.query.videoId;
-    const userId = req.query.userId;
-
     if (!videoId) return res.status(400).json({ error: 'videoId required' });
-
-    // Validate User
-    const users = loadUsers();
-    const user = users.find(u => u.id === userId);
-
-    if (!user) {
-        console.log(`[STREAM BLOCKED] Unauthorized access attempt for ${videoId}`);
-        return res.status(401).json({ error: 'Authentication required for streaming' });
-    }
-
-    console.log(`[STREAM] User authenticated: ${user.username} (${user.id}) requesting ${videoId}`);
-
 
     const cacheFilePath = path.join(cacheDir, `${videoId}.mp3`);
 
