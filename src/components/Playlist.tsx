@@ -147,7 +147,7 @@ export const Playlist: React.FC<PlaylistProps> = ({
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept="audio/*"
+                            accept="audio/*,.mp3,.wav,.ogg,.m4a"
                             multiple
                             onChange={handleFileSelect}
                             style={{ display: 'none' }}

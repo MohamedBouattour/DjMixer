@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { Readable } = require('stream');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -9,8 +10,22 @@ const PORT = process.env.PORT || 3002;
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the frontend dist directory
-app.use(express.static(path.join(__dirname, '../dist')));
+// Determine dist path - prioritize 'public' as per prepare-deploy.js
+const publicPath = path.join(__dirname, 'public');
+const distPath = path.join(__dirname, '../dist');
+let staticDir = null;
+
+if (fs.existsSync(publicPath)) {
+    console.log(`[SERVER] Serving static files from ${publicPath}`);
+    app.use(express.static(publicPath));
+    staticDir = publicPath;
+} else if (fs.existsSync(distPath)) {
+    console.log(`[SERVER] Serving static files from ${distPath}`);
+    app.use(express.static(distPath));
+    staticDir = distPath;
+} else {
+    console.warn(`[SERVER] WARNING: No static files found (checked public and dist)`);
+}
 
 // Helper for decoding HTML entities if needed (basic ones)
 function decodeHTMLEntities(text) {
@@ -25,6 +40,7 @@ function decodeHTMLEntities(text) {
 app.get('/search', async (req, res) => {
     try {
         const query = req.query.q;
+
         if (!query) return res.status(400).json({ error: 'Query required' });
 
         console.log(`[SEARCH] Query: "${query}"`);
@@ -45,7 +61,6 @@ app.get('/search', async (req, res) => {
         const results = [];
 
         // Regex to match list items. 
-        // Note: HTML might have newlines. [\s\S]*? matches across lines.
         const regex = /<li class="__adv_list_track[\s\S]*?<\/li>/g;
         let match;
 
@@ -55,10 +70,9 @@ app.get('/search', async (req, res) => {
             // Extract Stream URL
             const urlMatch = itemHtml.match(/data-url="([^"]+)"/);
             if (!urlMatch) continue;
-            const streamUrl = urlMatch[1]; // Typically https://fine.sunproxy.net/file/...
+            const streamUrl = urlMatch[1];
 
             // Extract Title
-            // Matches: span class="...__adv_name"><em>Title</em></span> OR plain text
             let title = "Unknown Title";
             const titleMatch = itemHtml.match(/class="[^"]*__adv_name">.*?<em>([^<]+)<\/em>/) ||
                 itemHtml.match(/class="[^"]*__adv_name">([^<]+)</);
@@ -72,8 +86,10 @@ app.get('/search', async (req, res) => {
             // Extract Duration
             let duration = 0;
             const durationMatch = itemHtml.match(/class="[^"]*__adv_duration">(\d+):(\d+)</);
+            let timestamp = "0:00";
             if (durationMatch) {
                 duration = parseInt(durationMatch[1]) * 60 + parseInt(durationMatch[2]);
+                timestamp = `${durationMatch[1]}:${durationMatch[2]}`;
             }
 
             // Create a safe ID from the streamUrl (Base64)
@@ -83,9 +99,11 @@ app.get('/search', async (req, res) => {
                 id: id,
                 title: title,
                 artist: artist,
+                author: artist,
                 duration: duration,
+                timestamp: timestamp,
                 thumbnail: 'https://skysound7.com/i/img/he-logo.png', // Placeholder
-                streamUrl: streamUrl // Include for debugging or direct usage
+                streamUrl: streamUrl
             });
         }
 
@@ -103,17 +121,18 @@ app.get('/stream', async (req, res) => {
         let videoId = req.query.videoId;
         if (!videoId) return res.status(400).json({ error: 'videoId required' });
 
-        // Decode ID to get Target URL
         let targetUrl;
+
+        // Try to verify if it's a Skysound ID (Base64 encoded URL)
         try {
-            targetUrl = Buffer.from(videoId, 'base64').toString('utf-8');
-            if (!targetUrl.startsWith('http')) {
-                // Not a simplified Base64 url? Maybe it's a real ID from old cache. 
-                // We don't support old IDs anymore.
-                throw new Error("Invalid ID format");
+            const decoded = Buffer.from(videoId, 'base64').toString('utf-8');
+            if (decoded.startsWith('http')) {
+                targetUrl = decoded;
+            } else {
+                throw new Error("Not a direct URL");
             }
         } catch (e) {
-            console.error("[STREAM] Failed to decode ID:", e.message);
+            console.error("[STREAM] Failed to decode ID or invalid format:", e.message);
             return res.status(400).json({ error: 'Invalid videoId' });
         }
 
@@ -133,7 +152,9 @@ app.get('/stream', async (req, res) => {
         // Forward headers
         res.status(upstreamRes.status);
         res.setHeader('Content-Type', upstreamRes.headers.get('Content-Type') || 'audio/mpeg');
-        res.setHeader('Content-Length', upstreamRes.headers.get('Content-Length'));
+        const contentLength = upstreamRes.headers.get('Content-Length');
+        if (contentLength) res.setHeader('Content-Length', contentLength);
+
         res.setHeader('Accept-Ranges', 'bytes');
         if (upstreamRes.headers.has('Content-Range')) {
             res.setHeader('Content-Range', upstreamRes.headers.get('Content-Range'));
@@ -154,14 +175,23 @@ app.get('/stream', async (req, res) => {
     }
 });
 
-// Handle client-side routing by serving index.html for all non-API routes
+// Handle client-side routing
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+    if (staticDir) {
+        const indexPath = path.join(staticDir, 'index.html');
+        if (fs.existsSync(indexPath)) {
+            res.sendFile(indexPath);
+            return;
+        }
+    }
+
+    res.status(404).send('App not ready (index.html not found). Please run build.');
 });
 
 app.listen(PORT, () => {
     console.log(`\n============================================`);
-    console.log(`   🚀 SKYSOUND7 PROXY - LIGHTWEIGHT`);
+    console.log(`   🚀 SKYSOUND7 PROXY - RESTORED`);
+    console.log(`   Serving static from: ${staticDir || 'NONE'}`);
     console.log(`   Server running on port ${PORT}`);
     console.log(`============================================\n`);
 });
