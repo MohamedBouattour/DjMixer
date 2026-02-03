@@ -1,206 +1,167 @@
 const express = require('express');
 const cors = require('cors');
-const yts = require('yt-search');
-const { Innertube, UniversalCache } = require('youtubei.js');
-const fs = require('fs');
+const { Readable } = require('stream');
 const path = require('path');
-
-// Initialize Innertube
-// We will create specific clients as needed or use a default one
-let yt = null;
-
-async function getInnertube() {
-    if (yt) return yt;
-    yt = await Innertube.create({
-        cache: new UniversalCache(false),
-        generate_session_locally: true
-    });
-    return yt;
-}
-
-(async () => {
-    try {
-        await getInnertube();
-        console.log('[SETUP] InnerTube (youtubei.js) initialized.');
-    } catch (e) {
-        console.error('[SETUP] Failed to initialize InnerTube:', e);
-    }
-})();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-const cacheDir = path.join(__dirname, 'cache');
-if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir, { recursive: true });
-}
-
-// Serve static files from the React app
-const publicDir = path.join(__dirname, 'public');
-const distDir = path.join(__dirname, '../dist');
-
-if (fs.existsSync(publicDir)) {
-    app.use(express.static(publicDir));
-} else {
-    app.use(express.static(distDir));
-}
-
 app.use(cors());
 app.use(express.json());
 
-// SEARCH
+// Serve static files from the frontend dist directory
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Helper for decoding HTML entities if needed (basic ones)
+function decodeHTMLEntities(text) {
+    if (!text) return "";
+    return text.replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+}
+
 app.get('/search', async (req, res) => {
     try {
         const query = req.query.q;
-        const source = req.query.source;
         if (!query) return res.status(400).json({ error: 'Query required' });
 
-        const searchQuery = `${query} official audio`;
-        console.log(`[SEARCH] Query: "${searchQuery}"`);
+        console.log(`[SEARCH] Query: "${query}"`);
 
-        const r = await yts(searchQuery);
+        const searchApiUrl = `https://skysound7.com/api/search?query=${encodeURIComponent(query)}`;
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        };
 
-        const videos = r.videos.slice(0, 10).map(v => {
-            let title = v.title;
-            if (source === 'spotify') {
-                title = title.replace(/\(Official.*?\)|\[Official.*?\]|Official Video|Official Audio|Lyric Video|Lyrics/gi, '').trim();
+        const pageResponse = await fetch(searchApiUrl, { headers, redirect: 'follow' });
+
+        if (!pageResponse.ok) {
+            console.error(`[SEARCH] Failed to fetch page: ${pageResponse.status}`);
+            return res.status(500).json({ error: 'Search failed upstream' });
+        }
+
+        const html = await pageResponse.text();
+        const results = [];
+
+        // Regex to match list items. 
+        // Note: HTML might have newlines. [\s\S]*? matches across lines.
+        const regex = /<li class="__adv_list_track[\s\S]*?<\/li>/g;
+        let match;
+
+        while ((match = regex.exec(html)) !== null) {
+            const itemHtml = match[0];
+
+            // Extract Stream URL
+            const urlMatch = itemHtml.match(/data-url="([^"]+)"/);
+            if (!urlMatch) continue;
+            const streamUrl = urlMatch[1]; // Typically https://fine.sunproxy.net/file/...
+
+            // Extract Title
+            // Matches: span class="...__adv_name"><em>Title</em></span> OR plain text
+            let title = "Unknown Title";
+            const titleMatch = itemHtml.match(/class="[^"]*__adv_name">.*?<em>([^<]+)<\/em>/) ||
+                itemHtml.match(/class="[^"]*__adv_name">([^<]+)</);
+            if (titleMatch) title = decodeHTMLEntities(titleMatch[1]);
+
+            // Extract Artist
+            let artist = "Unknown Artist";
+            const artistMatch = itemHtml.match(/class="[^"]*__adv_artist">([^<]+)<\/a>/);
+            if (artistMatch) artist = decodeHTMLEntities(artistMatch[1]);
+
+            // Extract Duration
+            let duration = 0;
+            const durationMatch = itemHtml.match(/class="[^"]*__adv_duration">(\d+):(\d+)</);
+            if (durationMatch) {
+                duration = parseInt(durationMatch[1]) * 60 + parseInt(durationMatch[2]);
             }
-            return {
-                id: v.videoId,
+
+            // Create a safe ID from the streamUrl (Base64)
+            const id = Buffer.from(streamUrl).toString('base64');
+
+            results.push({
+                id: id,
                 title: title,
-                timestamp: v.timestamp,
-                duration: v.seconds,
-                thumbnail: v.thumbnail,
-                author: v.author.name
-            };
-        });
-        res.status(200).json(videos);
+                artist: artist,
+                duration: duration,
+                thumbnail: 'https://skysound7.com/i/img/he-logo.png', // Placeholder
+                streamUrl: streamUrl // Include for debugging or direct usage
+            });
+        }
+
+        console.log(`[SEARCH] Found ${results.length} tracks`);
+        res.json(results);
+
     } catch (error) {
-        console.error('Search failed:', error);
-        res.status(500).json({ error: 'Search failed' });
+        console.error('[SEARCH] Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// STREAM - Multi-Client Fallback Strategy
 app.get('/stream', async (req, res) => {
-    const videoId = req.query.videoId;
-    if (!videoId) return res.status(400).json({ error: 'videoId required' });
-
-    // Check cache
-    let existingFile = null;
-    if (fs.existsSync(cacheDir)) {
-        const files = fs.readdirSync(cacheDir).filter(f => f.startsWith(videoId));
-        if (files.length > 0) existingFile = path.join(cacheDir, files[0]);
-    }
-
-    if (existingFile && fs.statSync(existingFile).size > 0) {
-        const stat = fs.statSync(existingFile);
-
-        // Simple cache serving without range support for reliability test? 
-        // No, keep range support, it's good for scrubbing.
-        const range = req.headers.range;
-        if (range) {
-            const parts = range.replace(/bytes=/, "").split("-");
-            const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
-            res.writeHead(206, {
-                'Content-Range': `bytes ${start}-${end}/${stat.size}`,
-                'Content-Length': (end - start) + 1,
-                'Content-Type': 'audio/mp4',
-                'Accept-Ranges': 'bytes'
-            });
-            return fs.createReadStream(existingFile, { start, end }).pipe(res);
-        } else {
-            res.writeHead(200, {
-                'Content-Length': stat.size,
-                'Content-Type': 'audio/mp4',
-                'Accept-Ranges': 'bytes'
-            });
-            return fs.createReadStream(existingFile).pipe(res);
-        }
-    }
-
-    // Download Strategy
     try {
-        const innertube = await getInnertube();
-        const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
+        let videoId = req.query.videoId;
+        if (!videoId) return res.status(400).json({ error: 'videoId required' });
 
-        // List of clients to try in order of likely success/permissiveness
-        // Prioritize Music clients for music content
-        const clientsToTry = ['YTMUSIC', 'YTMUSIC_ANDROID', 'WEB', 'ANDROID', 'IOS', 'TV_EMBEDDED'];
-
-        let stream = null;
-        let lastError = null;
-
-        for (const clientName of clientsToTry) {
-            try {
-                console.log(`[YOUTUBEI] Attempting download for ${videoId} using client: ${clientName}`);
-
-                stream = await innertube.download(videoId, {
-                    type: 'audio',
-                    quality: 'best',
-                    format: 'mp4',
-                    client: clientName
-                });
-
-                if (stream) {
-                    console.log(`[YOUTUBEI] Success with client: ${clientName}`);
-                    break;
-                }
-            } catch (e) {
-                console.warn(`[YOUTUBEI] Client ${clientName} failed: ${e.message}`);
-                lastError = e;
-                // If the error is 403 or Login Required, we continue. 
-                // Some clients might work.
+        // Decode ID to get Target URL
+        let targetUrl;
+        try {
+            targetUrl = Buffer.from(videoId, 'base64').toString('utf-8');
+            if (!targetUrl.startsWith('http')) {
+                // Not a simplified Base64 url? Maybe it's a real ID from old cache. 
+                // We don't support old IDs anymore.
+                throw new Error("Invalid ID format");
             }
+        } catch (e) {
+            console.error("[STREAM] Failed to decode ID:", e.message);
+            return res.status(400).json({ error: 'Invalid videoId' });
         }
 
-        if (!stream) {
-            throw new Error(`All clients failed. Last error: ${lastError?.message}`);
+        console.log(`[STREAM] Proxying: ${targetUrl}`);
+
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        };
+
+        // Forward Range header if present (crucial for seeking)
+        if (req.headers.range) {
+            headers['Range'] = req.headers.range;
         }
 
-        const file = fs.createWriteStream(outputFilePath);
-        for await (const chunk of stream) {
-            file.write(chunk);
+        const upstreamRes = await fetch(targetUrl, { headers });
+
+        // Forward headers
+        res.status(upstreamRes.status);
+        res.setHeader('Content-Type', upstreamRes.headers.get('Content-Type') || 'audio/mpeg');
+        res.setHeader('Content-Length', upstreamRes.headers.get('Content-Length'));
+        res.setHeader('Accept-Ranges', 'bytes');
+        if (upstreamRes.headers.has('Content-Range')) {
+            res.setHeader('Content-Range', upstreamRes.headers.get('Content-Range'));
         }
 
-        await new Promise((resolve, reject) => {
-            file.on('finish', resolve);
-            file.on('error', reject);
-            file.end();
-        });
-
-        console.log(`[SUCCESS] Downloaded: ${videoId}`);
-
-        const stat = fs.statSync(outputFilePath);
-        res.writeHead(200, {
-            'Content-Length': stat.size,
-            'Content-Type': 'audio/mp4',
-            'Accept-Ranges': 'bytes'
-        });
-        fs.createReadStream(outputFilePath).pipe(res);
+        // Pipe content
+        if (upstreamRes.body) {
+            Readable.fromWeb(upstreamRes.body).pipe(res);
+        } else {
+            res.end();
+        }
 
     } catch (error) {
-        console.error('[STREAM ERROR FATAL]:', error.message || error);
-
-        const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
-        if (fs.existsSync(outputFilePath)) fs.unlinkSync(outputFilePath);
-
-        if (!res.headersSent) res.status(500).json({ error: 'Stream error', details: error.message });
+        console.error('[STREAM] Error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Stream failed' });
+        }
     }
 });
 
+// Handle client-side routing by serving index.html for all non-API routes
 app.get('*', (req, res) => {
-    if (fs.existsSync(path.join(publicDir, 'index.html'))) {
-        res.sendFile(path.join(publicDir, 'index.html'));
-    } else {
-        res.sendFile(path.join(distDir, 'index.html'));
-    }
+    res.sendFile(path.join(__dirname, '../dist', 'index.html'));
 });
 
 app.listen(PORT, () => {
     console.log(`\n============================================`);
-    console.log(`   🚀 PROXY v5.2 - ROBUST MULTI-CLIENT`);
+    console.log(`   🚀 SKYSOUND7 PROXY - LIGHTWEIGHT`);
     console.log(`   Server running on port ${PORT}`);
     console.log(`============================================\n`);
 });
