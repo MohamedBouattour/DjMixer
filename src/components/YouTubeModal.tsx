@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import type { Track } from '../types';
+import { API_ENDPOINTS } from '../config';
 import './YouTubeModal.css';
 
 interface YouTubeModalProps {
@@ -70,7 +71,7 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
         setIsSearching(true);
         setErrorMessage('');
         try {
-            const res = await fetch(`/search?q=${encodeURIComponent(searchQuery)}`);
+            const res = await fetch(`${API_ENDPOINTS.SEARCH}?q=${encodeURIComponent(searchQuery)}`);
             if (!res.ok) throw new Error('Backend not reachable');
             const data = await res.json();
             setSearchResults(data);
@@ -88,7 +89,7 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                 id: id,
                 name: title,
                 duration: duration || 0,
-                url: `/stream?videoId=${id}`,
+                url: `${API_ENDPOINTS.STREAM}?videoId=${id}`,
                 bpm: undefined
             });
             onClose();

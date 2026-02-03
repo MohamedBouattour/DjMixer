@@ -10,6 +10,7 @@ import { getAllTracksFromDB, saveTrackToDB } from './utils/storage';
 import { useSettings } from './contexts/SettingsContext';
 import { getKeyLabel } from './utils/keyHelpers';
 import { detectBPM } from './utils/audioUtils';
+import { API_BASE_URL } from './config';
 import './App.css';
 
 function App() {
@@ -283,7 +284,7 @@ function App() {
     deck.setIsLoading(true);
 
     // If it's a stream URL and we don't have the file yet
-    if (!track.file && (track.url.includes('localhost:3002/stream') || track.url.includes('/stream'))) {
+    if (!track.file && (track.url.includes(API_BASE_URL) || track.url.includes('/stream'))) {
       try {
         downloadingTracksRef.current.add(track.id);
         console.log('Downloading track for persistence:', track.name);

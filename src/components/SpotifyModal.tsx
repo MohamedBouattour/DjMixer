@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import type { Track } from '../types';
+import { API_ENDPOINTS } from '../config';
 import './SpotifyModal.css';
 
 interface SpotifyModalProps {
@@ -68,7 +69,7 @@ export const SpotifyModal: React.FC<SpotifyModalProps> = ({
         setErrorMessage('');
         try {
             // We pass source=spotify to tell the backend to use play-dl for better results/stability
-            const res = await fetch(`/search?q=${encodeURIComponent(searchQuery)}&source=spotify`);
+            const res = await fetch(`${API_ENDPOINTS.SEARCH}?q=${encodeURIComponent(searchQuery)}&source=spotify`);
             if (!res.ok) throw new Error('Backend not reachable');
             const data = await res.json();
             setSearchResults(data);
@@ -86,7 +87,7 @@ export const SpotifyModal: React.FC<SpotifyModalProps> = ({
                 id: id,
                 name: title,
                 duration: duration || 0,
-                url: `/stream?videoId=${id}`,
+                url: `${API_ENDPOINTS.STREAM}?videoId=${id}`,
                 bpm: undefined
             });
             onClose();
