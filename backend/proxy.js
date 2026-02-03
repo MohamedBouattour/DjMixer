@@ -126,7 +126,8 @@ app.get('/stream', async (req, res) => {
         const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
 
         // List of clients to try in order of likely success/permissiveness
-        const clientsToTry = ['ANDROID', 'IOS', 'TV_EMBEDDED', 'WEB_CREATOR'];
+        // Prioritize Music clients for music content
+        const clientsToTry = ['YTMUSIC', 'YTMUSIC_ANDROID', 'WEB', 'ANDROID', 'IOS', 'TV_EMBEDDED'];
 
         let stream = null;
         let lastError = null;
@@ -149,7 +150,8 @@ app.get('/stream', async (req, res) => {
             } catch (e) {
                 console.warn(`[YOUTUBEI] Client ${clientName} failed: ${e.message}`);
                 lastError = e;
-                // Continue to next client
+                // If the error is 403 or Login Required, we continue. 
+                // Some clients might work.
             }
         }
 
