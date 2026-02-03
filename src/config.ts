@@ -1,10 +1,9 @@
-// Remote API Server
-export const API_BASE_URL = import.meta.env.PROD
-    ? 'https://djmixer.onrender.com'
-    : 'http://8.208.92.79:3002';
+// Use relative paths to let the Vite proxy (dev) or the Express server (prod) handle routing.
+// This is the most robust way to ensure the frontend can always find the backend.
+export const API_BASE_URL = '';
 
 export const API_ENDPOINTS = {
-    SEARCH: `${API_BASE_URL}/search`,
-    STREAM: `${API_BASE_URL}/stream`,
-    AUTH: `${API_BASE_URL}/auth`,
+    SEARCH: '/search',
+    STREAM: '/stream',
+    AUTH: '/auth',
 };
