@@ -6,13 +6,21 @@ const fs = require('fs');
 const path = require('path');
 
 // Initialize Innertube
+// We will create specific clients as needed or use a default one
 let yt = null;
+
+async function getInnertube() {
+    if (yt) return yt;
+    yt = await Innertube.create({
+        cache: new UniversalCache(false),
+        generate_session_locally: true
+    });
+    return yt;
+}
+
 (async () => {
     try {
-        yt = await Innertube.create({
-            cache: new UniversalCache(false),
-            generate_session_locally: true
-        });
+        await getInnertube();
         console.log('[SETUP] InnerTube (youtubei.js) initialized.');
     } catch (e) {
         console.error('[SETUP] Failed to initialize InnerTube:', e);
@@ -40,7 +48,7 @@ if (fs.existsSync(publicDir)) {
 app.use(cors());
 app.use(express.json());
 
-// SEARCH - Spotify Optimized
+// SEARCH
 app.get('/search', async (req, res) => {
     try {
         const query = req.query.q;
@@ -73,7 +81,7 @@ app.get('/search', async (req, res) => {
     }
 });
 
-// STREAM - InnerTube (youtubei.js) Logic with Client Fallback
+// STREAM - Multi-Client Fallback Strategy
 app.get('/stream', async (req, res) => {
     const videoId = req.query.videoId;
     if (!videoId) return res.status(400).json({ error: 'videoId required' });
@@ -87,64 +95,66 @@ app.get('/stream', async (req, res) => {
 
     if (existingFile && fs.statSync(existingFile).size > 0) {
         const stat = fs.statSync(existingFile);
-        const range = req.headers.range;
 
+        // Simple cache serving without range support for reliability test? 
+        // No, keep range support, it's good for scrubbing.
+        const range = req.headers.range;
         if (range) {
             const parts = range.replace(/bytes=/, "").split("-");
             const start = parseInt(parts[0], 10);
             const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
             res.writeHead(206, {
                 'Content-Range': `bytes ${start}-${end}/${stat.size}`,
-                'Accept-Ranges': 'bytes',
                 'Content-Length': (end - start) + 1,
-                'Content-Type': 'audio/mpeg'
+                'Content-Type': 'audio/mp4',
+                'Accept-Ranges': 'bytes'
             });
             return fs.createReadStream(existingFile, { start, end }).pipe(res);
         } else {
-            const ext = path.extname(existingFile).toLowerCase();
-            const contentTypes = {
-                '.mp3': 'audio/mpeg',
-                '.m4a': 'audio/mp4',
-                '.webm': 'audio/webm',
-                '.ogg': 'audio/ogg',
-                '.wav': 'audio/wav'
-            };
-            const contentType = contentTypes[ext] || 'audio/mpeg';
-
-            res.writeHead(200, { 'Content-Length': stat.size, 'Content-Type': contentType, 'Accept-Ranges': 'bytes' });
+            res.writeHead(200, {
+                'Content-Length': stat.size,
+                'Content-Type': 'audio/mp4',
+                'Accept-Ranges': 'bytes'
+            });
             return fs.createReadStream(existingFile).pipe(res);
         }
     }
 
-    // Download
+    // Download Strategy
     try {
-        if (!yt) {
-            yt = await Innertube.create({
-                cache: new UniversalCache(false),
-                generate_session_locally: true
-            });
-        }
-
-        console.log(`[YOUTUBEI] Downloading audio for: ${videoId}`);
+        const innertube = await getInnertube();
         const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
 
-        let stream;
-        try {
-            console.log('[YOUTUBEI] Attempting with ANDROID client...');
-            stream = await yt.download(videoId, {
-                type: 'audio',
-                quality: 'best',
-                format: 'mp4',
-                client: 'ANDROID'
-            });
-        } catch (e) {
-            console.warn(`[YOUTUBEI] ANDROID failed (${e.message}). Retrying with WEB_CREATOR...`);
-            stream = await yt.download(videoId, {
-                type: 'audio',
-                quality: 'best',
-                format: 'mp4',
-                client: 'WEB_CREATOR'
-            });
+        // List of clients to try in order of likely success/permissiveness
+        const clientsToTry = ['ANDROID', 'IOS', 'TV_EMBEDDED', 'WEB_CREATOR'];
+
+        let stream = null;
+        let lastError = null;
+
+        for (const clientName of clientsToTry) {
+            try {
+                console.log(`[YOUTUBEI] Attempting download for ${videoId} using client: ${clientName}`);
+
+                stream = await innertube.download(videoId, {
+                    type: 'audio',
+                    quality: 'best',
+                    format: 'mp4',
+                    client: clientName
+                });
+
+                if (stream) {
+                    console.log(`[YOUTUBEI] Success with client: ${clientName}`);
+                    break;
+                }
+            } catch (e) {
+                console.warn(`[YOUTUBEI] Client ${clientName} failed: ${e.message}`);
+                lastError = e;
+                // Continue to next client
+            }
+        }
+
+        if (!stream) {
+            throw new Error(`All clients failed. Last error: ${lastError?.message}`);
         }
 
         const file = fs.createWriteStream(outputFilePath);
@@ -169,7 +179,7 @@ app.get('/stream', async (req, res) => {
         fs.createReadStream(outputFilePath).pipe(res);
 
     } catch (error) {
-        console.error('[STREAM ERROR]:', error.message || error);
+        console.error('[STREAM ERROR FATAL]:', error.message || error);
 
         const outputFilePath = path.join(cacheDir, `${videoId}.m4a`);
         if (fs.existsSync(outputFilePath)) fs.unlinkSync(outputFilePath);
@@ -188,7 +198,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`\n============================================`);
-    console.log(`   🚀 PROXY v5.1 - YOUTUBEI w/ CLIENT SWITCH`);
+    console.log(`   🚀 PROXY v5.2 - ROBUST MULTI-CLIENT`);
     console.log(`   Server running on port ${PORT}`);
     console.log(`============================================\n`);
 });
