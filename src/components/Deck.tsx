@@ -6,6 +6,7 @@ import { SpotifyModal } from './SpotifyModal';
 import VerticalSlider from './VerticalSlider';
 import { formatTime, formatTotalSeconds } from '../utils/helpers';
 import './Deck.css';
+import { YouTubeModal } from './YouTubeModal';
 
 interface DeckProps {
     deckId: 'A' | 'B';
@@ -46,6 +47,7 @@ export const Deck: React.FC<DeckProps> = ({
     shortcuts
 }) => {
     const [isSpotifyOpen, setIsSpotifyOpen] = useState(false);
+    const [isYouTubeOpen, setIsYouTubeOpen] = useState(false);
     const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
 
     const loopStartRef = React.useRef<number>(0);
@@ -107,6 +109,14 @@ export const Deck: React.FC<DeckProps> = ({
                         isOpen={isSpotifyOpen}
                         onToggle={() => setIsSpotifyOpen(!isSpotifyOpen)}
                         onClose={() => setIsSpotifyOpen(false)}
+                        onLoadTrack={onLoadTrack}
+                    />
+                    <YouTubeModal
+                        deckId={deckId}
+                        color={color}
+                        isOpen={isYouTubeOpen}
+                        onToggle={() => setIsYouTubeOpen(!isYouTubeOpen)}
+                        onClose={() => setIsYouTubeOpen(false)}
                         onLoadTrack={onLoadTrack}
                     />
                     <div className="deck-label" style={{ background: color }}>

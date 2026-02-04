@@ -196,18 +196,35 @@ export const YouTubeModal: React.FC<YouTubeModalProps> = ({
                         ) : null}
 
                         {currentVideoId ? (
-                            <iframe
-                                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1`}
-                                className="youtube-iframe"
-                                title={`YouTube for Deck ${deckId}`}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                            />
+                            <div className="preview-player-container" style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '20px',
+                                background: 'rgba(0,0,0,0.3)',
+                                borderRadius: '12px',
+                                width: '100%',
+                                height: '100%'
+                            }}>
+                                <div className="preview-info" style={{ marginBottom: '16px', textAlign: 'center' }}>
+                                    <h3 style={{ margin: 0, color: 'white' }}>Preview Track</h3>
+                                    <p style={{ margin: '4px 0 0 0', opacity: 0.7, fontSize: '0.9em' }}>Audio Stream</p>
+                                </div>
+                                <audio
+                                    controls
+                                    autoPlay
+                                    src={`${API_ENDPOINTS.STREAM}?videoId=${currentVideoId}`}
+                                    style={{ width: '100%', maxWidth: '400px' }}
+                                    onEnded={() => setCurrentVideoId(null)}
+                                />
+                            </div>
                         ) : (
                             <div className="youtube-placeholder">
                                 <svg width="80" height="80" viewBox="0 0 24 24" fill="#ff0000" opacity="0.5">
                                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                                 </svg>
-                                <p>Paste a URL or Search for a song</p>
+                                <p>Search for a song to preview</p>
                             </div>
                         )}
                     </div>
