@@ -97,6 +97,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <div className="settings-actions">
                         <button className="reset-btn" onClick={resetToDefaults}>Reset to Defaults</button>
                     </div>
+
+                    <div className="settings-footer" style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
+                        <span>Version: {localStorage.getItem('app_version') || 'Development Build'}</span>
+                    </div>
                 </div>
             </div>
         </div>
