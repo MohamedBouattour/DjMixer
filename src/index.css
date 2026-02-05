@@ -509,8 +509,8 @@ input[type="range"]:hover::-moz-range-thumb {
 /* Floating settings button - GLOBAL STYLES (controlled by React conditional render) */
 .settings-floating-btn {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
+  top: 3px;
+  right: 3px;
   width: 48px;
   height: 48px;
   border-radius: 50%;

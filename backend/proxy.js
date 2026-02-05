@@ -96,58 +96,68 @@ app.get('/search', async (req, res) => {
         // STRATEGY 1: Skysound Scraping (Spotify Source or specific request)
         // Best for Spotify flow as it returns skysound IDs that are reliable on restricted networks
         if (source === 'spotify') {
-            const searchApiUrl = `https://skysound7.com/api/search?query=${encodeURIComponent(query)}`;
-            const headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            };
+            try {
+                const searchApiUrl = `https://skysound7.com/api/search?query=${encodeURIComponent(query)}`;
+                const headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                };
 
-            const pageResponse = await fetch(searchApiUrl, { headers, redirect: 'follow' });
-            if (!pageResponse.ok) throw new Error('Skysound search failed');
+                const pageResponse = await fetch(searchApiUrl, { headers, redirect: 'follow' });
+                if (!pageResponse.ok) throw new Error(`Skysound search failed: ${pageResponse.status}`);
 
-            const html = await pageResponse.text();
-            const results = [];
-            const regex = /<li class="__adv_list_track[\s\S]*?<\/li>/g;
-            let match;
+                const html = await pageResponse.text();
+                const results = [];
+                const regex = /<li class="__adv_list_track[\s\S]*?<\/li>/g;
+                let match;
 
-            while ((match = regex.exec(html)) !== null) {
-                const itemHtml = match[0];
-                const urlMatch = itemHtml.match(/data-url="([^"]+)"/);
-                if (!urlMatch) continue;
+                while ((match = regex.exec(html)) !== null) {
+                    const itemHtml = match[0];
+                    const urlMatch = itemHtml.match(/data-url="([^"]+)"/);
+                    if (!urlMatch) continue;
 
-                const streamUrl = urlMatch[1];
-                let title = "Unknown Title";
-                const titleMatch = itemHtml.match(/class="[^"]*__adv_name">.*?<em>([^<]+)<\/em>/) ||
-                    itemHtml.match(/class="[^"]*__adv_name">([^<]+)</);
-                if (titleMatch) title = decodeHTMLEntities(titleMatch[1]);
+                    const streamUrl = urlMatch[1];
+                    let title = "Unknown Title";
+                    const titleMatch = itemHtml.match(/class="[^"]*__adv_name">.*?<em>([^<]+)<\/em>/) ||
+                        itemHtml.match(/class="[^"]*__adv_name">([^<]+)</);
+                    if (titleMatch) title = decodeHTMLEntities(titleMatch[1]);
 
-                let artist = "Unknown Artist";
-                const artistMatch = itemHtml.match(/class="[^"]*__adv_artist">([^<]+)<\/a>/);
-                if (artistMatch) artist = decodeHTMLEntities(artistMatch[1]);
+                    let artist = "Unknown Artist";
+                    const artistMatch = itemHtml.match(/class="[^"]*__adv_artist">([^<]+)<\/a>/);
+                    if (artistMatch) artist = decodeHTMLEntities(artistMatch[1]);
 
-                let duration = 0;
-                const durationMatch = itemHtml.match(/class="[^"]*__adv_duration">(\d+):(\d+)</);
-                let timestamp = "0:00";
-                if (durationMatch) {
-                    duration = parseInt(durationMatch[1]) * 60 + parseInt(durationMatch[2]);
-                    timestamp = `${durationMatch[1]}:${durationMatch[2]}`;
+                    let duration = 0;
+                    const durationMatch = itemHtml.match(/class="[^"]*__adv_duration">(\d+):(\d+)</);
+                    let timestamp = "0:00";
+                    if (durationMatch) {
+                        duration = parseInt(durationMatch[1]) * 60 + parseInt(durationMatch[2]);
+                        timestamp = `${durationMatch[1]}:${durationMatch[2]}`;
+                    }
+
+                    const id = Buffer.from(streamUrl).toString('base64');
+
+                    results.push({
+                        id: id,
+                        title: title,
+                        artist: artist,
+                        author: artist,
+                        duration: duration,
+                        timestamp: timestamp,
+                        thumbnail: 'https://skysound7.com/i/img/he-logo.png',
+                        streamUrl: streamUrl,
+                        source: 'skysound'
+                    });
                 }
 
-                const id = Buffer.from(streamUrl).toString('base64');
-
-                results.push({
-                    id: id,
-                    title: title,
-                    artist: artist,
-                    author: artist,
-                    duration: duration,
-                    timestamp: timestamp,
-                    thumbnail: 'https://skysound7.com/i/img/he-logo.png',
-                    streamUrl: streamUrl,
-                    source: 'skysound'
-                });
+                if (results.length > 0) {
+                    console.log(`[SEARCH] Found ${results.length} Skysound tracks`);
+                    return res.json(results);
+                } else {
+                    console.warn('[SEARCH] Skysound returned 0 results, falling back to YouTube');
+                }
+            } catch (err) {
+                console.warn(`[SEARCH] Spotify/Skysound strategy failed: ${err.message}. Falling back to YouTube.`);
+                // Fall through to YouTube search
             }
-            console.log(`[SEARCH] Found ${results.length} Skysound tracks`);
-            return res.json(results);
         }
 
         // STRATEGY 2: Official YouTube Search (Default / YouTube Modal)

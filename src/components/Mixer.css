@@ -600,6 +600,81 @@
     padding: var(--spacing-md);
 }
 
+/* Landscape Mobile Optimization for Popup */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .advanced-controls-content.large-popup {
+        max-height: 95vh;
+        width: 95vw;
+        max-width: 700px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .advanced-controls-header {
+        padding: 8px 12px;
+        min-height: auto;
+    }
+
+    .popup-main-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        /* Two columns layout */
+        grid-template-rows: auto 1fr;
+        gap: 8px;
+        padding: 8px;
+        overflow-y: auto;
+    }
+
+    /* Master Volume - Top Left */
+    .popup-section.master-section {
+        grid-column: 1 / -1;
+        margin-bottom: 4px !important;
+    }
+
+    .master-volume-section {
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    /* EQ Grid - Center */
+    .eq-popup-grid {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        padding: 0;
+        gap: 8px;
+    }
+
+    .eq-controls-popup-deck {
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .eq-controls-row {
+        min-height: 80px;
+        /* Reduced height */
+        padding: 4px;
+        gap: 8px;
+    }
+
+    .eq-slider-vertical {
+        height: 80px !important;
+        /* Force smaller height */
+    }
+
+    .effects-deck-label {
+        font-size: 0.6rem;
+        padding: 2px 8px;
+    }
+
+    /* Crossfader - Bottom */
+    .popup-section.crossfader-popup-section {
+        grid-column: 1 / -1;
+        margin-top: 4px !important;
+        grid-row: 3;
+    }
+}
+
 .eq-controls-popup-deck {
     display: flex;
     flex-direction: column;
@@ -798,8 +873,103 @@
     .master-volume-slider {
         height: 32px;
     }
+}
+
+/* ============================================
+   SHORT LANDSCAPE OPTIMIZATIONS
+   Target: iPhone 15 Landscape (height < 600px)
+   ============================================ */
+@media screen and (max-height: 600px) and (orientation: landscape) {
+    .mixer {
+        padding: 2px;
+        gap: 2px;
+    }
+
+    .mixer-layout {
+        gap: 2px;
+    }
+
+    .mixer-deck-controls {
+        padding: 2px;
+        min-width: 30px;
+        /* Reduced from 35px */
+        max-width: 35px;
+        /* Reduced from 40px */
+    }
+
+    /* SLIM VOLUME SLIDER (Match Pitch Fader) */
+    .mixer-volume-slider .vertical-slider-track {
+        width: 3px !important;
+        /* Reduced from 4px */
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: none !important;
+        border-radius: 2px !important;
+        box-shadow: none !important;
+        min-height: 80px !important;
+    }
+
+    .mixer-volume-slider .vertical-slider-thumb {
+        width: 20px !important;
+        /* Reduced from 24px */
+        height: 12px !important;
+        /* Reduced from 14px */
+        border-radius: 2px !important;
+        background: #ccc !important;
+        /* Cap color */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+        border: none !important;
+    }
+
+    .mixer-volume-slider .vertical-slider-fill {
+        border-radius: 2px !important;
+        width: 3px !important;
+        /* Reduced from 4px */
+        /* Fill matches width */
+        left: 0 !important;
+    }
+
+    .mixer-volume-slider .vertical-slider-line {
+        display: none;
+    }
+
+    .volume-section {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .mixer-center {
+        gap: 2px;
+        padding: 2px;
+        min-width: 40px;
+        /* Reduced from 60px */
+    }
+
+    .master-volume-section {
+        gap: 1px;
+    }
+
+    .master-volume-slider {
+        height: 20px;
+    }
 
     .volume-bars {
-        height: 20px;
+        height: 12px;
+        padding: 1px;
+    }
+
+    .eq-toggle-btn {
+        height: 24px;
+        min-height: 24px;
+        font-size: 0.6rem;
+        padding: 0;
+    }
+
+    .crossfader-section {
+        gap: 1px;
+    }
+
+    .crossfader {
+        height: 24px;
     }
 }

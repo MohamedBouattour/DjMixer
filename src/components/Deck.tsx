@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import type { DeckState, Track } from '../types';
+import type { DeckState } from '../types';
 import { Waveform } from './Waveform';
 import { WaveformBar } from './WaveformBar';
-import { SpotifyModal } from './SpotifyModal';
 import VerticalSlider from './VerticalSlider';
 import { formatTime, formatTotalSeconds } from '../utils/helpers';
 import './Deck.css';
-import { YouTubeModal } from './YouTubeModal';
 
 interface DeckProps {
     deckId: 'A' | 'B';
@@ -15,7 +13,7 @@ interface DeckProps {
     onPause: () => void;
     onSeek: (time: number) => void;
     onPitchChange: (pitch: number) => void;
-    onLoadTrack?: (track: Track) => void;
+
     onToggleEffect: (effect: 'reverb' | 'delay' | 'filter' | 'distortion' | 'bitcrusher' | 'flanger' | 'tremolo' | 'hpf') => void;
     onCue: (index: number) => void;
     onDeleteCue: (index: number) => void;
@@ -36,7 +34,7 @@ export const Deck: React.FC<DeckProps> = ({
     onPause,
     onSeek,
     onPitchChange,
-    onLoadTrack,
+
     onToggleEffect,
     onCue,
     onDeleteCue,
@@ -46,8 +44,7 @@ export const Deck: React.FC<DeckProps> = ({
     color,
     shortcuts
 }) => {
-    const [isSpotifyOpen, setIsSpotifyOpen] = useState(false);
-    const [isYouTubeOpen, setIsYouTubeOpen] = useState(false);
+
     const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
 
     const loopStartRef = React.useRef<number>(0);
@@ -103,22 +100,6 @@ export const Deck: React.FC<DeckProps> = ({
         <div className={`deck glass-panel ${isPlaying ? 'is-playing' : ''}`} style={{ '--deck-color': color, '--deck-color-rgb': hexToRgb(color) } as React.CSSProperties}>
             <div className="deck-header">
                 <div className="deck-header-left">
-                    <SpotifyModal
-                        deckId={deckId}
-                        color={color}
-                        isOpen={isSpotifyOpen}
-                        onToggle={() => setIsSpotifyOpen(!isSpotifyOpen)}
-                        onClose={() => setIsSpotifyOpen(false)}
-                        onLoadTrack={onLoadTrack}
-                    />
-                    <YouTubeModal
-                        deckId={deckId}
-                        color={color}
-                        isOpen={isYouTubeOpen}
-                        onToggle={() => setIsYouTubeOpen(!isYouTubeOpen)}
-                        onClose={() => setIsYouTubeOpen(false)}
-                        onLoadTrack={onLoadTrack}
-                    />
                     <div className="deck-label" style={{ background: color }}>
                         DECK {deckId}
                     </div>
@@ -225,11 +206,7 @@ export const Deck: React.FC<DeckProps> = ({
                                 </button>
                             )}
 
-                            <div className="time-display">
-                                <span className="current-time">{formatTime(currentTime)} <span className="text-xs opacity-50">({formatTotalSeconds(currentTime)})</span></span>
-                                <span className="separator">/</span>
-                                <span className="total-time">{formatTime(track?.duration || 0)}</span>
-                            </div>
+
                         </div>
 
                         <div className="performance-controls">
@@ -319,6 +296,11 @@ export const Deck: React.FC<DeckProps> = ({
                         </div>
                     </div>
                 </div>
+            </div>
+            <div className="time-display bottom-right">
+                <span className="current-time">{formatTime(currentTime)} <span className="text-xs opacity-50">({formatTotalSeconds(currentTime)})</span></span>
+                <span className="separator">/</span>
+                <span className="total-time">{formatTime(track?.duration || 0)}</span>
             </div>
         </div >
     );

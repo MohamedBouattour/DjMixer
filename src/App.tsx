@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Deck } from './components/Deck';
 import { Mixer } from './components/Mixer';
-import { Playlist } from './components/Playlist';
-import { Effects } from './components/Effects';
+import { UnifiedTrackSelector } from './components/UnifiedTrackSelector';
 import { SettingsModal } from './components/SettingsModal';
 import { useDeck } from './hooks/useDeck';
 import type { Track } from './types';
@@ -18,6 +17,7 @@ function App() {
   const [crossfader, setCrossfader] = useState(50);
   const [masterVolume, setMasterVolume] = useState(100);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTrackSelectorOpen, setIsTrackSelectorOpen] = useState(false);
 
   const { keyMap, layout } = useSettings();
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 3000px)').matches);
@@ -230,17 +230,7 @@ function App() {
     }
   };
 
-  const handleEffectChange = (
-    deck: 'A' | 'B',
-    effect: 'reverb' | 'delay' | 'filter',
-    value: number
-  ) => {
-    if (deck === 'A') {
-      deckA.setEffect(effect, value);
-    } else {
-      deckB.setEffect(effect, value);
-    }
-  };
+
 
   const handleImportTrack = async (track: Track, deckId: 'A' | 'B') => {
     // Check if track is already in our library (has a file/blob)
@@ -355,7 +345,24 @@ function App() {
             <h1 className="app-title">DJ Controller</h1>
           </div>
           <div className="settings-btn-container">
-            <button className="settings-btn" onClick={() => setIsSettingsOpen(true)}>
+            <button
+              className="settings-btn"
+              onClick={() => setIsTrackSelectorOpen(true)}
+              style={{ marginRight: '10px' }}
+              title="Open Library"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+            </button>
+            <button
+              className="settings-btn"
+              onClick={() => setIsSettingsOpen(true)}
+              title="Settings"
+              style={{ right: '50%' }}
+            >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -364,19 +371,45 @@ function App() {
           </div>
         </header>
       ) : (
-        <button
-          className="settings-floating-btn"
-          onClick={() => setIsSettingsOpen(true)}
-          title="Open Settings"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
+        <div className="floating-actions">
+          <button
+            className="settings-floating-btn"
+            onClick={() => setIsTrackSelectorOpen(true)}
+            title="Open Library"
+            style={{ marginBottom: '10px' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
+          </button>
+          <button
+            className="settings-floating-btn"
+            onClick={() => setIsSettingsOpen(true)}
+            title="Open Settings"
+            style={{
+              top: '-15px',
+              right: 'calc(50% - 24px)'
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        </div>
       )}
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      <div className="orientation-warning">
+        <svg className="orientation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+          <line x1="12" y1="18" x2="12" y2="18"></line>
+        </svg>
+        <p>Please rotate your device to landscape mode</p>
+      </div>
 
       <main className="app-main">
         <div className="decks-section">
@@ -387,7 +420,7 @@ function App() {
             onPause={deckA.pause}
             onSeek={deckA.seek}
             onPitchChange={deckA.setPitch}
-            onLoadTrack={(track) => handleImportTrack(track, 'A')}
+
             onToggleEffect={deckA.toggleEffect}
             onCue={deckA.handleCue}
             onDeleteCue={deckA.deleteCue}
@@ -417,7 +450,7 @@ function App() {
                 crossfader: { left: getKeyLabel(keyMap['CROSSFADER_LEFT'], layout), right: getKeyLabel(keyMap['CROSSFADER_RIGHT'], layout) }
               } : undefined}
             />
-            <Effects onEffectChange={handleEffectChange} />
+
           </div>
 
           <Deck
@@ -427,7 +460,7 @@ function App() {
             onPause={deckB.pause}
             onSeek={deckB.seek}
             onPitchChange={deckB.setPitch}
-            onLoadTrack={(track) => handleImportTrack(track, 'B')}
+
             onToggleEffect={deckB.toggleEffect}
             onCue={deckB.handleCue}
             onDeleteCue={deckB.deleteCue}
@@ -442,10 +475,14 @@ function App() {
           />
         </div>
 
-        <Playlist
+        <UnifiedTrackSelector
+          isOpen={isTrackSelectorOpen}
+          onClose={() => setIsTrackSelectorOpen(false)}
           tracks={tracks}
           onTracksChange={setTracks}
-          onLoadToDeck={handleLoadToDeck}
+          onLoadTrack={handleImportTrack}
+          isPlayingA={deckAState.isPlaying}
+          isPlayingB={deckBState.isPlaying}
         />
       </main>
     </div>
