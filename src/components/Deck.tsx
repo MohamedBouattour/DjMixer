@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { DeckState } from '../types';
 import { Waveform } from './Waveform';
 import { WaveformBar } from './WaveformBar';
-import VerticalSlider from './VerticalSlider';
+// import VerticalSlider from './VerticalSlider'; // Removed in favor of buttons
 import { formatTime, formatTotalSeconds } from '../utils/helpers';
 import './Deck.css';
 
@@ -96,6 +96,16 @@ export const Deck: React.FC<DeckProps> = ({
         return `${r}, ${g}, ${b}`;
     };
 
+
+
+    const handlePitchStep = (direction: 'up' | 'down') => {
+        const step = 0.5;
+        let newPitch = pitch + (direction === 'up' ? step : -step);
+        if (newPitch > 10) newPitch = 10;
+        if (newPitch < -10) newPitch = -10;
+        onPitchChange(parseFloat(newPitch.toFixed(2)));
+    };
+
     return (
         <div className={`deck glass-panel ${isPlaying ? 'is-playing' : ''}`} style={{ '--deck-color': color, '--deck-color-rgb': hexToRgb(color) } as React.CSSProperties}>
             <div className="deck-header">
@@ -135,17 +145,13 @@ export const Deck: React.FC<DeckProps> = ({
             <div className="deck-vinyl-row">
                 {deckId === 'A' && (
                     <div className="pitch-control-vertical" style={{ marginRight: 'var(--spacing-md)' }}>
-                        <VerticalSlider
-                            value={pitch}
-                            min={-10}
-                            max={10}
-                            onChange={(val) => onPitchChange(parseFloat(val.toFixed(2)))}
-                            label="PITCH"
-                            showValue={true}
-                            valueFormatter={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
-                            color={color}
-                            className="pitch-slider-vertical"
-                        />
+                        <div className="pitch-btn-container">
+                            <button className="btn-pitch" onClick={() => handlePitchStep('up')} title="Pitch Speed Up">+</button>
+                            <div className="pitch-value-display" onDoubleClick={() => onPitchChange(0)} title="Double click to reset">
+                                {pitch > 0 ? '+' : ''}{pitch.toFixed(1)}%
+                            </div>
+                            <button className="btn-pitch" onClick={() => handlePitchStep('down')} title="Pitch Speed Down">-</button>
+                        </div>
                     </div>
                 )}
 
@@ -171,17 +177,13 @@ export const Deck: React.FC<DeckProps> = ({
 
                 {deckId === 'B' && (
                     <div className="pitch-control-vertical" style={{ marginLeft: 'var(--spacing-md)' }}>
-                        <VerticalSlider
-                            value={pitch}
-                            min={-10}
-                            max={10}
-                            onChange={(val) => onPitchChange(parseFloat(val.toFixed(2)))}
-                            label="PITCH"
-                            showValue={true}
-                            valueFormatter={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
-                            color={color}
-                            className="pitch-slider-vertical"
-                        />
+                        <div className="pitch-btn-container">
+                            <button className="btn-pitch" onClick={() => handlePitchStep('up')} title="Pitch Speed Up">+</button>
+                            <div className="pitch-value-display" onDoubleClick={() => onPitchChange(0)} title="Double click to reset">
+                                {pitch > 0 ? '+' : ''}{pitch.toFixed(1)}%
+                            </div>
+                            <button className="btn-pitch" onClick={() => handlePitchStep('down')} title="Pitch Speed Down">-</button>
+                        </div>
                     </div>
                 )}
                 <div className="time-display bottom-right" style={deckId === 'B' ? { right: '60px' } : undefined}>
