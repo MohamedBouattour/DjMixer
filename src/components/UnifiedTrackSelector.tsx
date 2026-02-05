@@ -89,8 +89,11 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
         const existingNames = new Set(tracks.map(t => t.name.toLowerCase()));
 
         for (const file of files) {
-            // Basic check to skip non-audio
-            if (!file.type.startsWith('audio/')) continue;
+            // Basic check to skip non-audio (check type or extension)
+            const hasAudioType = file.type.startsWith('audio/');
+            const hasAudioExtension = /\.(mp3|wav|m4a|ogg)$/i.test(file.name);
+
+            if (!hasAudioType && !hasAudioExtension) continue;
 
             const fileName = file.name.replace(/\.[^/.]+$/, '').toLowerCase();
             if (existingNames.has(fileName)) continue;
@@ -170,7 +173,7 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                             type="file"
                             hidden
                             multiple
-                            accept="audio/*"
+                            accept="audio/*,.mp3,.m4a,.wav,.ogg"
                             onChange={handleFileUpload}
                             ref={fileInputRef}
                         />

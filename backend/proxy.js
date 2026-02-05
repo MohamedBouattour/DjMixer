@@ -14,7 +14,6 @@ const express = require('express');
 const cors = require('cors');
 const { Readable } = require('stream');
 const path = require('path');
-const fs = require('fs');
 const yts = require('yt-search');
 const youtubedl = require('youtube-dl-exec');
 
