@@ -28,3 +28,5 @@ backend/cache/
 
 # Electron build output
 release/
+.env
+backend/.env

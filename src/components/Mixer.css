@@ -602,6 +602,11 @@
 
 /* Landscape Mobile Optimization for Popup */
 @media screen and (max-height: 500px) and (orientation: landscape) {
+    .mixer {
+        min-width: 120px;
+        padding: 0 4px;
+    }
+
     .advanced-controls-content.large-popup {
         max-height: 95vh;
         width: 95vw;

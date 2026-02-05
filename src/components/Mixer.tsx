@@ -194,7 +194,7 @@ export const Mixer: React.FC<MixerProps> = ({
                                     valueFormatter={(v) => `${Math.round(v)}%`}
                                     color="var(--color-accent-green)"
                                     height={24}
-                                    thumbWidth={24}
+                                    thumbWidth={36}
                                     className="master-volume-slider-container"
                                 />
                                 <div className="volume-bars">
@@ -228,7 +228,7 @@ export const Mixer: React.FC<MixerProps> = ({
                                     showValue={false}
                                     color="#ffffff"
                                     height={32}
-                                    thumbWidth={40}
+                                    thumbWidth={60}
                                     showCenterLine={true}
                                     className="crossfader-slider-container"
                                 />

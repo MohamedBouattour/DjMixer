@@ -3,7 +3,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    min-width: 320px;
+    min-width: 250px;
+    /* Reduced from 320px for better fit */
     flex: 1;
     border: 2px solid rgba(255, 255, 255, 0.05);
     background: radial-gradient(circle at top left, rgba(var(--deck-color-rgb), 0.05), transparent 40%),
@@ -238,13 +239,15 @@
     justify-content: center;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
+    position: relative;
 }
 
 .pitch-control-vertical {
     height: 100%;
     display: flex;
     justify-content: center;
-    min-width: 50px;
+    min-width: 32px;
+    /* Was 50px - Reduced to prevent horizontal scroll */
 }
 
 .deck-vinyl-row>.pitch-control-vertical:first-child {
@@ -329,10 +332,10 @@
 
 .time-display.bottom-right {
     position: absolute;
-    bottom: 15px;
-    right: 15px;
+    bottom: 10px;
+    right: 10px;
     background: rgba(0, 0, 0, 0.6);
-    padding: 6px 12px;
+    padding: 5px;
     border-radius: var(--radius-md);
     z-index: 50;
     pointer-events: none;

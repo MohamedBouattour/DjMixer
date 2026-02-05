@@ -22,6 +22,60 @@ function App() {
   const { keyMap, layout } = useSettings();
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 3000px)').matches);
 
+  // Update Logic
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [newVersion, setNewVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/version`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data && data.version && data.version !== 'dev' && data.version !== 'unknown') {
+          const remoteVersion = data.version;
+          const localVersion = localStorage.getItem('app_version');
+
+          console.log(`[VERSION] Local: ${localVersion} | Remote: ${remoteVersion}`);
+
+          if (!localVersion) {
+            // If no local version, we assume we are fresh. Set current version.
+            localStorage.setItem('app_version', remoteVersion);
+          } else if (localVersion !== remoteVersion) {
+            // Mismatch - update available
+            setNewVersion(remoteVersion);
+            setUpdateAvailable(true);
+          }
+        }
+      } catch (e) {
+        console.warn('[VERSION] Check failed:', e);
+      }
+    };
+
+    // Check on mount
+    checkVersion();
+
+    // Check when returning to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkVersion();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  const handleUpdate = () => {
+    if (newVersion) {
+      localStorage.setItem('app_version', newVersion);
+      window.location.reload();
+    }
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.matchMedia('(max-width: 3000px)').matches);
@@ -44,9 +98,88 @@ function App() {
   const deckAGainRef = useRef<GainNode | null>(null);
   const deckBGainRef = useRef<GainNode | null>(null);
 
+  // Initialize audio context
+  useEffect(() => {
+    // Only create audio context once
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+      masterGainRef.current = audioContextRef.current.createGain();
+      masterGainRef.current.gain.value = masterVolume / 100;
+      masterGainRef.current.connect(audioContextRef.current.destination);
+
+      deckAGainRef.current = audioContextRef.current.createGain();
+      deckAGainRef.current.connect(masterGainRef.current);
+
+      deckBGainRef.current = audioContextRef.current.createGain();
+      deckBGainRef.current.connect(masterGainRef.current);
+    }
+
+    return () => {
+      // Don't close context on every render, strictly speaking only on unmount
+      // audioContextRef.current?.close();
+    };
+  }, []);
+
+  // We need to ensure audioContextRef is initialized for useDeck but since we use ref it might be null initially 
+  // However, useDeck likely uses it in effects. 
+  // IMPORTANT: The original code passed audioContextRef.current! which implies it expects it to be there.
+  // But refs are mutable and not reactive. 
+  // For the sake of this refactor to move hooks up, let's keep the initialization logic but move the hook calls up.
+  // The logic in original code regarding audioContext initialization was inside a useEffect on [] dependency.
+  // This means on first render audioContextRef.current is null.
+  // useDeck likely needs to handle null audioContext or we need to render deeper.
+  // Assuming the original code worked, useDeck might only use it in effects or callbacks.
+
+  const { state: deckAState, controls: deckA } = useDeck({
+    audioContext: audioContextRef.current!, // This was unsafe in original too if checked immediately
+    destination: deckAGainRef.current!,
+    deckId: 'A'
+  });
+
+  const { state: deckBState, controls: deckB } = useDeck({
+    audioContext: audioContextRef.current!,
+    destination: deckBGainRef.current!,
+    deckId: 'B'
+  });
+
+  // Screen Wake Lock
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    const isPlaying = deckAState.isPlaying || deckBState.isPlaying;
+
+    const requestWakeLock = async () => {
+      if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          console.warn('Wake Lock request failed:', err);
+        }
+      }
+    };
+
+    if (isPlaying) {
+      requestWakeLock();
+    }
+
+    return () => {
+      if (wakeLock) {
+        wakeLock.release().catch(console.warn);
+      }
+    };
+  }, [deckAState.isPlaying, deckBState.isPlaying]);
+
+  // Update crossfader
+  useEffect(() => {
+    if (deckAGainRef.current && deckBGainRef.current) {
+      const deckAVolume = 1 - (crossfader / 100);
+      const deckBVolume = crossfader / 100;
+
+      deckAGainRef.current.gain.value = deckAVolume;
+      deckBGainRef.current.gain.value = deckBVolume;
+    }
+  }, [crossfader]);
+
   const downloadingTracksRef = useRef<Set<string>>(new Set());
-
-
 
   // Load tracks from DB
   useEffect(() => {
@@ -60,49 +193,6 @@ function App() {
     };
     loadTracks();
   }, []);
-
-  // Initialize audio context
-  useEffect(() => {
-    audioContextRef.current = new AudioContext();
-    masterGainRef.current = audioContextRef.current.createGain();
-    masterGainRef.current.gain.value = masterVolume / 100;
-    masterGainRef.current.connect(audioContextRef.current.destination);
-
-    deckAGainRef.current = audioContextRef.current.createGain();
-    deckAGainRef.current.connect(masterGainRef.current);
-
-    deckBGainRef.current = audioContextRef.current.createGain();
-    deckBGainRef.current.connect(masterGainRef.current);
-
-    // setIsReady(true);
-
-    return () => {
-      audioContextRef.current?.close();
-    };
-  }, []);
-
-  const { state: deckAState, controls: deckA } = useDeck({
-    audioContext: audioContextRef.current!,
-    destination: deckAGainRef.current!,
-    deckId: 'A'
-  });
-
-  const { state: deckBState, controls: deckB } = useDeck({
-    audioContext: audioContextRef.current!,
-    destination: deckBGainRef.current!,
-    deckId: 'B'
-  });
-
-  // Update crossfader
-  useEffect(() => {
-    if (deckAGainRef.current && deckBGainRef.current) {
-      const deckAVolume = 1 - (crossfader / 100);
-      const deckBVolume = crossfader / 100;
-
-      deckAGainRef.current.gain.value = deckAVolume;
-      deckBGainRef.current.gain.value = deckBVolume;
-    }
-  }, [crossfader]);
 
   // Update master volume
   useEffect(() => {
@@ -332,6 +422,51 @@ function App() {
 
   return (
     <div className="app">
+      {/* UPDATE MODAL */}
+      {updateAvailable && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(5px)'
+        }}>
+          <div style={{
+            background: '#1a1a1a',
+            padding: '2rem',
+            borderRadius: '12px',
+            border: '1px solid #ff0080',
+            textAlign: 'center',
+            boxShadow: '0 0 30px rgba(255, 0, 128, 0.4)',
+            maxWidth: '90%'
+          }}>
+            <h2 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.5rem' }}>New Version Available</h2>
+            <p style={{ color: '#aaa', marginBottom: '1.5rem' }}>A new version of the app is available.</p>
+            <div style={{ background: '#222', padding: '0.5rem', borderRadius: '4px', marginBottom: '1.5rem', fontFamily: 'monospace', color: '#00d4ff' }}>
+              v.{newVersion?.substring(0, 8)}...
+            </div>
+            <button
+              onClick={handleUpdate}
+              style={{
+                background: 'linear-gradient(135deg, #ff0080 0%, #ff4040 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '24px',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(255, 0, 128, 0.4)'
+              }}
+            >
+              Update Now
+            </button>
+          </div>
+        </div>
+      )}
       {!isMobile ? (
         <header className="app-header">
           <div className="app-logo">

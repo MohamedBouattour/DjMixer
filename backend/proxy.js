@@ -1,3 +1,15 @@
+const fs = require('fs');
+const dotenv = require('dotenv');
+
+// Check for secrets in VPS mount path (e.g. Render)
+const secretPath = '/etc/secrets/.env';
+if (fs.existsSync(secretPath)) {
+    console.log('[CONFIG] Loading secrets from /etc/secrets/.env');
+    dotenv.config({ path: secretPath });
+} else {
+    // Fallback to local .env
+    dotenv.config();
+}
 const express = require('express');
 const cors = require('cors');
 const { Readable } = require('stream');
@@ -9,8 +21,8 @@ const youtubedl = require('youtube-dl-exec');
 const app = express();
 const PORT = process.env.PORT || 3002;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const RAPID_API_KEY = "2181748c80mshe104e8cf0109d6ep1f23b5jsnca02a0477b99";
-const RAPID_API_HOST = "youtube-mp36.p.rapidapi.com";
+const RAPID_API_KEY = process.env.RAPID_API_KEY;
+const RAPID_API_HOST = process.env.RAPID_API_HOST;
 
 app.use(cors());
 app.use(express.json());
@@ -289,6 +301,32 @@ app.get('/stream', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).json({ error: 'Stream failed' });
         }
+    }
+});
+
+// Version check endpoint for PWA updates
+app.get('/version', (req, res) => {
+    try {
+        if (!staticDir) return res.status(503).json({ error: 'Static dir not loaded' });
+
+        const assetsDir = path.join(staticDir, 'assets');
+        if (!fs.existsSync(assetsDir)) return res.json({ version: 'dev' });
+
+        const files = fs.readdirSync(assetsDir);
+        // Find index-*.js
+        const indexJs = files.find(f => f.startsWith('index-') && f.endsWith('.js'));
+
+        if (indexJs) {
+            // Extract hash part "index-HASH.js" -> "HASH"
+            // Start after "index-" (length 6) and remove ".js" (length 3)
+            const version = indexJs.substring(6, indexJs.length - 3);
+            res.json({ version: version, filename: indexJs });
+        } else {
+            res.json({ version: 'unknown', filename: null });
+        }
+    } catch (error) {
+        console.error('[VERSION] Error checking version:', error);
+        res.status(500).json({ error: 'Version check failed' });
     }
 });
 

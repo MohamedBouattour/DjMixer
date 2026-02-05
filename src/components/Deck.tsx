@@ -184,6 +184,11 @@ export const Deck: React.FC<DeckProps> = ({
                         />
                     </div>
                 )}
+                <div className="time-display bottom-right" style={deckId === 'B' ? { right: '60px' } : undefined}>
+                    <span className="current-time">{formatTime(currentTime)} <span className="text-xs opacity-50">({formatTotalSeconds(currentTime)})</span></span>
+                    <span className="separator">/</span>
+                    <span className="total-time">{formatTime(track?.duration || 0)}</span>
+                </div>
             </div>
 
             <div className="deck-controls">
@@ -296,11 +301,6 @@ export const Deck: React.FC<DeckProps> = ({
                         </div>
                     </div>
                 </div>
-            </div>
-            <div className="time-display bottom-right">
-                <span className="current-time">{formatTime(currentTime)} <span className="text-xs opacity-50">({formatTotalSeconds(currentTime)})</span></span>
-                <span className="separator">/</span>
-                <span className="total-time">{formatTime(track?.duration || 0)}</span>
             </div>
         </div >
     );

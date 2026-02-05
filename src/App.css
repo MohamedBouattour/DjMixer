@@ -249,6 +249,11 @@
     margin: 0;
   }
 
+  /* Hide settings button on phone (requested by user) */
+  .settings-floating-btn[title="Open Settings"] {
+    display: none !important;
+  }
+
   .app-main {
     padding: 2px;
     gap: 2px;
