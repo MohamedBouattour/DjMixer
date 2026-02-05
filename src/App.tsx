@@ -824,8 +824,7 @@ function App() {
             onPause={deckA.pause}
             onSeek={deckA.seek}
             onPitchChange={deckA.setPitch}
-            onScratch={deckA.scrub}
-            onReleaseScratch={deckA.releaseScratch}
+            // onScratch and onReleaseScratch removed as they are not supported in old useDeck
             onToggleEffect={deckA.toggleEffect}
             onCue={deckA.handleCue}
             onDeleteCue={deckA.deleteCue}
@@ -885,8 +884,7 @@ function App() {
             onPause={deckB.pause}
             onSeek={deckB.seek}
             onPitchChange={deckB.setPitch}
-            onScratch={deckB.scrub}
-            onReleaseScratch={deckB.releaseScratch}
+            // onScratch and onReleaseScratch removed as they are not supported in old useDeck
             onToggleEffect={deckB.toggleEffect}
             onCue={deckB.handleCue}
             onDeleteCue={deckB.deleteCue}
