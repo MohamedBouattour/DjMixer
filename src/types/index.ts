@@ -25,7 +25,7 @@ export interface DeckState {
         end: number;
         active: boolean;
     } | null;
-    cuePoints: number[];
+    cuePoints: (number | undefined)[];
     activeEffects: {
         reverb: boolean;
         delay: boolean;

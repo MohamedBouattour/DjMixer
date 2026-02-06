@@ -120,18 +120,8 @@ function App() {
     };
   }, []);
 
-  // We need to ensure audioContextRef is initialized for useDeck but since we use ref it might be null initially 
-  // However, useDeck likely uses it in effects. 
-  // IMPORTANT: The original code passed audioContextRef.current! which implies it expects it to be there.
-  // But refs are mutable and not reactive. 
-  // For the sake of this refactor to move hooks up, let's keep the initialization logic but move the hook calls up.
-  // The logic in original code regarding audioContext initialization was inside a useEffect on [] dependency.
-  // This means on first render audioContextRef.current is null.
-  // useDeck likely needs to handle null audioContext or we need to render deeper.
-  // Assuming the original code worked, useDeck might only use it in effects or callbacks.
-
   const { state: deckAState, controls: deckA } = useDeck({
-    audioContext: audioContextRef.current!, // This was unsafe in original too if checked immediately
+    audioContext: audioContextRef.current!,
     destination: deckAGainRef.current!,
     deckId: 'A'
   });
@@ -319,7 +309,6 @@ function App() {
       deckB.loadTrack(track);
     }
   };
-
 
 
   const handleImportTrack = async (track: Track, deckId: 'A' | 'B') => {
@@ -555,6 +544,8 @@ function App() {
             onPause={deckA.pause}
             onSeek={deckA.seek}
             onPitchChange={deckA.setPitch}
+            onScratch={deckA.scrub}
+            onReleaseScratch={deckA.releaseScratch}
 
             onToggleEffect={deckA.toggleEffect}
             onCue={deckA.handleCue}
@@ -595,6 +586,8 @@ function App() {
             onPause={deckB.pause}
             onSeek={deckB.seek}
             onPitchChange={deckB.setPitch}
+            onScratch={deckB.scrub}
+            onReleaseScratch={deckB.releaseScratch}
 
             onToggleEffect={deckB.toggleEffect}
             onCue={deckB.handleCue}

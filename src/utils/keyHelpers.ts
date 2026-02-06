@@ -3,7 +3,7 @@ export const getKeyLabel = (code: string | undefined | null, layout: 'qwerty' | 
     if (!code) return '';
 
     // Remove prefixes for base label
-    let label = code.replace('Key', '').replace('Digit', '').replace('Arrow', '');
+    const label = code.replace('Key', '').replace('Digit', '').replace('Arrow', '');
 
     if (layout === 'azerty') {
         const azertyMap: Record<string, string> = {

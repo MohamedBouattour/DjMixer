@@ -6,6 +6,8 @@ interface WaveformProps {
     currentTime: number;
     duration?: number;
     onSeek: (time: number) => void;
+    onScratch?: (velocity: number) => void;
+    onReleaseScratch?: () => void;
     isPlaying: boolean;
     color: string;
 }
@@ -15,6 +17,8 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     currentTime,
     duration = 300,
     onSeek,
+    onScratch,
+    onReleaseScratch,
     isPlaying,
     color
 }) => {
@@ -25,6 +29,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     const animationRef = useRef<number | null>(null);
     const isDraggingRef = useRef(false);
     const lastAngleRef = useRef(0);
+    const lastDragTimeRef = useRef(0);
 
     // Animate the disc rotation
     useEffect(() => {
@@ -33,10 +38,14 @@ const WaveformComponent: React.FC<WaveformProps> = ({
                 const now = performance.now();
                 const deltaTime = now - lastTimeRef.current;
                 // Speed: approximately 33.33 RPM (like a vinyl record)
-                const rotationSpeed = (33.33 / 60) * 360; // degrees per second
+                // 33.33 revolutions per minute = ~0.555 revolutions per second = ~200 degrees per second
+                const rotationSpeed = (33.33 / 60) * 360;
                 rotationRef.current += (rotationSpeed * deltaTime) / 1000;
                 discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
                 lastTimeRef.current = now;
+            } else if (!isPlaying && discRef.current && !isDraggingRef.current) {
+                // Keep time updated even if paused
+                lastTimeRef.current = performance.now();
             }
             animationRef.current = requestAnimationFrame(animate);
         };
@@ -70,10 +79,22 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         e.currentTarget.setPointerCapture(e.pointerId);
 
         lastAngleRef.current = getAngleFromEvent(e.clientX, e.clientY);
-    }, [audioUrl, getAngleFromEvent]);
+        lastDragTimeRef.current = performance.now();
+
+        // Start scratch mode (hold)
+        if (onScratch) {
+            onScratch(0);
+        }
+    }, [audioUrl, getAngleFromEvent, onScratch]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (!isDraggingRef.current || !audioUrl) return;
+
+        const now = performance.now();
+        const dt = now - lastDragTimeRef.current;
+
+        // Prevent division by zero or extremely small dt
+        if (dt < 1) return;
 
         const currentAngle = getAngleFromEvent(e.clientX, e.clientY);
         let angleDiff = currentAngle - lastAngleRef.current;
@@ -82,30 +103,48 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
         if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
 
-        // Convert angle change to time change
-        // Full rotation (2*PI) = 10 seconds of seeking
-        const timeChange = (angleDiff / (2 * Math.PI)) * 10;
-        const newTime = Math.max(0, Math.min(duration, currentTime + timeChange));
-
-        onSeek(newTime);
-        lastAngleRef.current = currentAngle;
-
-        // Update disc rotation visually while dragging
+        // 1. Visual Update
         if (discRef.current) {
             rotationRef.current += (angleDiff * 180) / Math.PI;
             discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
         }
-    }, [audioUrl, currentTime, duration, getAngleFromEvent, onSeek]);
+
+        // 2. Audio Update
+        if (onScratch) {
+            // Calculate rotational velocity in "Playback Rates"
+            // Standard speed = 33.33 RPM = 3.49 rad/s
+            const standardSpeedRadS = (33.33 * 2 * Math.PI) / 60;
+            const currentSpeedRadS = angleDiff / (dt / 1000);
+
+            const playbackRate = currentSpeedRadS / standardSpeedRadS;
+
+            onScratch(playbackRate);
+        } else {
+            // Fallback to Seek
+            // Logic used before: (angleDiff / (2 * Math.PI)) * 10;
+            const timeChange = (angleDiff / (2 * Math.PI)) * 10;
+            const newTime = Math.max(0, Math.min(duration, currentTime + timeChange));
+            onSeek(newTime);
+        }
+
+        lastAngleRef.current = currentAngle;
+        lastDragTimeRef.current = now;
+    }, [audioUrl, currentTime, duration, getAngleFromEvent, onSeek, onScratch]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         if (!isDraggingRef.current) return;
         isDraggingRef.current = false;
+
         try {
             e.currentTarget.releasePointerCapture(e.pointerId);
         } catch {
             // Pointer capture may already be released
         }
-    }, []);
+
+        if (onReleaseScratch) {
+            onReleaseScratch();
+        }
+    }, [onReleaseScratch]);
 
     // Calculate progress arc
     const progress = duration > 0 ? (currentTime / duration) * 360 : 0;

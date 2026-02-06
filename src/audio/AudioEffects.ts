@@ -29,6 +29,10 @@ export class AudioEffects {
     private dryGain: GainNode;
     private wetGain: GainNode;
 
+    public get input(): GainNode {
+        return this.inputNode;
+    }
+
     constructor(audioContext: AudioContext) {
         this.audioContext = audioContext;
 

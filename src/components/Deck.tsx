@@ -19,6 +19,11 @@ interface DeckProps {
     onDeleteCue: (index: number) => void;
     onLoopSet: (start: number, end: number) => void;
     onLoopClear: () => void;
+
+    // Scratching
+    onScratch?: (velocity: number) => void;
+    onReleaseScratch?: () => void;
+
     color: string;
     shortcuts?: {
         play?: string;
@@ -40,6 +45,8 @@ export const Deck: React.FC<DeckProps> = ({
     onDeleteCue,
     onLoopSet,
     onLoopClear,
+    onScratch,
+    onReleaseScratch,
 
     color,
     shortcuts
@@ -117,9 +124,6 @@ export const Deck: React.FC<DeckProps> = ({
                 )}
             </div>
 
-
-
-
             {/* Horizontal Waveform Bar */}
             {track && (
                 <WaveformBar
@@ -160,6 +164,8 @@ export const Deck: React.FC<DeckProps> = ({
                         currentTime={currentTime}
                         duration={track.duration}
                         onSeek={onSeek}
+                        onScratch={onScratch}
+                        onReleaseScratch={onReleaseScratch}
                         isPlaying={isPlaying}
                         color={color}
                     />
