@@ -168,54 +168,6 @@ function App() {
     };
   }, [deckAState.isPlaying, deckBState.isPlaying]);
 
-  // Screen Orientation Lock for Mobile PWA
-  useEffect(() => {
-    const lockOrientation = async () => {
-      // Check if we're on a mobile device (narrow screen in portrait or short screen in landscape)
-      const isMobileDevice = window.matchMedia('(max-width: 932px), (max-height: 450px)').matches;
-
-      if (!isMobileDevice) return;
-
-      // Try to lock orientation using Screen Orientation API
-      if (screen.orientation && 'lock' in screen.orientation) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (screen.orientation as any).lock('landscape');
-          console.log('[ORIENTATION] Locked to landscape');
-        } catch (err) {
-          // Orientation lock failed - this is expected on iOS Safari and some browsers
-          // The lock only works in fullscreen mode on most browsers
-          console.log('[ORIENTATION] Lock not supported or not in fullscreen:', err);
-        }
-      }
-    };
-
-    // Attempt to lock on mount
-    lockOrientation();
-
-    // Also try when document becomes visible (e.g., after entering fullscreen)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        lockOrientation();
-      }
-    };
-
-    // Try when entering fullscreen
-    const handleFullscreenChange = () => {
-      if (document.fullscreenElement) {
-        lockOrientation();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
-
   // Update crossfader
   useEffect(() => {
     if (deckAGainRef.current && deckBGainRef.current) {
