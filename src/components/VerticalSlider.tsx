@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, memo } from 'react';
 import './VerticalSlider.css';
 
 interface VerticalSliderProps {
@@ -14,27 +14,28 @@ interface VerticalSliderProps {
     className?: string;
 }
 
-const VerticalSlider: React.FC<VerticalSliderProps> = ({
+const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
     value,
     min = 0,
     max = 100,
     onChange,
     label,
     showValue = true,
-    valueFormatter = (v) => `${Math.round(v)}%`,
+    valueFormatter = (v: number) => `${Math.round(v)}%`,
     color = '#00ff88',
     height = 120,
     className = '',
 }) => {
     const trackRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
+    const rectRef = useRef<DOMRect | null>(null);
 
     const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
     const calculateValue = (clientY: number) => {
-        if (!trackRef.current) return;
+        if (!rectRef.current) return;
 
-        const rect = trackRef.current.getBoundingClientRect();
+        const rect = rectRef.current;
         // Calculate height from bottom, since slider goes up
         const relativeY = rect.bottom - clientY;
         const clampedY = Math.max(0, Math.min(relativeY, rect.height));
@@ -45,11 +46,18 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
     };
 
     const handlePointerDown = (e: React.PointerEvent) => {
+        if (!trackRef.current) return;
+
         e.preventDefault();
         e.stopPropagation();
+
+        // Cache the rect
+        rectRef.current = trackRef.current.getBoundingClientRect();
         isDragging.current = true;
+
         e.currentTarget.setPointerCapture(e.pointerId);
         calculateValue(e.clientY);
+
         // Prevent text selection while dragging
         document.body.style.userSelect = 'none';
     };
@@ -63,6 +71,8 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
     const handlePointerUp = (e: React.PointerEvent) => {
         if (!isDragging.current) return;
         isDragging.current = false;
+        rectRef.current = null;
+
         try {
             e.currentTarget.releasePointerCapture(e.pointerId);
         } catch {
@@ -73,6 +83,7 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
 
     const handlePointerCancel = (e: React.PointerEvent) => {
         isDragging.current = false;
+        rectRef.current = null;
         try {
             e.currentTarget.releasePointerCapture(e.pointerId);
         } catch {
@@ -124,6 +135,6 @@ const VerticalSlider: React.FC<VerticalSliderProps> = ({
             )}
         </div>
     );
-};
+});
 
 export default VerticalSlider;

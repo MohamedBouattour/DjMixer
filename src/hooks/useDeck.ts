@@ -105,6 +105,13 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         // Create new audio element
         const audio = new Audio(track.url);
         audio.crossOrigin = 'anonymous';
+
+        // Critical for mobile performance: Disable pitch preservation to avoid expensive time-stretching
+        // This also gives a more realistic "turntable" feel where pitch changes affect key
+        (audio as any).preservesPitch = false;
+        (audio as any).mozPreservesPitch = false;
+        (audio as any).webkitPreservesPitch = false;
+
         audioElementRef.current = audio;
 
         // Listen for track end

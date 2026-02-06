@@ -484,10 +484,8 @@
    User requested to disable the orientation warning.
    Uncomment the below block to re-enable it for portrait mobile/tablet devices.
 */
-/*
 @media screen and (orientation: portrait) and (max-width: 1024px) {
   .orientation-warning {
     display: flex;
   }
 }
-*/

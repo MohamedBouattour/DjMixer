@@ -10,7 +10,7 @@ interface WaveformProps {
     color: string;
 }
 
-export const Waveform: React.FC<WaveformProps> = ({
+const WaveformComponent: React.FC<WaveformProps> = ({
     audioUrl,
     currentTime,
     duration = 300,
@@ -180,3 +180,5 @@ export const Waveform: React.FC<WaveformProps> = ({
         </div>
     );
 };
+
+export const Waveform = React.memo(WaveformComponent);

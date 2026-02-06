@@ -1,16 +1,17 @@
 {
-    "name": "DJ Controller",
-    "short_name": "DJ Mix",
+    "name": "DJ Pro Master",
+    "short_name": "DJ Pro Master",
     "start_url": ".",
     "display": "standalone",
+    "orientation": "landscape",
     "background_color": "#0a0a0a",
     "theme_color": "#0a0a0a",
     "description": "Professional DJ controller web app",
     "icons": [
         {
-            "src": "dj-icon.svg",
+            "src": "app-icon.jpg",
             "sizes": "any",
-            "type": "image/svg+xml",
+            "type": "image/jpeg",
             "purpose": "any maskable"
         }
     ]

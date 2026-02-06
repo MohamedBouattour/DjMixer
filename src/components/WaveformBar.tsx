@@ -10,7 +10,7 @@ interface WaveformBarProps {
     height?: number;
 }
 
-export const WaveformBar: React.FC<WaveformBarProps> = ({
+const WaveformBarComponent: React.FC<WaveformBarProps> = ({
     audioUrl,
     currentTime,
     duration,
@@ -101,3 +101,5 @@ export const WaveformBar: React.FC<WaveformBarProps> = ({
         />
     );
 };
+
+export const WaveformBar = React.memo(WaveformBarComponent);
