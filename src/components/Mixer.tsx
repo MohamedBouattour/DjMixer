@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import type { DeckState } from '../types';
-import HorizontalSlider from './HorizontalSlider';
 import VerticalSlider from './VerticalSlider';
 import './Mixer.css';
 
 interface MixerProps {
     crossfaderValue: number;
     onCrossfaderChange: (value: number) => void;
-    masterVolume: number;
-    onMasterVolumeChange: (value: number) => void;
     deckAState: DeckState;
     deckBState: DeckState;
     onVolumeChange: (deck: 'A' | 'B', value: number) => void;
@@ -23,13 +20,10 @@ interface MixerProps {
 export const Mixer: React.FC<MixerProps> = ({
     crossfaderValue,
     onCrossfaderChange,
-    masterVolume,
-    onMasterVolumeChange,
     deckAState,
     deckBState,
     onVolumeChange,
-    onEQChange,
-    shortcuts
+    onEQChange
 }) => {
     const [isEQPopupOpen, setIsEQPopupOpen] = useState(false);
 
@@ -58,107 +52,104 @@ export const Mixer: React.FC<MixerProps> = ({
         );
     };
 
-    const renderDeckControls = (deckId: 'A' | 'B', state: DeckState) => {
-        const { volume, eq, isPlaying } = state;
-        const color = deckId === 'A' ? '#ff0080' : '#00d4ff';
-
-        return (
-            <div className={`mixer-deck-controls deck-${deckId.toLowerCase()}`} style={{ '--deck-color': color } as React.CSSProperties}>
-                <div className="volume-section">
-                    <VerticalSlider
-                        value={volume}
-                        min={0}
-                        max={150}
-                        onChange={(val) => onVolumeChange(deckId, val)}
-                        label="VOL"
-                        showValue={true}
-                        valueFormatter={(v) => `${Math.round(v)}%`}
-                        color={color}
-                        className="mixer-volume-slider"
-                    />
-
-                    <div className="vu-meter">
-                        {Array.from({ length: 12 }).map((_, i) => {
-                            // Simulate VU meter peaks when playing
-                            const isActive = isPlaying && volume > 10 && (11 - i) < (volume / 150) * 12 * (0.8 + Math.random() * 0.4);
-                            const isPeak = (11 - i) >= 10;
-                            const isHigh = (11 - i) >= 8;
-
-                            return (
-                                <div
-                                    key={i}
-                                    className={`vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`}
-                                />
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* EQ Controls - Hidden on tablet, show button instead */}
-                <div className="eq-controls">
-                    {(['high', 'mid', 'low'] as const).map((band) => (
-                        <VerticalSlider
-                            key={band}
-                            value={eq[band]}
-                            min={0}
-                            max={100}
-                            onChange={(val) => onEQChange(deckId, band, val)}
-                            label={band.toUpperCase()}
-                            showValue={false}
-                            color={color}
-                            height={100}
-                            className="eq-slider-vertical"
-                        />
-                    ))}
-                </div>
-
-            </div>
-        );
+    // Calculate VU meter levels based on volume and playing state
+    const getVULevel = (isPlaying: boolean, volume: number) => {
+        if (!isPlaying || volume < 10) return 0;
+        return Math.min(12, Math.floor((volume / 150) * 12 * (0.7 + Math.random() * 0.5)));
     };
+
+    const vuLevelA = getVULevel(deckAState.isPlaying, deckAState.volume);
+    const vuLevelB = getVULevel(deckBState.isPlaying, deckBState.volume);
 
     return (
         <>
             <div className="mixer glass-panel">
-                <h3 className="mixer-title">Mixer</h3>
+                {/* Top row: VOL labels with settings gear in center and library on right */}
+                <div className="mixer-header-row">
+                    <span className="vol-label deck-a">VOL</span>
+                    <span className="vol-label deck-b">VOL</span>
+                </div>
 
-                <div className="mixer-layout">
-                    {renderDeckControls('A', deckAState)}
-
-                    <div className="mixer-center compact-center" style={{
-                        flex: '0 0 auto',
-                        width: '60px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'flex-end',
-                        paddingBottom: '10px'
-                    }}>
-                        {/* EQ / Mixer Settings Toggle Button */}
-                        <button
-                            className="eq-toggle-btn main-eq-btn"
-                            onClick={() => setIsEQPopupOpen(true)}
-                            title="Open Mixer & EQ"
-                            style={{
-                                width: '100%',
-                                height: 'auto',
-                                aspectRatio: '1/1',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                fontSize: '0.7rem',
-                                letterSpacing: '1px',
-                                padding: '8px',
-                                borderRadius: '8px'
-                            }}
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                                <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
-                            </svg>
-                            <span style={{ marginTop: '4px', fontSize: '0.6rem' }}>MIX</span>
-                        </button>
+                {/* Main faders section - Side by side volume sliders with VU meters */}
+                <div className="mixer-faders-section">
+                    {/* Deck A: Slider + VU */}
+                    <div className="fader-column">
+                        <div className="volume-slider-container">
+                            <VerticalSlider
+                                value={deckAState.volume}
+                                min={0}
+                                max={150}
+                                onChange={(val) => onVolumeChange('A', val)}
+                                label=""
+                                showValue={false}
+                                color="#ff0080"
+                                className="volume-slider-vertical"
+                            />
+                        </div>
+                        <div className="vu-meter">
+                            {Array.from({ length: 12 }).map((_, i) => {
+                                const segmentIndex = i;
+                                const isActive = segmentIndex < vuLevelA;
+                                const isPeak = segmentIndex >= 10;
+                                const isHigh = segmentIndex >= 8;
+                                return (
+                                    <div key={i} className={`vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
+                                );
+                            })}
+                        </div>
                     </div>
 
-                    {renderDeckControls('B', deckBState)}
+                    {/* Center: MIX label and volume percentages */}
+                    <div className="mix-center">
+                        <span className="volume-percent deck-a-percent">{Math.round(deckAState.volume)}%</span>
+                        <button
+                            className="mix-label-btn"
+                            onClick={() => setIsEQPopupOpen(true)}
+                            title="Open Mixer & EQ Settings"
+                        >
+                            MIX
+                        </button>
+                        <span className="volume-percent deck-b-percent">{Math.round(deckBState.volume)}%</span>
+                    </div>
+
+                    {/* Deck B: VU + Slider */}
+                    <div className="fader-column">
+                        <div className="vu-meter">
+                            {Array.from({ length: 12 }).map((_, i) => {
+                                const segmentIndex = i;
+                                const isActive = segmentIndex < vuLevelB;
+                                const isPeak = segmentIndex >= 10;
+                                const isHigh = segmentIndex >= 8;
+                                return (
+                                    <div key={i} className={`vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
+                                );
+                            })}
+                        </div>
+                        <div className="volume-slider-container">
+                            <VerticalSlider
+                                value={deckBState.volume}
+                                min={0}
+                                max={150}
+                                onChange={(val) => onVolumeChange('B', val)}
+                                label=""
+                                showValue={false}
+                                color="#00d4ff"
+                                className="volume-slider-vertical"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Crossfader section */}
+                <div className="crossfader-section">
+                    <input
+                        type="range"
+                        className="crossfader"
+                        min="0"
+                        max="100"
+                        value={crossfaderValue}
+                        onChange={(e) => onCrossfaderChange(Number(e.target.value))}
+                    />
                 </div>
             </div>
 
@@ -181,67 +172,10 @@ export const Mixer: React.FC<MixerProps> = ({
                     </div>
 
                     <div className="popup-main-content">
-                        {/* Moved Master Volume */}
-                        <div className="popup-section master-section" style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>MASTER VOLUME</label>
-                            <div className="master-volume-section">
-                                <HorizontalSlider
-                                    value={masterVolume}
-                                    min={0}
-                                    max={100}
-                                    onChange={onMasterVolumeChange}
-                                    label="MASTER"
-                                    valueFormatter={(v) => `${Math.round(v)}%`}
-                                    color="var(--color-accent-green)"
-                                    height={24}
-                                    thumbWidth={36}
-                                    className="master-volume-slider-container"
-                                />
-                                <div className="volume-bars">
-                                    {Array.from({ length: 15 }, (_, i) => (
-                                        <div
-                                            key={i}
-                                            className={`volume-bar ${i < (masterVolume / 100) * 15 ? 'active' : ''
-                                                } ${i >= 12 ? 'red' : i >= 9 ? 'yellow' : 'green'}`}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
                         {/* EQ Grid */}
                         <div className="eq-popup-grid">
                             {renderEQControls('A', deckAState, '#ff0080')}
                             {renderEQControls('B', deckBState, '#00d4ff')}
-                        </div>
-
-                        {/* Moved Crossfader */}
-                        <div className="popup-section crossfader-popup-section" style={{ marginTop: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>CROSSFADER</label>
-                            <div className="crossfader-section">
-                                <HorizontalSlider
-                                    value={crossfaderValue}
-                                    min={0}
-                                    max={100}
-                                    onChange={onCrossfaderChange}
-                                    label=""
-                                    showValue={false}
-                                    color="#ffffff"
-                                    height={32}
-                                    thumbWidth={60}
-                                    showCenterLine={true}
-                                    className="crossfader-slider-container"
-                                />
-
-                                <div className="crossfader-labels">
-                                    <span className="deck-a-label">
-                                        A {shortcuts?.crossfader && <span className="shortcut-badge tiny">{shortcuts.crossfader.left}</span>}
-                                    </span>
-                                    <span className="deck-b-label">
-                                        B {shortcuts?.crossfader && <span className="shortcut-badge tiny">{shortcuts.crossfader.right}</span>}
-                                    </span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

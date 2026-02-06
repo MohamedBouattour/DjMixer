@@ -30,20 +30,22 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     const isDraggingRef = useRef(false);
     const lastAngleRef = useRef(0);
     const lastDragTimeRef = useRef(0);
+    const velocityRef = useRef(0);
+    const inertiaFrameRef = useRef<number | null>(null);
 
     // Animate the disc rotation
     useEffect(() => {
         const animate = () => {
-            if (isPlaying && discRef.current && !isDraggingRef.current) {
+            // Only auto-rotate if playing AND NOT dragging AND NOT in inertia
+            if (isPlaying && discRef.current && !isDraggingRef.current && !inertiaFrameRef.current) {
                 const now = performance.now();
                 const deltaTime = now - lastTimeRef.current;
-                // Speed: approximately 33.33 RPM (like a vinyl record)
-                // 33.33 revolutions per minute = ~0.555 revolutions per second = ~200 degrees per second
+                // Standard vinyl: 33.33 RPM = ~200 degrees per second
                 const rotationSpeed = (33.33 / 60) * 360;
                 rotationRef.current += (rotationSpeed * deltaTime) / 1000;
                 discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
                 lastTimeRef.current = now;
-            } else if (!isPlaying && discRef.current && !isDraggingRef.current) {
+            } else if (!isPlaying && discRef.current && !isDraggingRef.current && !inertiaFrameRef.current) {
                 // Keep time updated even if paused
                 lastTimeRef.current = performance.now();
             }
@@ -56,6 +58,9 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         return () => {
             if (animationRef.current) {
                 cancelAnimationFrame(animationRef.current);
+            }
+            if (inertiaFrameRef.current) {
+                cancelAnimationFrame(inertiaFrameRef.current);
             }
         };
     }, [isPlaying]);
@@ -78,10 +83,19 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         isDraggingRef.current = true;
         e.currentTarget.setPointerCapture(e.pointerId);
 
+        // Stop any running inertia
+        if (inertiaFrameRef.current) {
+            cancelAnimationFrame(inertiaFrameRef.current);
+            inertiaFrameRef.current = null;
+        }
+
+        // Initialize velocity to 0 (stopped)
+        velocityRef.current = 0;
+
         lastAngleRef.current = getAngleFromEvent(e.clientX, e.clientY);
         lastDragTimeRef.current = performance.now();
 
-        // Start scratch mode (hold)
+        // Start scratch mode with velocity 0 (hand is holding the vinyl still)
         if (onScratch) {
             onScratch(0);
         }
@@ -93,7 +107,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         const now = performance.now();
         const dt = now - lastDragTimeRef.current;
 
-        // Prevent division by zero or extremely small dt
+        // Prevent division by zero
         if (dt < 1) return;
 
         const currentAngle = getAngleFromEvent(e.clientX, e.clientY);
@@ -103,25 +117,23 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
         if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
 
-        // 1. Visual Update
+        // Visual Update - rotate the disc
         if (discRef.current) {
             rotationRef.current += (angleDiff * 180) / Math.PI;
             discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
         }
 
-        // 2. Audio Update
+        // Calculate velocity in "Playback Rate" units
+        // Standard vinyl: 33.33 RPM = 3.49 rad/s
         if (onScratch) {
-            // Calculate rotational velocity in "Playback Rates"
-            // Standard speed = 33.33 RPM = 3.49 rad/s
             const standardSpeedRadS = (33.33 * 2 * Math.PI) / 60;
             const currentSpeedRadS = angleDiff / (dt / 1000);
-
             const playbackRate = currentSpeedRadS / standardSpeedRadS;
 
+            velocityRef.current = playbackRate;
             onScratch(playbackRate);
         } else {
-            // Fallback to Seek
-            // Logic used before: (angleDiff / (2 * Math.PI)) * 10;
+            // Fallback to seek (legacy behavior)
             const timeChange = (angleDiff / (2 * Math.PI)) * 10;
             const newTime = Math.max(0, Math.min(duration, currentTime + timeChange));
             onSeek(newTime);
@@ -141,17 +153,67 @@ const WaveformComponent: React.FC<WaveformProps> = ({
             // Pointer capture may already be released
         }
 
-        if (onReleaseScratch) {
+        // Inertia + Friction Decay
+        if (onScratch && onReleaseScratch) {
+            const friction = 0.88; // Lower = heavier vinyl feel
+            const stopThreshold = 0.03;
+
+            // Target velocity: 1.0 (Normal Speed) if playing, 0 if stopped
+            const targetVelocity = isPlaying ? 1.0 : 0.0;
+
+            const decay = () => {
+                // Stop if user started dragging again
+                if (isDraggingRef.current) {
+                    inertiaFrameRef.current = null;
+                    return;
+                }
+
+                // Smoothly transition velocity towards target
+                // velocity = velocity * friction + target * (1 - friction)
+                velocityRef.current = velocityRef.current * friction + targetVelocity * (1 - friction);
+
+                // Visual update during inertia
+                if (discRef.current) {
+                    // 1.0 rate ≈ 33.33 RPM ≈ 200 deg/s ≈ 3.3 deg/frame at 60fps
+                    const degPerFrame = velocityRef.current * 3.3;
+                    rotationRef.current += degPerFrame;
+                    discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
+                }
+
+                // Send velocity to audio engine
+                onScratch(velocityRef.current);
+
+                // Continue until velocity is close to target
+                if (Math.abs(velocityRef.current - targetVelocity) > stopThreshold) {
+                    inertiaFrameRef.current = requestAnimationFrame(decay);
+                } else {
+                    // Fully stopped or reached target speed
+                    inertiaFrameRef.current = null;
+                    // If stopped, force 0
+                    if (!isPlaying) velocityRef.current = 0;
+
+                    onReleaseScratch();
+                }
+            };
+
+            // Run inertia if moving OR if we need to spin up (playing)
+            if (Math.abs(velocityRef.current) > stopThreshold || isPlaying) {
+                decay();
+            } else {
+                // No velocity and target is 0 -> release immediately
+                onReleaseScratch();
+            }
+        } else if (onReleaseScratch) {
             onReleaseScratch();
         }
-    }, [onReleaseScratch]);
+    }, [onScratch, onReleaseScratch]);
 
     // Calculate progress arc
     const progress = duration > 0 ? (currentTime / duration) * 360 : 0;
 
     return (
         <div
-            className={`vinyl-container ${isPlaying ? 'playing' : ''} ${isDraggingRef.current ? 'dragging' : ''}`}
+            className={`vinyl-container ${isPlaying ? 'playing' : ''}`}
             ref={containerRef}
             style={{ '--deck-color': color, touchAction: 'none' } as React.CSSProperties}
             onPointerDown={handlePointerDown}
@@ -204,8 +266,6 @@ const WaveformComponent: React.FC<WaveformProps> = ({
                     style={{
                         stroke: color,
                         strokeDasharray: `${(progress / 360) * 301.59} 301.59`,
-                        transform: 'rotate(-90deg)',
-                        transformOrigin: 'center'
                     }}
                 />
             </svg>

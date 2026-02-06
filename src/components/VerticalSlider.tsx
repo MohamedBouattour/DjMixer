@@ -114,7 +114,7 @@ const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
                     className="vertical-slider-fill"
                     style={{
                         height: `${percentage}%`,
-                        background: `linear-gradient(to top, ${color}, ${color}88)`
+                        background: `linear-gradient(to bottom, ${color}, ${color}88)`
                     }}
                 />
 

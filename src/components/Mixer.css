@@ -1,980 +1,716 @@
+/* =================================================
+   MIXER COMPONENT - Center Panel
+   Professional DJ Mixer Style - Matching Reference
+   ================================================= */
+
 .mixer {
-    padding: var(--spacing-lg);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
-    min-width: 500px;
+    align-items: center;
+    padding: 8px;
+    gap: 8px;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 50%, #0f0f0f 100%);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* =================================================
+   HEADER ROW - VOL labels with settings gear
+   ================================================= */
+
+.mixer-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+    flex-shrink: 0;
+}
+
+.vol-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #888;
+}
+
+.vol-label.deck-a {
+    color: #ff0080;
+}
+
+.vol-label.deck-b {
+    color: #00d4ff;
+}
+
+.mixer-settings-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mixer-settings-btn:hover {
+    background: #333;
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.mixer-settings-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* =================================================
+   FADERS SECTION - Main volume controls
+   Layout: [Slider A][VU A] [MIX] [VU B][Slider B]
+   ================================================= */
+
+.mixer-faders-section {
+    flex: 1;
+    display: flex;
     align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    min-height: 0;
+}
+
+.fader-column {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 4px;
+    flex: 1;
+}
+
+/* =================================================
+   VOLUME FADER TRACK - Wide Pro Style
+   ================================================= */
+
+.fader-track-container,
+.volume-slider-container {
+    flex: 1;
+    width: 36px;
+    min-width: 36px;
+    max-width: 40px;
+    background: linear-gradient(180deg,
+            #3a3a3a 0%,
+            #2a2a2a 10%,
+            #1a1a1a 50%,
+            #2a2a2a 90%,
+            #3a3a3a 100%);
+    border-radius: 6px;
+    position: relative;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6),
+        inset 0 0 20px rgba(0, 0, 0, 0.4),
+        0 0 1px rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     overflow: hidden;
 }
 
-.mixer-title {
-    font-size: 0.8rem;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    color: var(--color-text-primary);
-    margin: 0;
-    text-align: center;
-    opacity: 0.3;
-}
-
-.mixer-layout {
-    display: flex;
-    align-items: stretch;
-    gap: var(--spacing-xl);
-    justify-content: center;
-}
-
-.mixer-deck-controls {
-    display: flex;
-    gap: var(--spacing-lg);
-    align-items: flex-end;
-    padding: var(--spacing-md);
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-
-
-.mixer-center {
-    flex: 1;
+.volume-slider-vertical {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-lg);
     align-items: center;
-    padding-bottom: var(--spacing-md);
+    padding: 8px 0;
 }
+
+.volume-fader {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    background: transparent;
+    cursor: pointer;
+}
+
+.volume-fader::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 38px;
+    height: 20px;
+    background: linear-gradient(180deg,
+            #ffffff 0%,
+            #e8e8e8 30%,
+            #c0c0c0 50%,
+            #d0d0d0 70%,
+            #ffffff 100%);
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+        0 0 2px rgba(255, 255, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.volume-fader::-webkit-slider-runnable-track {
+    background: transparent;
+}
+
+/* Firefox */
+.volume-fader::-moz-range-thumb {
+    width: 38px;
+    height: 20px;
+    background: linear-gradient(180deg,
+            #ffffff 0%,
+            #e8e8e8 30%,
+            #c0c0c0 50%,
+            #d0d0d0 70%,
+            #ffffff 100%);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+        0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.volume-fader::-moz-range-track {
+    background: transparent;
+}
+
+/* =================================================
+   VU METER BARS - Enhanced LED Style
+   ================================================= */
+
+.vu-meter {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+    width: 18px;
+    min-width: 18px;
+    flex-shrink: 0;
+    padding: 4px 3px;
+    background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.vu-segment {
+    flex: 1;
+    min-height: 6px;
+    background: #1a1a1a;
+    border-radius: 2px;
+    transition: all 0.08s ease;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.vu-segment.active {
+    background: linear-gradient(90deg, #00cc66 0%, #00ff88 50%, #00cc66 100%);
+    box-shadow: 0 0 6px #00ff88, inset 0 0 2px rgba(255, 255, 255, 0.3);
+    border-color: transparent;
+}
+
+.vu-segment.active.high {
+    background: linear-gradient(90deg, #cc9900 0%, #ffcc00 50%, #cc9900 100%);
+    box-shadow: 0 0 6px #ffcc00, inset 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.vu-segment.active.peak {
+    background: linear-gradient(90deg, #cc3333 0%, #ff4444 50%, #cc3333 100%);
+    box-shadow: 0 0 8px #ff4444, inset 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+/* =================================================
+   MIX CENTER - Label and percentages
+   ================================================= */
+
+.mix-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 2px;
+    min-width: 40px;
+}
+
+.volume-percent {
+    font-size: 11px;
+    font-weight: 700;
+    color: #888;
+    white-space: nowrap;
+}
+
+.volume-percent.deck-a-percent {
+    color: #ff0080;
+}
+
+.volume-percent.deck-b-percent {
+    color: #00d4ff;
+}
+
+.mix-label-btn {
+    font-size: 17px;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, #ff0080 0%, #00d4ff 100%);
+    border: none;
+    padding: 12px 21px;
+    border-radius: 8px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(255, 0, 128, 0.3),
+        0 2px 8px rgba(0, 212, 255, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.mix-label-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(255, 0, 128, 0.5),
+        0 4px 12px rgba(0, 212, 255, 0.5);
+}
+
+.mix-label-btn:active {
+    transform: scale(0.98);
+}
+
+/* =================================================
+   CROSSFADER SECTION
+   ================================================= */
 
 .crossfader-section {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xs);
-}
-
-.crossfader-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    font-weight: 800;
-    padding: 0 var(--spacing-xs);
-}
-
-.deck-a-label {
-    color: #ff0080;
-}
-
-.deck-b-label {
-    color: #00d4ff;
-}
-
-.crossfader-indicator {
-    position: relative;
-    height: 4px;
-    background: var(--color-bg-primary);
-    border-radius: 2px;
-    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
-    margin: var(--spacing-xs) 0;
-}
-
-.crossfader-position {
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 30px;
-    height: 12px;
-    background: white;
-    border-radius: 2px;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    transition: left 0.05s ease-out;
-    border: 1px solid var(--color-border);
-}
-
-.master-volume-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    align-items: center;
-    width: 100%;
-}
-
-.volume-bars {
-    display: flex;
-    gap: 3px;
-    height: 40px;
-    align-items: flex-end;
-    padding: var(--spacing-xs);
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: var(--radius-md);
-    width: 100%;
-}
-
-.volume-bar {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 1px;
-    min-height: 2px;
-}
-
-.volume-bar.active.green {
-    background: var(--color-accent-green);
-    box-shadow: 0 0 8px var(--color-accent-green);
-}
-
-.volume-bar.active.yellow {
-    background: #ffcc00;
-    box-shadow: 0 0 8px #ffcc00;
-}
-
-.volume-bar.active.red {
-    background: #ff4d4d;
-    box-shadow: 0 0 8px #ff4d4d;
-}
-
-.volume-section {
-    display: flex;
-    gap: var(--spacing-sm);
-    align-items: flex-end;
-}
-
-.fader-track {
-    position: absolute;
-    width: 2px;
-    height: 90%;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 1px;
-    top: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-    pointer-events: none;
-}
-
-.fader-track.mini {
-    height: 80%;
-    top: 10%;
-}
-
-.vu-meter {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    height: 160px;
-    padding: 4px;
-    background: #111;
-    border-radius: 2px;
-    width: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.vu-segment {
-    flex: 1;
-    background: #222;
-    border-radius: 1px;
-    transition: all 0.1s ease;
-}
-
-.vu-segment.active {
-    background: var(--color-accent-green);
-    box-shadow: 0 0 5px var(--color-accent-green);
-}
-
-.vu-segment.active.high {
-    background: #ffcc00;
-    box-shadow: 0 0 5px #ffcc00;
-}
-
-.vu-segment.active.peak {
-    background: #ff4d4d;
-    box-shadow: 0 0 5px #ff4d4d;
-}
-
-/* Reusing Deck styles but adapted for Mixer */
-.volume-control {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-    align-items: center;
-    height: 160px;
-}
-
-.volume-slider-container {
-    position: relative;
-    width: 36px;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    background: #000;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    overflow: hidden;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
-}
-
-.volume-slider {
-    position: absolute;
-    width: 160px;
-    height: 36px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    background: transparent !important;
-    cursor: grab;
-    z-index: 5;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 36px;
-    height: 14px;
-    background: #eee;
-    background: linear-gradient(to bottom, #fff 0%, #ddd 50%, #bbb 100%);
-    border-radius: 2px;
-    cursor: pointer;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.5);
-    border: 1px solid #999;
-}
-
-.volume-level-indicator {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    pointer-events: none;
-}
-
-.volume-level-fill {
-    width: 100%;
-    opacity: 0.6;
-    transition: height 0.05s ease-out;
-}
-
-.eq-controls {
-    display: flex;
-    gap: var(--spacing-sm);
-}
-
-.eq-band {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.eq-slider-wrapper {
-    position: relative;
-    width: 24px;
-    height: 120px;
-    background: #000;
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    overflow: hidden;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-.eq-slider {
-    position: absolute;
-    width: 120px;
-    height: 24px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    background: transparent !important;
-    cursor: grab;
-    z-index: 5;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.eq-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 24px;
-    height: 10px;
-    background: linear-gradient(to bottom, #fff 0%, #ccc 100%);
-    border-radius: 2px;
-    cursor: pointer;
-    border: 1px solid #777;
-}
-
-.eq-level-indicator {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.3);
-    pointer-events: none;
-}
-
-.eq-level-fill {
-    width: 100%;
-    opacity: 0.4;
-    transition: height 0.05s ease-out;
-}
-
-.control-label {
-    font-size: 0.65rem;
-    font-weight: 900;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.volume-value {
-    color: var(--color-accent-green);
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
-}
-
-/* ============================================
-   TABLET MODE - MIXER COMPONENT OVERRIDES
-   ============================================ */
-
-@media screen and (max-width: 1200px) and (min-width: 768px) {
-    .mixer {
-        padding: 4px;
-        gap: 4px;
-        min-width: auto;
-        overflow: visible;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .mixer-title {
-        display: none;
-    }
-
-    .mixer-layout {
-        width: 100%;
-        flex-direction: row;
-        gap: 4px;
-        flex: 1;
-        align-items: stretch;
-    }
-
-    .mixer-deck-controls {
-        padding: 4px;
-        gap: 4px;
-        flex-direction: column !important;
-        align-items: center;
-        flex: 1;
-        border-radius: var(--radius-sm);
-        background: rgba(0, 0, 0, 0.2);
-        min-width: 40px;
-        /* Reduced from 50px */
-        max-width: 50px;
-        /* Cap the width */
-        border: none;
-    }
-
-    /* Make EQ toggle a full-width header bar inside center column */
-    .eq-toggle-btn.main-eq-btn {
-        display: flex !important;
-        width: 100%;
-        height: 28px;
-        min-height: 28px;
-        padding: 0;
-        font-size: 0.7rem;
-        border-radius: var(--radius-sm);
-        justify-content: center;
-        align-items: center;
-        margin: 2px 0;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--color-text-secondary);
-    }
-
-    .eq-toggle-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: var(--deck-color);
-    }
-
-    .volume-section {
-        flex-direction: column;
-        gap: 0;
-        flex: 1;
-        align-items: center;
-        width: 100%;
-        min-height: 0;
-        padding: 4px 0;
-    }
-
-    .vu-meter {
-        display: none;
-    }
-
-    .volume-control {
-        flex: 1;
-        width: 100%;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        min-height: 0;
-    }
-
-    .control-label {
-        font-size: 0.6rem;
-        white-space: nowrap;
-        flex-direction: column;
-        align-items: center;
-        gap: 0;
-        display: flex;
-        margin-bottom: 2px;
-    }
-
-    .volume-value {
-        font-size: 0.7rem;
-    }
-
-    .volume-slider-container {
-        width: 28px;
-        /* Reduced from 36px */
-        height: 100%;
-        flex: 1;
-        min-height: 80px;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
-        border-radius: 4px;
-        overflow: hidden;
-        position: relative;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .fader-track {
-        display: block !important;
-        position: absolute;
-        width: 2px;
-        /* thinner track */
-        height: calc(100% - 10px);
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 1px;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .volume-slider {
-        position: absolute !important;
-        width: 120px !important;
-        height: 36px !important;
-        transform: rotate(-90deg);
-        transform-origin: center;
-        background: transparent !important;
-        margin: 0;
-        -webkit-appearance: none;
-        appearance: none;
-        cursor: pointer;
-        z-index: 5;
-    }
-
-    .volume-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 30px;
-        /* narrower cap */
-        height: 14px;
-        /* shorter cap */
-        background: #fff;
-        border-radius: 2px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-        border: none;
-        cursor: pointer;
-    }
-
-    .volume-level-indicator {
-        display: none;
-    }
-
-    .eq-controls {
-        display: none !important;
-    }
-
-    .mixer-center {
-        width: auto;
-        gap: 4px;
-        padding: 4px;
-        flex: 1.2;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        min-width: 80px;
-        background: transparent;
-        border-radius: 0;
-    }
-
-    .master-volume-section {
-        gap: 2px;
-    }
-
-    .master-volume-slider {
-        height: 24px;
-    }
-
-    .master-volume-slider::-webkit-slider-thumb {
-        height: 24px;
-        width: 12px;
-    }
-
-    .volume-bars {
-        height: 20px;
-        padding: 2px;
-        gap: 1px;
-    }
-
-    .crossfader-section {
-        gap: 2px;
-    }
-
-    .crossfader {
-        height: 28px;
-    }
-
-    .crossfader::-webkit-slider-thumb {
-        height: 28px;
-        width: 14px;
-    }
-
-    .crossfader-labels {
-        font-size: 0.65rem;
-        padding: 0;
-    }
-
-    .crossfader-indicator {
-        height: 4px;
-        margin: 2px 0;
-    }
-
-    .eq-slider-wrapper {
-        width: 32px;
-        height: 100px;
-    }
-
-    .eq-slider {
-        width: 100px;
-        height: 32px;
-    }
-}
-
-/* EQ Toggle Button - Hidden by default, shown on tablet */
-.eq-toggle-btn {
-    display: none;
-    background: var(--color-bg-elevated);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-secondary);
-    font-size: 0.6rem;
-    font-weight: 700;
-    padding: 6px 10px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    width: 100%;
-    justify-content: center;
-    align-items: center;
     gap: 4px;
+    padding: 8px 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    flex-shrink: 0;
 }
 
-.eq-toggle-btn:hover {
-    border-color: var(--deck-color, var(--color-accent-primary));
-    color: var(--deck-color, var(--color-accent-primary));
+.crossfader {
+    width: 100%;
+    height: 24px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: grab;
 }
 
-.eq-toggle-btn svg {
-    width: 12px;
-    height: 12px;
+.crossfader:active {
+    cursor: grabbing;
 }
 
-/* EQ Popup Grid Styles */
+.crossfader::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 50px;
+    height: 20px;
+    background: linear-gradient(180deg, #fff 0%, #ccc 100%);
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    margin-top: -7px;
+}
+
+.crossfader::-webkit-slider-runnable-track {
+    height: 6px;
+    background: linear-gradient(90deg, #ff0080 0%, #333 50%, #00d4ff 100%);
+    border-radius: 3px;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Firefox */
+.crossfader::-moz-range-thumb {
+    width: 50px;
+    height: 20px;
+    background: linear-gradient(180deg, #fff 0%, #ccc 100%);
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.crossfader::-moz-range-track {
+    height: 6px;
+    background: linear-gradient(90deg, #ff0080 0%, #333 50%, #00d4ff 100%);
+    border-radius: 3px;
+}
+
+/* =================================================
+   ADVANCED CONTROLS POPUP
+   ================================================= */
+
+/* =================================================
+   ADVANCED CONTROLS POPUP
+   ================================================= */
+
+.advanced-controls-popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    z-index: 9500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.advanced-controls-popup.open {
+    display: flex;
+    animation: popup-fade-in 0.2s ease-out forwards;
+}
+
+@keyframes popup-fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.advanced-controls-content {
+    background: linear-gradient(160deg, #252525 0%, #111 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.advanced-controls-content.large-popup {
+    max-width: 480px;
+}
+
+.advanced-controls-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.advanced-controls-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.advanced-controls-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.advanced-controls-close:hover {
+    background: #ff4444;
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+.popup-main-content {
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* EQ Popup Grid */
 .eq-popup-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-lg);
-    padding: var(--spacing-md);
-}
-
-/* Landscape Mobile Optimization for Popup */
-@media screen and (max-height: 500px) and (orientation: landscape) {
-    .mixer {
-        min-width: 120px;
-        padding: 0 4px;
-    }
-
-    .advanced-controls-content.large-popup {
-        max-height: 95vh;
-        width: 95vw;
-        max-width: 700px;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .advanced-controls-header {
-        padding: 8px 12px;
-        min-height: auto;
-    }
-
-    .popup-main-content {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        /* Two columns layout */
-        grid-template-rows: auto 1fr;
-        gap: 8px;
-        padding: 8px;
-        overflow-y: auto;
-    }
-
-    /* Master Volume - Top Left */
-    .popup-section.master-section {
-        grid-column: 1 / -1;
-        margin-bottom: 4px !important;
-    }
-
-    .master-volume-section {
-        flex-direction: row;
-        gap: 8px;
-    }
-
-    /* EQ Grid - Center */
-    .eq-popup-grid {
-        grid-column: 1 / -1;
-        grid-row: 2;
-        padding: 0;
-        gap: 8px;
-    }
-
-    .eq-controls-popup-deck {
-        padding: 4px;
-        gap: 4px;
-    }
-
-    .eq-controls-row {
-        min-height: 80px;
-        /* Reduced height */
-        padding: 4px;
-        gap: 8px;
-    }
-
-    .eq-slider-vertical {
-        height: 80px !important;
-        /* Force smaller height */
-    }
-
-    .effects-deck-label {
-        font-size: 0.6rem;
-        padding: 2px 8px;
-    }
-
-    /* Crossfader - Bottom */
-    .popup-section.crossfader-popup-section {
-        grid-column: 1 / -1;
-        margin-top: 4px !important;
-        grid-row: 3;
-    }
+    gap: 16px;
 }
 
 .eq-controls-popup-deck {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    background: rgba(var(--deck-color-rgb, 255, 255, 255), 0.05);
-    border: 1px solid var(--deck-color);
-    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.eq-controls-popup-deck .effects-deck-label {
-    font-size: 0.75rem;
+.effects-deck-label {
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 1px;
-    padding: 6px 14px;
-    border-radius: var(--radius-sm);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 20px;
     text-align: center;
-    text-transform: uppercase;
-    color: white;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    letter-spacing: 1px;
 }
 
 .eq-controls-row {
     display: flex;
-    gap: var(--spacing-lg);
+    gap: 8px;
     justify-content: center;
-    align-items: stretch;
-    padding: var(--spacing-md);
-    min-height: 140px;
 }
 
-/* ============================================
-   PHONE MODE - MIXER COMPONENT OVERRIDES
-   Target: iPhone 15 family (393px - 430px width)
-   ============================================ */
+/* =================================================
+   EQ SLIDERS - Popup Style
+   ================================================= */
 
-@media screen and (max-width: 767px) {
+.eq-slider-vertical {
+    height: 140px;
+    width: 36px;
+    padding: 8px 0;
+}
+
+.eq-slider-vertical .vertical-slider-track {
+    background: rgba(0, 0, 0, 0.5);
+    /* darkened track for popup */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+}
+
+.eq-slider-vertical .vertical-slider-thumb {
+    width: 28px;
+    height: 14px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+.eq-slider-vertical .vertical-slider-label {
+    margin-bottom: 8px;
+    font-size: 9px;
+    opacity: 0.7;
+    letter-spacing: 1px;
+}
+
+/* Compact mode for small screens if needed */
+@media screen and (max-width: 600px) {
+    .eq-slider-vertical {
+        height: 120px;
+        width: 32px;
+    }
+}
+
+/* =================================================
+   RESPONSIVE - Tablet
+   ================================================= */
+
+@media screen and (max-width: 1200px) and (min-width: 768px) {
     .mixer {
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .mixer-header-row {
+        padding: 0 2px;
+    }
+
+    .vol-label {
+        font-size: 10px;
+    }
+
+    .mixer-settings-btn {
+        width: 26px;
+        height: 26px;
+    }
+
+    .mixer-settings-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .mixer-faders-section {
         padding: 4px;
         gap: 4px;
-        min-width: unset;
-        overflow: visible;
-        flex-direction: column;
     }
 
-    .mixer-title {
-        display: none;
+    .fader-track-container,
+    .volume-slider-container {
+        width: 32px;
+        min-width: 32px;
+        max-width: 36px;
     }
 
-    .mixer-layout {
-        width: 100%;
-        flex-direction: column;
-        gap: 4px;
-        flex: 0 0 auto;
+    .vu-meter {
+        width: 16px;
+        min-width: 16px;
     }
 
-    /* Hide full deck controls on phone - use simplified version */
-    .mixer-deck-controls {
-        display: none;
+    .mix-center {
+        min-width: 36px;
+        gap: 6px;
     }
 
-    .mixer-center {
-        width: 100%;
-        gap: 4px;
-        padding: 4px;
-        flex-direction: column;
-        min-width: unset;
+    .volume-percent {
+        font-size: 10px;
     }
 
-    /* Crossfader - full width horizontal */
+    .mix-label-btn {
+        font-size: 10px;
+        padding: 6px 10px;
+    }
+
     .crossfader-section {
-        width: 100%;
-        gap: 2px;
-    }
-
-    .crossfader-labels {
-        font-size: 0.6rem;
-        padding: 0 4px;
-    }
-
-    .crossfader-indicator {
-        height: 3px;
-        margin: 1px 0;
-    }
-
-    .crossfader-position {
-        width: 24px;
-        height: 10px;
-    }
-
-    .crossfader {
-        height: 28px;
+        padding: 6px 3px;
     }
 
     .crossfader::-webkit-slider-thumb {
-        height: 28px;
-        width: 16px;
-    }
-
-    /* Master volume - horizontal compact */
-    .master-volume-section {
-        gap: 2px;
-        width: 100%;
-    }
-
-    .master-volume-slider {
-        height: 28px;
-    }
-
-    .master-volume-slider::-webkit-slider-thumb {
-        height: 28px;
-        width: 14px;
-    }
-
-    .volume-bars {
+        width: 40px;
         height: 16px;
-        padding: 2px;
-        gap: 1px;
-    }
-
-    .control-label {
-        font-size: 0.55rem;
-        margin-bottom: 1px;
-    }
-
-    /* Hide VU meters on phone */
-    .vu-meter {
-        display: none;
-    }
-
-    /* Hide EQ controls on phone */
-    .eq-controls {
-        display: none !important;
-    }
-
-    /* EQ toggle button - compact */
-    .eq-toggle-btn {
-        display: flex !important;
-        padding: 4px 8px;
-        font-size: 0.55rem;
-        height: 24px;
-    }
-
-    .eq-toggle-btn svg {
-        width: 10px;
-        height: 10px;
     }
 }
 
-/* Phone-specific simplified mixer controls */
-@media screen and (max-width: 767px) {
+/* =================================================
+   RESPONSIVE - Small landscape (phones)
+   ================================================= */
 
-    /* Simplified mixer row for phone */
-    .phone-mixer-row {
-        display: flex;
-        flex-direction: row;
-        gap: 8px;
-        width: 100%;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 8px;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: var(--radius-sm);
-    }
-
-    .phone-mixer-row .volume-control {
-        display: flex !important;
-        flex-direction: row;
-        height: auto;
-        width: auto;
-        gap: 4px;
-        align-items: center;
-    }
-
-    .phone-mixer-row .volume-slider-container {
-        width: 80px;
-        height: 28px;
-        transform: none;
-    }
-
-    .phone-mixer-row .volume-slider {
-        width: 80px;
-        height: 28px;
-        transform: none;
-        position: relative;
-        top: auto;
-        left: auto;
-    }
-}
-
-/* iPhone 15 Pro Max / Plus - slightly larger elements */
-@media screen and (min-width: 414px) and (max-width: 767px) {
-    .crossfader {
-        height: 32px;
-    }
-
-    .master-volume-slider {
-        height: 32px;
-    }
-}
-
-/* ============================================
-   SHORT LANDSCAPE OPTIMIZATIONS
-   Target: iPhone 15 Landscape (height < 600px)
-   ============================================ */
-@media screen and (max-height: 600px) and (orientation: landscape) {
+@media screen and (max-height: 500px) and (orientation: landscape) {
     .mixer {
-        padding: 2px;
-        gap: 2px;
-    }
-
-    .mixer-layout {
-        gap: 2px;
-    }
-
-    .mixer-deck-controls {
-        padding: 2px;
-        min-width: 30px;
-        /* Reduced from 35px */
-        max-width: 35px;
-        /* Reduced from 40px */
-    }
-
-    /* SLIM VOLUME SLIDER (Match Pitch Fader) */
-    .mixer-volume-slider .vertical-slider-track {
-        width: 3px !important;
-        /* Reduced from 4px */
-        background: rgba(255, 255, 255, 0.1) !important;
-        border: none !important;
-        border-radius: 2px !important;
-        box-shadow: none !important;
-        min-height: 80px !important;
-    }
-
-    .mixer-volume-slider .vertical-slider-thumb {
-        width: 20px !important;
-        /* Reduced from 24px */
-        height: 12px !important;
-        /* Reduced from 14px */
-        border-radius: 2px !important;
-        background: #ccc !important;
-        /* Cap color */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
-        border: none !important;
-    }
-
-    .mixer-volume-slider .vertical-slider-fill {
-        border-radius: 2px !important;
-        width: 3px !important;
-        /* Reduced from 4px */
-        /* Fill matches width */
-        left: 0 !important;
-    }
-
-    .mixer-volume-slider .vertical-slider-line {
-        display: none;
-    }
-
-    .volume-section {
         width: 100%;
-        display: flex;
-        justify-content: center;
+        padding: 3px;
+        gap: 3px;
     }
 
-    .mixer-center {
-        gap: 2px;
-        padding: 2px;
-        min-width: 40px;
-        /* Reduced from 60px */
-    }
-
-    .master-volume-section {
-        gap: 1px;
-    }
-
-    .master-volume-slider {
-        height: 20px;
-    }
-
-    .volume-bars {
-        height: 12px;
-        padding: 1px;
-    }
-
-    .eq-toggle-btn {
-        height: 24px;
-        min-height: 24px;
-        font-size: 0.6rem;
+    .mixer-header-row {
         padding: 0;
     }
 
-    .crossfader-section {
+    .vol-label {
+        font-size: 8px;
+        letter-spacing: 0;
+    }
+
+    .mixer-settings-btn {
+        width: 20px;
+        height: 20px;
+    }
+
+    .mixer-settings-btn svg {
+        width: 10px;
+        height: 10px;
+    }
+
+    .mixer-faders-section {
+        padding: 2px;
+        gap: 2px;
+    }
+
+    .fader-column {
+        gap: 2px;
+    }
+
+    .fader-track-container,
+    .volume-slider-container {
+        width: 20px;
+        min-width: 20px;
+        max-width: 24px;
+    }
+
+    .volume-fader::-webkit-slider-thumb {
+        width: 22px;
+        height: 12px;
+    }
+
+    .vu-meter {
+        width: 10px;
+        min-width: 10px;
+        padding: 1px;
+    }
+
+    .vu-segment {
+        min-height: 3px;
         gap: 1px;
     }
 
-    .crossfader {
-        height: 24px;
+    .mix-center {
+        min-width: 24px;
+        gap: 2px;
+        padding: 1px;
     }
+
+    .volume-percent {
+        font-size: 7px;
+    }
+
+    .mix-label-btn {
+        font-size: 8px;
+        padding: 4px 6px;
+    }
+
+    .crossfader-section {
+        padding: 2px;
+    }
+
+    .crossfader {
+        height: 16px;
+    }
+
+    .crossfader::-webkit-slider-thumb {
+        width: 28px;
+        height: 12px;
+        margin-top: -5px;
+    }
+
+    .crossfader::-webkit-slider-runnable-track {
+        height: 4px;
+    }
+}
+
+/* Hide old elements */
+.mixer-title,
+.eq-controls,
+.eq-toggle-btn.main-eq-btn {
+    display: none !important;
+}
+
+/* =================================================
+   RESPONSIVE - Mobile Portrait (Restore Original Sizes)
+   ================================================= */
+@media screen and (max-width: 767px) {
+    .mix-label-btn {
+        font-size: 11px;
+        padding: 8px 14px;
+        border-radius: 6px;
+    }
+
+    .mixer-settings-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .mixer-settings-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Maybe adjust faders if they were affected? No, faders were untouched */
 }

@@ -1,187 +1,287 @@
-.settings-overlay {
+/* =================================================
+   SETTINGS MODAL
+   ================================================= */
+
+.settings-modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
 }
 
 .settings-modal {
-    background: #1a1a1a;
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
+    background: #1e1e1e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    border: 1px solid #333;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    color: #fff;
+    max-width: 90vw;
+    max-height: 85vh;
+    width: 400px;
     overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
 }
 
 .settings-header {
-    padding: 20px;
-    border-bottom: 1px solid #333;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    background: #222;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: #252525;
 }
 
-.settings-header h2 {
+.settings-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
     margin: 0;
-    font-size: 1.5rem;
 }
 
-.close-btn {
-    background: none;
-    border: none;
+.settings-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #333;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: #888;
-    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    line-height: 1;
-    padding: 0;
+    transition: all 0.15s ease;
 }
 
-.close-btn:hover {
+.settings-close-btn:hover {
+    background: #ff4444;
     color: #fff;
 }
 
 .settings-content {
     padding: 20px;
     overflow-y: auto;
+    max-height: calc(85vh - 60px);
 }
 
-.settings-hint {
+.settings-section {
+    margin-bottom: 20px;
+}
+
+.settings-section-title {
+    font-size: 12px;
+    font-weight: 700;
     color: #888;
-    margin-bottom: 20px;
-    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
 }
 
-.key-mapping-list {
+.settings-row {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.key-mapping-item {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 10px;
-    background: #222;
-    border-radius: 6px;
-    border: 1px solid #333;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.action-label {
-    font-weight: 500;
+.settings-label {
+    font-size: 14px;
+    color: #ccc;
 }
 
-.key-btn {
+.settings-toggle {
+    width: 44px;
+    height: 24px;
     background: #333;
-    border: 1px solid #444;
-    color: #fff;
-    padding: 8px 16px;
-    border-radius: 4px;
+    border-radius: 12px;
+    position: relative;
     cursor: pointer;
-    min-width: 100px;
-    text-align: center;
-    font-family: monospace;
-    font-size: 1rem;
-    transition: all 0.2s;
+    transition: background 0.2s ease;
 }
 
-.key-btn:hover {
-    background: #444;
-    border-color: #555;
+.settings-toggle.active {
+    background: #00ff88;
 }
 
-.key-btn.listening {
-    background: #ff0080;
-    border-color: #ff0080;
-    color: white;
-    box-shadow: 0 0 10px rgba(255, 0, 128, 0.4);
-    animation: pulse 1s infinite;
+.settings-toggle::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s ease;
 }
 
-.layout-selector {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+.settings-toggle.active::after {
+    transform: translateX(20px);
 }
 
-.layout-btn {
-    background: #333;
-    border: 1px solid #444;
-    color: #888;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
-}
+/* =================================================
+   RESPONSIVE - Mobile
+   ================================================= */
 
-.layout-btn:hover {
-    background: #3a3a3a;
-    color: #fff;
-}
-
-.layout-btn.active {
-    background: #ff0080;
-    /* Match deck color or primary accent */
-    color: white;
-    border-color: #ff0080;
-    box-shadow: 0 0 15px rgba(255, 0, 128, 0.3);
-}
-
-.settings-section h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1rem;
-    color: #ddd;
-}
-
-.settings-actions {
-    border-top: 1px solid #333;
-    padding-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.reset-btn {
-    background: #333;
-    border: none;
-    color: #aaa;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.reset-btn:hover {
-    color: #fff;
-    background: #444;
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 1;
+@media screen and (max-width: 767px) {
+    .settings-modal {
+        width: 95vw;
+        max-height: 90vh;
     }
 
-    50% {
-        opacity: 0.7;
+    .settings-header {
+        padding: 12px 16px;
     }
 
-    100% {
-        opacity: 1;
+    .settings-content {
+        padding: 16px;
+        max-height: calc(90vh - 60px);
+        overflow-y: auto;
+    }
+}
+
+/* =================================================
+   RESPONSIVE - Small landscape (iPhone etc.)
+   ================================================= */
+
+@media screen and (max-height: 500px) and (orientation: landscape) {
+
+    .settings-modal-overlay,
+    .settings-overlay {
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
+        align-items: flex-start;
+    }
+
+    .settings-modal {
+        width: 100%;
+        max-width: 380px;
+        max-height: 95vh;
+        margin: 0 auto;
+    }
+
+    .settings-header {
+        padding: 8px 12px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .settings-header h2 {
+        font-size: 14px;
+    }
+
+    .settings-close-btn,
+    .close-btn {
+        width: 26px;
+        height: 26px;
+    }
+
+    .settings-content {
+        padding: 10px 12px;
+        max-height: calc(95vh - 50px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .settings-section {
+        margin-bottom: 12px;
+    }
+
+    .settings-section h3 {
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+
+    .settings-section-title {
+        font-size: 10px;
+        margin-bottom: 8px;
+    }
+
+    .settings-hint {
+        font-size: 11px;
+        margin-bottom: 8px;
+    }
+
+    .layout-selector {
+        gap: 8px;
+    }
+
+    .layout-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    .key-mapping-list {
+        gap: 4px;
+    }
+
+    .key-mapping-item {
+        padding: 6px 0;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .action-label {
+        font-size: 11px;
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .key-btn {
+        padding: 4px 10px;
+        font-size: 10px;
+        min-width: 70px;
+    }
+
+    .settings-actions {
+        margin-top: 10px;
+    }
+
+    .reset-btn {
+        padding: 8px 16px;
+        font-size: 11px;
+    }
+
+    .settings-footer {
+        margin-top: 10px !important;
+        padding-top: 8px !important;
+        font-size: 10px !important;
+    }
+}
+
+/* =================================================
+   RESPONSIVE - Very small screens
+   ================================================= */
+
+@media screen and (max-height: 400px) {
+    .settings-modal {
+        max-height: 98vh;
+    }
+
+    .settings-header {
+        padding: 6px 10px;
+    }
+
+    .settings-content {
+        padding: 8px 10px;
+        max-height: calc(98vh - 40px);
+    }
+
+    .key-mapping-item {
+        padding: 4px 0;
+    }
+
+    .action-label {
+        font-size: 10px;
+    }
+
+    .key-btn {
+        padding: 3px 8px;
+        font-size: 9px;
     }
 }

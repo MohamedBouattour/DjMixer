@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { DeckState } from '../types';
 import { Waveform } from './Waveform';
-import { WaveformBar } from './WaveformBar';
+import { ScrollableWaveform } from './ScrollableWaveform';
 import VerticalSlider from './VerticalSlider';
-import { formatTime, formatTotalSeconds } from '../utils/helpers';
+import { TimeDisplay } from './TimeDisplay';
+import { formatTime } from '../utils/helpers';
 import './Deck.css';
 
 interface DeckProps {
@@ -53,14 +54,30 @@ export const Deck: React.FC<DeckProps> = ({
 }) => {
 
     const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
+    const [showEffects, setShowEffects] = useState(false);
 
-    const loopStartRef = React.useRef<number>(0);
-    const ignoreClickRef = React.useRef<boolean>(false);
+    const loopStartRef = useRef<number>(0);
+    const ignoreClickRef = useRef<boolean>(false);
     const [isHoldingLoop, setIsHoldingLoop] = useState(false);
+    const [isScratching, setIsScratching] = useState(false);
+
+    // Close FX popup on click outside (handled via backdrop usually, or simple event listener)
+    useEffect(() => {
+        if (showEffects) {
+            const handleClickOutside = (e: MouseEvent) => {
+                const target = e.target as HTMLElement;
+                if (!target.closest('.effects-popup') && !target.closest('.btn-fx-toggle')) {
+                    setShowEffects(false);
+                }
+            };
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showEffects]);
 
     const handleLoopDown = () => {
         if (!track || !isPlaying) return;
-        if (activeLoop?.active) return; // Allow re-looping only after clearing? Or handle clears in Click.
+        if (activeLoop?.active) return;
 
         loopStartRef.current = currentTime;
         setIsHoldingLoop(true);
@@ -71,13 +88,11 @@ export const Deck: React.FC<DeckProps> = ({
         if (!isHoldingLoop) return;
         setIsHoldingLoop(false);
 
-        // Calculate hold duration
         const loopDuration = currentTime - loopStartRef.current;
 
-        // If held long enough (e.g. > 200ms), activate loop
         if (loopDuration > 0.2) {
             onLoopSet(loopStartRef.current, currentTime);
-            ignoreClickRef.current = true; // Prevent the click from immediately clearing it if it fires after
+            ignoreClickRef.current = true;
         }
     };
 
@@ -124,15 +139,25 @@ export const Deck: React.FC<DeckProps> = ({
                 )}
             </div>
 
-            {/* Horizontal Waveform Bar */}
+            {/* Scrollable Waveform with Beat Grid */}
             {track && (
-                <WaveformBar
+                <ScrollableWaveform
                     audioUrl={track.url}
                     currentTime={currentTime}
                     duration={track.duration}
                     onSeek={onSeek}
                     color={color}
-                    height={window.innerWidth <= 767 ? 35 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 40 : 50)}
+                    bpm={track.bpm}
+                    height={window.innerWidth <= 767 ? 40 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 50 : 60)}
+                    onScratch={(v) => {
+                        setIsScratching(true);
+                        onScratch?.(v);
+                    }}
+                    onReleaseScratch={() => {
+                        setIsScratching(false);
+                        onReleaseScratch?.();
+                    }}
+                    isPlaying={isPlaying}
                 />
             )}
 
@@ -166,7 +191,7 @@ export const Deck: React.FC<DeckProps> = ({
                         onSeek={onSeek}
                         onScratch={onScratch}
                         onReleaseScratch={onReleaseScratch}
-                        isPlaying={isPlaying}
+                        isPlaying={isPlaying && !isScratching}
                         color={color}
                     />
                 ) : (
@@ -190,11 +215,7 @@ export const Deck: React.FC<DeckProps> = ({
                         />
                     </div>
                 )}
-                <div className="time-display bottom-right" style={deckId === 'B' ? { right: '60px' } : undefined}>
-                    <span className="current-time">{formatTime(currentTime)} <span className="text-xs opacity-50">({formatTotalSeconds(currentTime)})</span></span>
-                    <span className="separator">/</span>
-                    <span className="total-time">{formatTime(track?.duration || 0)}</span>
-                </div>
+
             </div>
 
             <div className="deck-controls">
@@ -217,6 +238,22 @@ export const Deck: React.FC<DeckProps> = ({
                                 </button>
                             )}
 
+                            {/* FX Button - visible only on small screens */}
+                            <button
+                                className={`btn-fx-toggle ${showEffects ? 'active' : ''}`}
+                                onClick={() => setShowEffects(!showEffects)}
+                                title="Open Effects"
+                            >
+                                FX
+                            </button>
+
+
+                            <TimeDisplay
+                                currentTime={currentTime}
+                                totalTime={track?.duration || 0}
+                                color={color}
+                                className="bottom-right"
+                            />
 
                         </div>
 
@@ -308,6 +345,51 @@ export const Deck: React.FC<DeckProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Effects Popup - for small screens */}
+            <div className={`effects-popup ${showEffects ? 'open' : ''}`} data-deck={deckId}>
+                <div className="effects-popup-header">
+                    <span>EFFECTS - DECK {deckId}</span>
+                    <button
+                        className="effects-popup-close"
+                        onClick={() => setShowEffects(false)}
+                    >✕</button>
+                </div>
+                <div className="effects-popup-grid">
+                    <button
+                        className={`btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('reverb')}
+                    >REV</button>
+                    <button
+                        className={`btn-effect ${activeEffects?.delay ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('delay')}
+                    >DLY</button>
+                    <button
+                        className={`btn-effect ${activeEffects?.filter ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('filter')}
+                    >LPF</button>
+                    <button
+                        className={`btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('hpf')}
+                    >HPF</button>
+                    <button
+                        className={`btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('distortion')}
+                    >DST</button>
+                    <button
+                        className={`btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('bitcrusher')}
+                    >BIT</button>
+                    <button
+                        className={`btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('flanger')}
+                    >FLG</button>
+                    <button
+                        className={`btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
+                        onClick={() => onToggleEffect('tremolo')}
+                    >TRM</button>
+                </div>
+            </div>
         </div >
     );
 };
@@ -330,3 +412,4 @@ const LoopIcon = () => (
         <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
     </svg>
 );
+

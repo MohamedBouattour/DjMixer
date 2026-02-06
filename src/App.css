@@ -1,491 +1,214 @@
-* {
-  outline: none;
-}
+/* =================================================
+   DJ PRO MASTER - App Layout
+   ================================================= */
 
+/* App container fills screen */
 .app {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-primary);
   overflow: hidden;
+  /* Safe area padding for notch/dynamic island */
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: max(5px, env(safe-area-inset-left));
+  padding-right: max(5px, env(safe-area-inset-right));
 }
 
+/* Header is hidden - controlled by index.css */
 .app-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 0 2rem !important;
-  background: var(--color-bg-secondary) !important;
-  border-bottom: 2px solid var(--color-accent-primary) !important;
-  height: 70px !important;
-  min-height: 70px !important;
-  z-index: 1000 !important;
-  position: relative;
+  display: none !important;
 }
 
-.app-logo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-  border-radius: var(--radius-md);
-  color: white;
-}
-
-.app-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.settings-btn-container {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-}
-
-.settings-btn {
-  background: var(--gradient-deck-a) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #fff !important;
-  width: 44px !important;
-  height: 44px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: var(--radius-md) !important;
-  cursor: pointer !important;
-  box-shadow: var(--shadow-glow-pink) !important;
-  transition: all 0.3s ease !important;
-}
-
-.settings-btn:hover {
-  transform: rotate(45deg) scale(1.05) !important;
-  box-shadow: 0 0 20px rgba(255, 0, 128, 0.5) !important;
-}
-
-.settings-btn svg {
-  width: 24px !important;
-  height: 24px !important;
-}
-
+/* Main content area */
 .app-main {
   flex: 1;
   display: flex;
-  padding: var(--spacing-md);
+  padding: 0;
   overflow: hidden;
+  height: 100vh;
 }
 
+/* Decks row - holds Deck A, Center Section, Deck B */
 .decks-section {
   flex: 1;
   display: flex;
-  gap: var(--spacing-md);
-  overflow: hidden;
+  gap: 0;
+  min-height: 0;
+  width: 100%;
 }
 
+/* Decks take ~42% of width */
+.decks-section>.deck {
+  width: 42%;
+  flex: initial;
+  /* Disable flex-grow/shrink ensuring strictly percentage based if needed, or use flex-basis */
+  flex-grow: 1;
+}
+
+/* Center mixer column takes ~16% */
 .center-section {
+  width: 16%;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  min-width: 300px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 4px;
-  /* Space for scrollbar if needed */
+  gap: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  min-width: 100px;
+  /* Minimum width safety */
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-.center-section::-webkit-scrollbar {
-  width: 4px;
+/* Floating actions container - ALWAYS visible */
+.floating-actions {
+  position: fixed;
+  top: 8px;
+  right: 87%;
+  display: flex !important;
+  flex-direction: row;
+  gap: 10px;
+  z-index: 2000;
 }
 
-.center-section::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
+/* Library and Settings floating buttons */
+.settings-floating-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(30, 30, 30, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: #aaa;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
-/* Decks are now full width */
-.decks-section>.deck {
-  flex: 1;
+.settings-floating-btn:hover {
+  background: rgba(50, 50, 50, 0.98);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
 }
 
-/* Animations for reactive UI */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+/* Library button accent styling */
+.settings-floating-btn[title="Open Library"] {
+  border-color: rgba(0, 212, 255, 0.5);
+  color: #00d4ff;
+}
+
+.settings-floating-btn[title="Open Library"]:hover {
+  border-color: #00d4ff;
+  box-shadow: 0 2px 15px rgba(0, 212, 255, 0.4);
+}
+
+/* Settings button accent styling */
+.settings-floating-btn[title="Open Settings"] {
+  border-color: rgba(255, 0, 128, 0.4);
+}
+
+.settings-floating-btn[title="Open Settings"]:hover {
+  border-color: #ff0080;
+  box-shadow: 0 2px 15px rgba(255, 0, 128, 0.4);
+}
+
+/* Force show on ALL orientations and devices */
+@media screen and (orientation: landscape) {
+  .floating-actions {
+    display: flex !important;
   }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .settings-floating-btn {
+    display: flex !important;
   }
 }
 
-.deck,
-.mixer,
-.effects {
-  animation: slideIn 0.3s ease-out;
+@media screen and (orientation: portrait) {
+  .floating-actions {
+    display: flex !important;
+  }
+
+  .settings-floating-btn {
+    display: flex !important;
+  }
 }
 
-/* ============================================
-   TABLET MODE - APP LAYOUT OVERRIDES
-   ============================================ */
+/* =================================================
+   RESPONSIVE - Tablet/Mobile adjustments
+   ================================================= */
 
 @media screen and (max-width: 1200px) and (min-width: 768px) {
-  .app {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-
   .app-main {
-    padding: 4px;
-    gap: 4px;
-    overflow: hidden;
-    height: calc(100vh - 40px);
+    padding: 0;
+    height: 100vh;
   }
 
   .decks-section {
-    gap: 4px;
-    flex: 1;
-    min-height: 0;
-    height: 100%;
+    gap: 0;
   }
 
   .center-section {
-    min-width: 135px !important;
-    width: 135px !important;
-    max-width: 135px !important;
-    gap: 4px;
-    overflow: visible;
-    padding-right: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: stretch;
-    height: 100%;
-  }
-
-  /* Mixer takes available space */
-  .center-section .mixer {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-
-  /* Effects toggle button styling */
-  .center-section .effects-toggle-btn {
-    flex: 0 0 auto;
-  }
-
-  /* Hide the effects panel completely on tablet */
-  .center-section .effects {
-    display: none !important;
-  }
-
-  /* Prevent scrolling in center section */
-  .center-section::-webkit-scrollbar {
-    display: none;
-  }
-
-  .center-section {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    width: auto;
+    min-width: auto;
+    max-width: none;
   }
 }
-
-/* ============================================
-   MOBILE MODE - APP LAYOUT OVERRIDES
-   ============================================ */
-
-/* ============================================
-   MOBILE & TABLET - HEADER VISIBILITY
-   ============================================ */
-
-@media screen and (max-width: 3000px) {
-  .app-header {
-    display: none !important;
-  }
-
-  .app-main {
-    height: 100vh !important;
-    padding-top: 0 !important;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  /* Additional mobile-specific overrides */
-}
-
-/* ============================================
-   PHONE MODE - APP LAYOUT OVERRIDES
-   Target: Phones and small tablets (up to 767px)
-   iPhone 15/Pro: 393 x 852, iPhone 15 Plus/Pro Max: 430 x 932
-   ============================================ */
 
 @media screen and (max-width: 767px) {
-  .app {
-    width: 100%;
-    max-width: 100%;
-    height: 100%;
-    /* Dynamic viewport height for mobile handled by body/root */
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-  }
 
-  /* Hide settings button on phone (requested by user) */
-  .settings-floating-btn[title="Open Settings"] {
-    display: none !important;
-  }
-
+  /* Phone portrait - show orientation warning */
   .app-main {
-    padding: 2px;
-    gap: 2px;
-    overflow: hidden;
-    height: 100vh;
-    flex-direction: column;
-  }
-
-  .decks-section {
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-    min-height: 0;
-    height: auto;
-    overflow: hidden;
-  }
-
-  /* Stack decks vertically on phone */
-  .decks-section>.deck {
-    flex: 1;
-    min-height: 0;
-  }
-
-  .center-section {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: auto;
-    max-height: 50vh;
-    min-width: unset;
-    max-width: unset;
-    width: 100%;
-    gap: 2px;
-    padding: 4px;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border);
-    z-index: 100;
-    overflow-y: auto;
-    display: none;
-    /* Hidden by default, toggle visible */
-  }
-
-  .center-section.visible {
     display: flex;
   }
 
-  /* Floating toggle button for center section */
-  .center-toggle-btn {
-    display: flex !important;
-    position: fixed;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 99;
-    background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-weight: 700;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    box-shadow: 0 4px 15px rgba(255, 0, 128, 0.4);
-    cursor: pointer;
-  }
-
-  .center-toggle-btn:hover {
-    transform: translateX(-50%) scale(1.05);
-    box-shadow: 0 6px 20px rgba(255, 0, 128, 0.5);
-  }
-
-  /* Hide center section scrollbar */
-  .center-section::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Mixer takes available space in phone mode */
-  .center-section .mixer {
-    flex: 0 0 auto;
-    min-height: unset;
-  }
-
-  /* Hide effects panel on phone */
-  .center-section .effects {
-    display: none !important;
-  }
-}
-
-/* ============================================
-   SMALL PHONE MODE (up to 430px)
-   Ultra-compact for iPhone 15 portrait
-   ============================================ */
-
-@media screen and (max-width: 430px) {
-  .app {
-    padding: 0;
-    margin: 0;
-  }
-
-  .app-main {
-    padding: 0;
-    gap: 1px;
-    height: 100dvh;
-  }
-
   .decks-section {
-    gap: 1px;
-    padding: 1px;
-  }
-
-  .center-toggle-btn {
-    padding: 8px 16px;
-    font-size: 0.65rem;
-    bottom: 8px;
-    border-radius: 16px;
+    flex-direction: column;
   }
 }
-
-/* ============================================
-   LANDSCAPE MOBILE OPTIMIZATIONS
-   Target: Short screens (orientation: landscape)
-   e.g. iPhone Landscape (height < 600px)
-   ============================================ */
 
 @media screen and (max-height: 600px) and (orientation: landscape) {
-  .app-header {
-    display: none !important;
-  }
-
   .app-main {
-    padding: 2px;
     height: 100vh;
   }
 
   .decks-section {
     flex-direction: row !important;
-    /* Force side-by-side */
+  }
+
+  .floating-actions {
+    top: 4px;
+    right: 87%;
+    gap: 6px;
+  }
+
+  .settings-floating-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .settings-floating-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media screen and (max-height: 400px) and (orientation: landscape) {
+  .floating-actions {
+    top: 2px;
+    right: 87%;
     gap: 4px;
-    align-items: stretch;
   }
 
-  .decks-section>.deck {
-    height: 100%;
-    overflow-y: auto;
+  .settings-floating-btn {
+    width: 32px;
+    height: 32px;
   }
 
-  /* Hide center section toggle if it gets in the way */
-  .center-toggle-btn {
-    bottom: 5px;
-    padding: 4px 12px;
-    font-size: 0.6rem;
-    opacity: 0.7;
-  }
-
-  .center-toggle-btn:hover {
-    opacity: 1;
-  }
-}
-
-/* Floating Actions Container */
-.floating-actions {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  z-index: 2000;
-  /* Ensure it's above everything */
-  pointer-events: none;
-  /* Let clicks pass through the container area */
-}
-
-.floating-actions button {
-  pointer-events: auto;
-  /* Re-enable clicks on buttons */
-}
-
-/* Orientation Enforcer Overlay - Disabled by default */
-.orientation-warning {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: var(--color-bg-primary);
-  z-index: 9999;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 2rem;
-  color: white;
-}
-
-.orientation-icon {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 20px;
-  animation: rotate-phone 2s infinite ease-in-out;
-}
-
-@keyframes rotate-phone {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  25% {
-    transform: rotate(90deg);
-  }
-
-  50% {
-    transform: rotate(90deg);
-  }
-
-  75% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(0deg);
-  }
-}
-
-/* 
-   User requested to disable the orientation warning.
-   Uncomment the below block to re-enable it for portrait mobile/tablet devices.
-*/
-@media screen and (orientation: portrait) and (max-width: 1024px) {
-  .orientation-warning {
-    display: flex;
+  .settings-floating-btn svg {
+    width: 16px;
+    height: 16px;
   }
 }
