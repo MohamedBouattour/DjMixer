@@ -38,6 +38,7 @@ if (!fs.existsSync(cacheDir)) {
 
 if (fs.existsSync(publicPath)) {
     console.log(`[SERVER] Serving static files from ${publicPath}`);
+    console.log(`[SERVER] Index exists? ${fs.existsSync(path.join(publicPath, 'index.html'))}`);
     app.use(express.static(publicPath));
     staticDir = publicPath;
 } else if (fs.existsSync(distPath)) {
