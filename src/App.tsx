@@ -3,6 +3,7 @@ import { Deck } from './components/Deck';
 import { Mixer } from './components/Mixer';
 import { UnifiedTrackSelector } from './components/UnifiedTrackSelector';
 import { SettingsModal } from './components/SettingsModal';
+import { InstallPWA } from './components/InstallPWA';
 import { useDeck } from './hooks/useDeck';
 import type { Track } from './types';
 import { getAllTracksFromDB, saveTrackToDB } from './utils/storage';
@@ -117,6 +118,38 @@ function App() {
     return () => {
       // Don't close context on every render, strictly speaking only on unmount
       // audioContextRef.current?.close();
+    };
+  }, []);
+
+  // Resume AudioContext on first user interaction (Mobile/PWA fix)
+  useEffect(() => {
+    const resumeAudioContext = async () => {
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        try {
+          await audioContextRef.current.resume();
+          console.log('AudioContext resumed by user interaction');
+        } catch (err) {
+          console.warn('Failed to resume AudioContext:', err);
+        }
+      }
+    };
+
+    const handleInteraction = () => {
+      resumeAudioContext();
+      // Remove listeners after first interaction
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
     };
   }, []);
 
@@ -519,6 +552,8 @@ function App() {
         </svg>
         <p>Please rotate your device to landscape mode</p>
       </div>
+
+      <InstallPWA />
 
       <main className="app-main">
         <div className="decks-section">
