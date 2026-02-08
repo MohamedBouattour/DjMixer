@@ -94,37 +94,39 @@ function App() {
     };
   }, []);
 
-  const audioContextRef = useRef<AudioContext | null>(null);
+  // Use state for AudioContext so that when it's created, a re-render is triggered
+  // and the context is properly passed to the useDeck hooks.
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+
   const masterGainRef = useRef<GainNode | null>(null);
   const deckAGainRef = useRef<GainNode | null>(null);
   const deckBGainRef = useRef<GainNode | null>(null);
 
   // Initialize audio context
   useEffect(() => {
-    // Only create audio context once
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-      masterGainRef.current = audioContextRef.current.createGain();
-      masterGainRef.current.gain.value = masterVolume / 100;
-      masterGainRef.current.connect(audioContextRef.current.destination);
+    if (!audioContext) {
+      // Support for Webkit (iOS Safari)
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
 
-      deckAGainRef.current = audioContextRef.current.createGain();
+      masterGainRef.current = ctx.createGain();
+      masterGainRef.current.gain.value = masterVolume / 100;
+      masterGainRef.current.connect(ctx.destination);
+
+      deckAGainRef.current = ctx.createGain();
       deckAGainRef.current.connect(masterGainRef.current);
 
-      deckBGainRef.current = audioContextRef.current.createGain();
+      deckBGainRef.current = ctx.createGain();
       deckBGainRef.current.connect(masterGainRef.current);
-    }
 
-    return () => {
-      // Don't close context on every render, strictly speaking only on unmount
-      // audioContextRef.current?.close();
-    };
+      setAudioContext(ctx);
+    }
   }, []);
 
   // Resume AudioContext on first user interaction (Mobile/PWA fix)
   useEffect(() => {
     const resumeAudioContext = async () => {
-      const ctx = audioContextRef.current;
+      const ctx = audioContext;
       if (ctx) {
         // iOS Fix: Play silent buffer to unlock audio threads
         try {
@@ -166,16 +168,16 @@ function App() {
       window.removeEventListener('touchstart', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
     };
-  }, []);
+  }, [audioContext]);
 
   const { state: deckAState, controls: deckA } = useDeck({
-    audioContext: audioContextRef.current!,
+    audioContext: audioContext!,
     destination: deckAGainRef.current!,
     deckId: 'A'
   });
 
   const { state: deckBState, controls: deckB } = useDeck({
-    audioContext: audioContextRef.current!,
+    audioContext: audioContext!,
     destination: deckBGainRef.current!,
     deckId: 'B'
   });
@@ -368,11 +370,11 @@ function App() {
       let trackToLoad = existingTrack;
 
       // Backfill BPM if missing
-      if (!existingTrack.bpm && audioContextRef.current) {
+      if (!existingTrack.bpm && audioContext) {
         try {
           console.log('Backfilling BPM for cached track...');
           const arrayBuffer = await existingTrack.file.arrayBuffer();
-          const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
           const bpm = await detectBPM(audioBuffer);
 
           trackToLoad = { ...existingTrack, bpm };
@@ -412,10 +414,10 @@ function App() {
         const blob = await res.blob();
 
         let bpm = track.bpm;
-        if (!bpm && audioContextRef.current) {
+        if (!bpm && audioContext) {
           try {
             const arrayBuffer = await blob.arrayBuffer();
-            const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
             bpm = await detectBPM(audioBuffer);
             console.log('Detected BPM:', bpm);
           } catch (bpmErr) {
