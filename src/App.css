@@ -174,14 +174,22 @@
     height: 100vh;
   }
 
+  /* Force safe area padding for dynamic island */
+  .app {
+    padding-left: max(35px, env(safe-area-inset-left));
+    padding-right: max(35px, env(safe-area-inset-right));
+  }
+
   .decks-section {
     flex-direction: row !important;
   }
 
+  /* Move floating actions to center-top to avoid side islands completely */
   .floating-actions {
-    top: 4px;
-    right: 87%;
-    gap: 6px;
+    top: 10px;
+    right: 50%;
+    transform: translateX(50%);
+    gap: 12px;
   }
 
   .settings-floating-btn {
@@ -197,9 +205,8 @@
 
 @media screen and (max-height: 400px) and (orientation: landscape) {
   .floating-actions {
-    top: 2px;
-    right: 87%;
-    gap: 4px;
+    top: 5px;
+    gap: 8px;
   }
 
   .settings-floating-btn {

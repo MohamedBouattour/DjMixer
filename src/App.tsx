@@ -124,12 +124,27 @@ function App() {
   // Resume AudioContext on first user interaction (Mobile/PWA fix)
   useEffect(() => {
     const resumeAudioContext = async () => {
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      const ctx = audioContextRef.current;
+      if (ctx) {
+        // iOS Fix: Play silent buffer to unlock audio threads
         try {
-          await audioContextRef.current.resume();
-          console.log('AudioContext resumed by user interaction');
-        } catch (err) {
-          console.warn('Failed to resume AudioContext:', err);
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          source.start(0);
+          console.log('Silent buffer played to unlock audio');
+        } catch (e) {
+          console.warn('Failed to play silent buffer:', e);
+        }
+
+        if (ctx.state === 'suspended') {
+          try {
+            await ctx.resume();
+            console.log('AudioContext resumed by user interaction');
+          } catch (err) {
+            console.warn('Failed to resume AudioContext:', err);
+          }
         }
       }
     };

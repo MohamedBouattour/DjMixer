@@ -151,8 +151,9 @@ export const Deck: React.FC<DeckProps> = ({
             )}
 
             <div className="deck-vinyl-row">
+                {/* Deck A: Pitch Slider on LEFT */}
                 {deckId === 'A' && (
-                    <div className="pitch-control-vertical" style={{ marginRight: 'var(--spacing-md)' }}>
+                    <div className="pitch-control-vertical" style={{ marginRight: 'var(--gap-lg, 12px)' }}>
                         <VerticalSlider
                             value={pitch}
                             min={-10}
@@ -167,33 +168,33 @@ export const Deck: React.FC<DeckProps> = ({
                     </div>
                 )}
 
-                {state.isLoading ? (
-                    <div className="waveform-loading">
-                        <div className="loading-spinner"></div>
-                        <span>Downloading track...</span>
-                    </div>
-                ) : (
-                    <>
-                        {/* Vinyl / Waveform Display */}
+                {/* Central Vinyl / Loading / Placeholder Area */}
+                <div className="deck-center-stage">
+                    {state.isLoading ? (
+                        <div className="waveform-loading">
+                            <div className="loading-spinner"></div>
+                            <span>Downloading track...</span>
+                        </div>
+                    ) : track ? (
                         <div className="deck-vinyl-container">
                             <Waveform
-                                audioUrl={track?.url || null}
+                                audioUrl={track.url}
                                 currentTime={currentTime}
-                                duration={track?.duration || 0}
+                                duration={track.duration || 0}
                                 isPlaying={isPlaying}
                                 color={color}
                             />
                         </div>
-                        {!track && (
-                            <div className="waveform-placeholder">
-                                <span>Load a track to begin</span>
-                            </div>
-                        )}
-                    </>
-                )}
+                    ) : (
+                        <div className="waveform-placeholder">
+                            <span>Load a track to begin</span>
+                        </div>
+                    )}
+                </div>
 
+                {/* Deck B: Pitch Slider on RIGHT */}
                 {deckId === 'B' && (
-                    <div className="pitch-control-vertical" style={{ marginLeft: 'var(--spacing-md)' }}>
+                    <div className="pitch-control-vertical" style={{ marginLeft: 'var(--gap-lg, 12px)' }}>
                         <VerticalSlider
                             value={pitch}
                             min={-10}
@@ -207,7 +208,6 @@ export const Deck: React.FC<DeckProps> = ({
                         />
                     </div>
                 )}
-
             </div>
 
             <div className="deck-controls">
