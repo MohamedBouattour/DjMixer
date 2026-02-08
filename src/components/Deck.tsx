@@ -46,8 +46,6 @@ export const Deck: React.FC<DeckProps> = ({
     onDeleteCue,
     onLoopSet,
     onLoopClear,
-    onScratch,
-    onReleaseScratch,
 
     color,
     shortcuts
@@ -59,7 +57,6 @@ export const Deck: React.FC<DeckProps> = ({
     const loopStartRef = useRef<number>(0);
     const ignoreClickRef = useRef<boolean>(false);
     const [isHoldingLoop, setIsHoldingLoop] = useState(false);
-    const [isScratching, setIsScratching] = useState(false);
 
     // Close FX popup on click outside (handled via backdrop usually, or simple event listener)
     useEffect(() => {
@@ -140,24 +137,16 @@ export const Deck: React.FC<DeckProps> = ({
             </div>
 
             {/* Scrollable Waveform with Beat Grid */}
-            {track && (
+            {(track || state.isLoading) && (
                 <ScrollableWaveform
-                    audioUrl={track.url}
-                    currentTime={currentTime}
-                    duration={track.duration}
+                    audioUrl={track?.url || null}
+                    currentTime={state.isLoading ? 0 : currentTime}
+                    duration={track?.duration || 0}
                     onSeek={onSeek}
                     color={color}
-                    bpm={track.bpm}
+                    bpm={track?.bpm}
                     height={window.innerWidth <= 767 ? 40 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 50 : 60)}
-                    onScratch={(v) => {
-                        setIsScratching(true);
-                        onScratch?.(v);
-                    }}
-                    onReleaseScratch={() => {
-                        setIsScratching(false);
-                        onReleaseScratch?.();
-                    }}
-                    isPlaying={isPlaying}
+                    isLoading={state.isLoading}
                 />
             )}
 
@@ -183,21 +172,24 @@ export const Deck: React.FC<DeckProps> = ({
                         <div className="loading-spinner"></div>
                         <span>Downloading track...</span>
                     </div>
-                ) : track ? (
-                    <Waveform
-                        audioUrl={track.url}
-                        currentTime={currentTime}
-                        duration={track.duration}
-                        onSeek={onSeek}
-                        onScratch={onScratch}
-                        onReleaseScratch={onReleaseScratch}
-                        isPlaying={isPlaying && !isScratching}
-                        color={color}
-                    />
                 ) : (
-                    <div className="waveform-placeholder">
-                        <span>Load a track to begin</span>
-                    </div>
+                    <>
+                        {/* Vinyl / Waveform Display */}
+                        <div className="deck-vinyl-container">
+                            <Waveform
+                                audioUrl={track?.url || null}
+                                currentTime={currentTime}
+                                duration={track?.duration || 0}
+                                isPlaying={isPlaying}
+                                color={color}
+                            />
+                        </div>
+                        {!track && (
+                            <div className="waveform-placeholder">
+                                <span>Load a track to begin</span>
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {deckId === 'B' && (

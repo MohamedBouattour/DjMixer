@@ -7,12 +7,10 @@ interface ScrollableWaveformProps {
     currentTime: number;
     duration: number;
     onSeek: (time: number) => void;
-    onScratch?: (velocity: number) => void;
-    onReleaseScratch?: () => void;
     color: string;
     bpm?: number;
     height?: number;
-    isPlaying?: boolean;
+    isLoading?: boolean;
 }
 
 interface WaveformData {
@@ -26,12 +24,10 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     currentTime,
     duration,
     onSeek,
-    onScratch,
-    onReleaseScratch,
     color,
     bpm,
     height = 60,
-    isPlaying = false
+    isLoading = false
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,8 +106,8 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     const viewTime = isDragging && dragTime !== null ? dragTime : currentTime;
 
     // Draw waveform
-    useEffect(() => {
-        if (!canvasRef.current || !waveformData || !containerRef.current) return;
+    React.useLayoutEffect(() => {
+        if (!canvasRef.current || !containerRef.current) return;
 
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d', { alpha: false });
@@ -142,6 +138,8 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         // Clear
         ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, containerWidth, height);
+
+        if (!waveformData) return;
 
         const pixelsPerSecond = pixelsPerSecondRef.current;
         const peaks = waveformData.peaks;
@@ -235,167 +233,36 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         ctx.fill();
 
     }, [waveformData, viewTime, color, bpm, duration, height]);
-
-    // Handle Scrubbing
-    const velocityRef = useRef(0);
-    const lastDragTimeRef = useRef(0);
-    const inertiaFrameRef = useRef<number | null>(null);
-    const dragHistoryRef = useRef<{ time: number, value: number }[]>([]);
-
+    // Handle Scrubbing (Seek only)
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
-        // Stop any active inertia
-        if (inertiaFrameRef.current) {
-            cancelAnimationFrame(inertiaFrameRef.current);
-            inertiaFrameRef.current = null;
-        }
-
         setIsDragging(true);
         setDragTime(currentTime); // Initialize drag time
         draggingRef.current.isDragging = true;
         draggingRef.current.startX = e.clientX;
         draggingRef.current.startTime = currentTime;
 
-        // Reset velocity tracking
-        velocityRef.current = 0;
-        lastDragTimeRef.current = performance.now();
-        dragHistoryRef.current = [];
-
-        // Haptic / Stop Sound
-        if (onScratch) {
-            onScratch(0);
-        }
-
         e.currentTarget.setPointerCapture(e.pointerId);
-    }, [currentTime, onScratch]);
+    }, [currentTime]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (!draggingRef.current.isDragging) return;
 
-        const now = performance.now();
         const deltaPixels = e.clientX - draggingRef.current.startX;
         const dt = -(deltaPixels / pixelsPerSecondRef.current); // Seconds change
         const newTime = Math.max(0, Math.min(duration, draggingRef.current.startTime + dt));
 
         setDragTime(newTime);
+        onSeek(newTime);
 
-        // Audio Update: Scratch vs Seek
-        if (onScratch) {
-            // Calculate velocity (playback rate)
-            // dt = change in track time (seconds)
-            // realDt = change in real time (seconds)
-            const realDt = (now - lastDragTimeRef.current) / 1000;
-            const trackDt = newTime - (dragTime || currentTime); // Change since last frame
-
-            if (realDt > 0) {
-                // Instant velocity
-                const playbackRate = trackDt / realDt;
-                onScratch(playbackRate);
-            }
-        } else {
-            onSeek(newTime);
-        }
-
-        lastDragTimeRef.current = now;
-
-        // Record history for inertia calc
-        dragHistoryRef.current.push({ time: now, value: newTime });
-        dragHistoryRef.current = dragHistoryRef.current.filter(p => now - p.time < 100);
-
-    }, [duration, onSeek, onScratch, dragTime, currentTime]);
+    }, [duration, onSeek]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         setIsDragging(false);
         draggingRef.current.isDragging = false;
-        const wasScratching = !!onScratch;
-
-        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { }
-
-        // Calculate final velocity from history
-        const now = performance.now();
-        const history = dragHistoryRef.current;
-
-        if (history.length >= 2) {
-            const newest = history[history.length - 1];
-
-            // If user stopped dragging for > 100ms before release, no inertia
-            if (now - newest.time < 100) {
-                const oldest = history[0];
-                const timeDiff = newest.time - oldest.time; // ms
-                const valueDiff = newest.value - oldest.value; // seconds
-
-                if (timeDiff > 0) {
-                    // Velocity in seconds per millisecond
-                    let velocity = valueDiff / timeDiff;
-
-                    // Apply inertia if velocity is significant
-                    // OR if we are playing (to spin up)
-                    if (Math.abs(velocity) > 0.0005 || isPlaying) {
-                        const friction = 0.95;
-                        const stopThreshold = 0.0001;
-
-                        let currentTimeVal = newest.value;
-                        let scratchVelocity = velocity * 1000; // Convert to playback rate (approx)
-
-                        // Target velocity: 1.0 (0.001 ms/ms) if playing, 0 if stopped
-                        const targetVelocity = isPlaying ? 0.001 : 0;
-
-                        const inertiaLoop = () => {
-                            if (draggingRef.current.isDragging) return;
-
-                            // Smooth step towards target
-                            // velocity = velocity * friction + target * (1-friction)
-                            velocity = velocity * friction + targetVelocity * (1 - friction);
-                            scratchVelocity = velocity * 1000;
-
-                            currentTimeVal += velocity * 16; // approximate 16ms per frame
-
-                            // Clamp
-                            if (currentTimeVal < 0) {
-                                currentTimeVal = 0;
-                                velocity = 0; // If hit start, stop
-                                if (isPlaying) velocity = targetVelocity; // But if playing, maybe bounce? No, just restart
-                            }
-                            if (currentTimeVal > duration) {
-                                currentTimeVal = duration;
-                                velocity = 0;
-                            }
-
-                            setDragTime(currentTimeVal);
-
-                            if (wasScratching && onScratch) {
-                                onScratch(scratchVelocity);
-                            } else {
-                                onSeek(currentTimeVal);
-                            }
-
-                            // Continue until we are close to target
-                            if (Math.abs(velocity - targetVelocity) > stopThreshold) {
-                                inertiaFrameRef.current = requestAnimationFrame(inertiaLoop);
-                            } else {
-                                // Done
-                                setDragTime(null);
-                                inertiaFrameRef.current = null;
-                                if (wasScratching && onReleaseScratch) {
-                                    onReleaseScratch();
-                                }
-                            }
-                        };
-
-                        inertiaFrameRef.current = requestAnimationFrame(inertiaLoop);
-                        return; // Don't clear dragTime yet
-                    }
-                }
-            }
-        }
-
-        dragHistoryRef.current = [];
         setDragTime(null);
 
-        if (wasScratching && onReleaseScratch) {
-            onReleaseScratch();
-        }
-
-    }, [duration, onSeek, onScratch, onReleaseScratch]);
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { }
+    }, []);
 
     return (
         <div
@@ -408,9 +275,9 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
             onPointerLeave={handlePointerUp}
         >
             <canvas ref={canvasRef} />
-            {!waveformData && audioUrl && (
+            {(isLoading || (!waveformData && audioUrl)) && (
                 <div className="waveform-loading-overlay">
-                    <span>Loading...</span>
+                    <span>{isLoading ? 'Loading Track...' : 'Analyzing...'}</span>
                 </div>
             )}
         </div>

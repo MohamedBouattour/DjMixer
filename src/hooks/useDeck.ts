@@ -153,18 +153,40 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     }, [audioContext]);
 
     const loadTrack = useCallback(async (track: Track) => {
-        setState(prev => ({ ...prev, isLoading: true }));
+        // 1. IMMEDIATE RESET (Synchronous)
+        isPlayingRef.current = false;
+        isScratchingRef.current = false;
+        playOffsetRef.current = 0;
+        startTimeRef.current = 0;
 
-        try {
-            if (workletLoadingPromise) await workletLoadingPromise;
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = undefined;
+        }
 
-            // Stop existing
-            if (workletNodeRef.current) {
+        // Stop audio engine immediately
+        if (workletNodeRef.current) {
+            try {
                 const stopParam = workletNodeRef.current.parameters.get('playbackRate');
                 if (stopParam) stopParam.value = 0;
                 workletNodeRef.current.disconnect();
-                workletNodeRef.current = null;
-            }
+            } catch (e) { /* ignore cleanup errors */ }
+            workletNodeRef.current = null;
+        }
+
+        // 2. Clear UI State immediately to "Loading"
+        setState(prev => ({
+            ...prev,
+            isLoading: true,
+            isPlaying: false,
+            track: null,  // Hide old track stuff
+            currentTime: 0,
+            activeLoop: null,
+            cuePoints: []
+        }));
+
+        try {
+            if (workletLoadingPromise) await workletLoadingPromise;
 
             // Fetch & Decode Audio
             let arrayBuffer: ArrayBuffer;
@@ -214,12 +236,12 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                     const { position } = event.data;
                     const time = position / audioBuffer.sampleRate;
 
-                    // Update our tracking refs
-                    playOffsetRef.current = time;
-                    startTimeRef.current = audioContext.currentTime;
-
-                    // Also update state currentTime during scratching for visual feedback
+                    // CRITICAL FIX: Only let Worklet dictate time when SCRATCHING.
+                    // During normal playback, we rely on the JS clock (audioContext.currentTime) for smoothness.
+                    // Allowing Worklet to update refs during normal playback causes "fighting" and jitter.
                     if (isScratchingRef.current) {
+                        playOffsetRef.current = time;
+                        startTimeRef.current = audioContext.currentTime;
                         setState(prev => ({ ...prev, currentTime: time }));
                     }
                 }
@@ -227,9 +249,12 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
 
             workletNodeRef.current = workletNode;
 
-            // Reset State
+            // Reset State Refs
             isPlayingRef.current = false;
             isScratchingRef.current = false;
+            playOffsetRef.current = 0;
+            startTimeRef.current = 0;
+
             workletNode.parameters.get('playbackRate')?.setValueAtTime(0, audioContext.currentTime);
 
             setState(prev => ({
