@@ -135,7 +135,6 @@ function App() {
           source.buffer = buffer;
           source.connect(ctx.destination);
           source.start(0);
-          console.log('Silent buffer played to unlock audio');
         } catch (e) {
           console.warn('Failed to play silent buffer:', e);
         }
@@ -151,12 +150,14 @@ function App() {
       }
     };
 
-    const handleInteraction = () => {
-      resumeAudioContext();
-      // Remove listeners after first interaction
-      window.removeEventListener('click', handleInteraction);
-      window.removeEventListener('touchstart', handleInteraction);
-      window.removeEventListener('keydown', handleInteraction);
+    const handleInteraction = async () => {
+      await resumeAudioContext();
+      // Only remove listeners if we are successfully running
+      if (audioContext && audioContext.state === 'running') {
+        window.removeEventListener('click', handleInteraction);
+        window.removeEventListener('touchstart', handleInteraction);
+        window.removeEventListener('keydown', handleInteraction);
+      }
     };
 
     window.addEventListener('click', handleInteraction);

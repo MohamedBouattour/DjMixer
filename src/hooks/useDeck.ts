@@ -9,8 +9,8 @@ interface UseDeckOptions {
     deckId: 'A' | 'B';
 }
 
-// Global promise to track worklet loading status to avoid double-loading
-let workletLoadingPromise: Promise<void> | null = null;
+// Global map to track worklet loading status per AudioContext
+const contextWorkletMap = new WeakMap<AudioContext, Promise<void>>();
 
 export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const [state, setState] = useState<DeckState>({
@@ -65,10 +65,12 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         if (!audioContext || !destination) return;
 
         // 1. Ensure Worklet is Loaded
+        let workletLoadingPromise = contextWorkletMap.get(audioContext);
         if (!workletLoadingPromise) {
             workletLoadingPromise = audioContext.audioWorklet.addModule('/worklets/scratch-processor.js')
                 .then(() => console.log('Scratch Processor Loaded'))
                 .catch(err => console.error('Failed to load Scratch Processor:', err));
+            contextWorkletMap.set(audioContext, workletLoadingPromise);
         }
 
         // 2. Create Gain Node (Volume)
@@ -186,7 +188,8 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         }));
 
         try {
-            if (workletLoadingPromise) await workletLoadingPromise;
+            const loadingPromise = contextWorkletMap.get(audioContext);
+            if (loadingPromise) await loadingPromise;
 
             // Fetch & Decode Audio
             let arrayBuffer: ArrayBuffer;
