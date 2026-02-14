@@ -394,9 +394,11 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         if (!audioBufferRef.current) return;
 
         // Resume AudioContext if suspended (critical for iOS)
-        if (audioContext.state === 'suspended') {
+        if (audioContext.state !== 'running') {
             try {
+                console.log(`[Audio] Context is ${audioContext.state}, attempting final resume before play...`);
                 await audioContext.resume();
+                console.log(`[Audio] Final resume result: ${audioContext.state}`);
             } catch (e) {
                 console.warn('[Audio] Failed to resume AudioContext on play:', e);
             }

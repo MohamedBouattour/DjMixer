@@ -53,3 +53,6 @@ We will implement a realistic vinyl scratch effect by adding physics-based momen
 - [x] Improved `AudioWorklet` loading logic to use robust absolute paths via `BASE_URL`.
 - [x] Added more descriptive logging for `AudioContext` states and worklet loading to diagnose mobile issues.
 - [x] Verified `AudioContext` resume logic on user gestures.
+- [x] Added "Unlock Audio" overlay for robust cross-platform initialization.
+- [x] Implemented sub-audible "Keep-Alive" oscillator to prevent OS-level audio suspension.
+- [x] Added visibility change listeners to auto-resume audio when returning to the tab.

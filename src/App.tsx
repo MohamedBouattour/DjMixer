@@ -121,79 +121,99 @@ function App() {
     return ctx;
   });
 
-  // Create AudioContext on first user gesture (iOS REQUIRES this)
-  // On iOS Safari, AudioContext created outside a user gesture is permanently suspended.
-  // By creating it inside a click/touchstart handler, it starts in 'running' state immediately.
+  // Handle AudioContext state changes
   useEffect(() => {
-    // If already initialized, just ensure it's running
-    if (audioContext) {
-      const keepAlive = async () => {
-        if (audioContext.state === 'suspended') {
-          try {
-            await audioContext.resume();
-            console.log('[Audio] Context resumed on interaction');
-          } catch (e) {
-            console.warn('[Audio] Failed to resume:', e);
-          }
-        }
-      };
+    if (!audioContext) return;
 
-      // iOS can re-suspend the context when the app is backgrounded
-      window.addEventListener('click', keepAlive);
-      window.addEventListener('touchstart', keepAlive, { passive: true });
-
-      return () => {
-        window.removeEventListener('click', keepAlive);
-        window.removeEventListener('touchstart', keepAlive);
-      };
-    }
-
-    // First-time initialization: create AudioContext inside user gesture
-    const handleFirstInteraction = async () => {
-      // Create context inside user gesture for iOS compatibility
-      const ctx = initAudioContext.current();
-
-      // iOS Fix: Play silent buffer to fully unlock audio pipeline
-      try {
-        const buffer = ctx.createBuffer(1, 1, 22050);
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.start(0);
-      } catch (e) {
-        console.warn('[Audio] Silent buffer play failed:', e);
-      }
-
-      // Ensure running
-      if (ctx.state === 'suspended') {
-        try {
-          await ctx.resume();
-        } catch (e) {
-          console.warn('[Audio] Resume failed:', e);
-        }
-      }
-
-      console.log(`[Audio] Context created on user gesture. State: ${ctx.state}. SampleRate: ${ctx.sampleRate}`);
-
-      // Remove first-interaction listeners
-      window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
-      window.removeEventListener('keydown', handleFirstInteraction);
-
-      // Trigger re-render with new context
-      setAudioContext(ctx);
+    const handleStateChange = () => {
+      console.log(`[Audio] Context state changed to: ${audioContext.state}`);
+      // If state is not running, we may need to force a re-render to show the unlock UI
+      setAudioContextState(audioContext.state);
     };
 
-    window.addEventListener('click', handleFirstInteraction);
-    window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
-    window.addEventListener('keydown', handleFirstInteraction);
+    audioContext.addEventListener('statechange', handleStateChange);
+    
+    // Resume context on visibility change (mobile browsers suspended it in background)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && audioContext.state === 'suspended') {
+        console.log('[Audio] Tab visible, attempting to resume context...');
+        audioContext.resume().catch(e => console.warn('[Audio] Auto-resume failed:', e));
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('click', handleFirstInteraction);
-      window.removeEventListener('touchstart', handleFirstInteraction);
-      window.removeEventListener('keydown', handleFirstInteraction);
+      audioContext.removeEventListener('statechange', handleStateChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [audioContext]);
+
+  const [audioContextState, setAudioContextState] = useState<AudioContextState | 'uninitialized'>('uninitialized');
+
+  // Unified Audio Unlocker
+  const unlockAudio = async () => {
+    let ctx = audioContext;
+    if (!ctx) {
+      ctx = initAudioContext.current();
+      setAudioContext(ctx);
+    }
+
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        console.error('[Audio] Manual resume failed:', e);
+      }
+    }
+
+    // Play silent buffer for iOS
+    try {
+      // 1. Instant sound to unlock
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      osc.connect(g);
+      osc.start(0);
+      osc.stop(ctx.currentTime + 0.1);
+
+      // 2. Persistent silent oscillator (Keep-Alive)
+      // This prevents some mobile browsers from shutting down the audio pipeline during silence
+      const keepAliveGain = ctx.createGain();
+      keepAliveGain.gain.value = 0.0000001; // Effectively silent but active
+      keepAliveGain.connect(ctx.destination);
+      const keepAliveOsc = ctx.createOscillator();
+      keepAliveOsc.type = 'sine';
+      keepAliveOsc.frequency.value = 1; // Sub-audible
+      keepAliveOsc.connect(keepAliveGain);
+      keepAliveOsc.start();
+      console.log('[Audio] Keep-alive oscillator started');
+    } catch (e) {
+      console.warn('[Audio] Silence playback/keep-alive failed:', e);
+    }
+
+    setAudioContextState(ctx.state);
+    console.log(`[Audio] Unlock requested. Final State: ${ctx.state}`);
+  };
+
+  // Automated first-gesture handler (still keep as backup)
+  useEffect(() => {
+    if (audioContext && audioContextState === 'running') return;
+
+    const handleGesture = () => {
+      unlockAudio();
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+
+    window.addEventListener('click', handleGesture);
+    window.addEventListener('touchstart', handleGesture, { passive: true });
+
+    return () => {
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+  }, [audioContext, audioContextState]);
 
   const { state: deckAState, controls: deckA } = useDeck({
     audioContext: audioContext!,
@@ -486,6 +506,61 @@ function App() {
 
   return (
     <div className="app">
+      {/* AUDIO UNLOCK OVERLAY (Mobile/Safari requirement) */}
+      {(audioContextState !== 'running') && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.95)',
+          zIndex: 20000,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          padding: '2rem',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <div className="logo-icon" style={{ marginBottom: '2rem', transform: 'scale(2)' }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ff0080" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </div>
+          <h1 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.8rem' }}>DJ Controller</h1>
+          <p style={{ color: '#aaa', marginBottom: '2rem', maxWidth: '300px' }}>
+            {audioContextState === 'uninitialized' 
+              ? 'To enable audio on this device, please tap the button below.' 
+              : `Audio is currently ${audioContextState}. Tap to retry.`}
+          </p>
+          <button
+            onClick={unlockAudio}
+            style={{
+              background: 'linear-gradient(135deg, #ff0080 0%, #ff4040 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '16px 40px',
+              borderRadius: '30px',
+              fontSize: '1.2rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              boxShadow: '0 8px 25px rgba(255, 0, 128, 0.5)',
+              transition: 'transform 0.2s',
+              marginBottom: '1rem'
+            }}
+            onPointerDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
+            onPointerUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            {audioContextState === 'uninitialized' ? 'Start Session' : 'Retry Audio Connection'}
+          </button>
+          {audioContextState !== 'uninitialized' && (
+             <span style={{ color: '#555', fontSize: '0.8rem' }}>
+               Status: {audioContextState}
+             </span>
+          )}
+        </div>
+      )}
+
       {/* UPDATE MODAL */}
       {updateAvailable && (
         <div style={{
