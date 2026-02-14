@@ -40,7 +40,7 @@
 }
 
 /* Decks take ~42% of width */
-.decks-section>.deck {
+.decks-section > .deck {
   width: 42%;
   flex: initial;
   /* Disable flex-grow/shrink ensuring strictly percentage based if needed, or use flex-basis */
@@ -70,10 +70,22 @@
   z-index: 2000;
 }
 
+/* Disable selection and context menu globally */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+*:focus {
+  outline: none !important;
+}
+
 /* Library and Settings floating buttons */
 .settings-floating-btn {
-  width: 44px;
-  height: 44px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: rgba(30, 30, 30, 0.95);
   border: 2px solid rgba(255, 255, 255, 0.2);
@@ -158,7 +170,6 @@
 }
 
 @media screen and (max-width: 767px) {
-
   /* Phone portrait - show orientation warning */
   .app-main {
     display: flex;

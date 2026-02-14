@@ -183,16 +183,7 @@ function App() {
 
     // Play silent buffer for iOS
     try {
-      // 1. Force iOS Audio Session Category to "Playback" (ignoring mute switch)
-      // by playing a short HTML5 audio snippet.
-      const silentAudio = new Audio(
-        "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABBGZGF0AgAAAA==",
-      );
-      silentAudio
-        .play()
-        .catch((e) => console.warn("[Audio] HTML5 Audio unlock failed:", e));
-
-      // 2. Instant sound to unlock Web Audio API
+      // 1. Instant sound to unlock
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, ctx.currentTime);
       g.connect(ctx.destination);
@@ -201,7 +192,7 @@ function App() {
       osc.start(0);
       osc.stop(ctx.currentTime + 0.1);
 
-      // 3. Persistent silent oscillator (Keep-Alive)
+      // 2. Persistent silent oscillator (Keep-Alive)
       // This prevents some mobile browsers from shutting down the audio pipeline during silence
       const keepAliveGain = ctx.createGain();
       keepAliveGain.gain.value = 0.0000001; // Effectively silent but active
@@ -270,10 +261,19 @@ function App() {
       requestWakeLock();
     }
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isPlaying) {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       if (wakeLock) {
         wakeLock.release().catch(console.warn);
       }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [deckAState.isPlaying, deckBState.isPlaying]);
 
