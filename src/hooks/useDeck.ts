@@ -74,17 +74,23 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         if (!workletLoadingPromise) {
             // Check if AudioWorklet is available at all
             if (typeof audioContext.audioWorklet?.addModule === 'function') {
-                workletLoadingPromise = audioContext.audioWorklet.addModule('/worklets/scratch-processor.js')
+                // Use a path relative to current site root
+                const workletPath = `${window.location.origin}${import.meta.env.BASE_URL}worklets/scratch-processor.js`.replace(/\/+/g, '/').replace(':/', '://');
+                
+                console.log(`[Audio] Attempting to load AudioWorklet from: ${workletPath}`);
+                
+                workletLoadingPromise = audioContext.audioWorklet.addModule(workletPath)
                     .then(() => {
-                        console.log('[Audio] Scratch Processor Loaded (Worklet mode)');
+                        console.log('[Audio] Scratch Processor Loaded Successfully (Worklet mode)');
                         return true;
                     })
                     .catch(err => {
-                        console.warn('[Audio] Failed to load Scratch Processor, using fallback:', err);
+                        console.error('[Audio] Failed to load Scratch Processor Worklet:', err);
+                        console.warn('[Audio] Falling back to standard AudioBufferSource engine');
                         return false;
                     });
             } else {
-                console.warn('[Audio] AudioWorklet not supported, using fallback mode');
+                console.warn('[Audio] AudioWorklet API not supported in this browser, using fallback mode');
                 workletLoadingPromise = Promise.resolve(false);
             }
             contextWorkletMap.set(audioContext, workletLoadingPromise);

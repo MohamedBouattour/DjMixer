@@ -21,7 +21,7 @@ function App() {
   const [isTrackSelectorOpen, setIsTrackSelectorOpen] = useState(false);
 
   const { keyMap, layout } = useSettings();
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 3000px)').matches);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
 
   // Update Logic
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -79,7 +79,7 @@ function App() {
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.matchMedia('(max-width: 3000px)').matches);
+      setIsMobile(window.innerWidth < 1024);
     };
 
     checkMobile();
@@ -173,7 +173,7 @@ function App() {
         }
       }
 
-      console.log(`[Audio] Context created on user gesture. State: ${ctx.state}`);
+      console.log(`[Audio] Context created on user gesture. State: ${ctx.state}. SampleRate: ${ctx.sampleRate}`);
 
       // Remove first-interaction listeners
       window.removeEventListener('click', handleFirstInteraction);

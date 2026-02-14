@@ -113,8 +113,15 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         generatePeaks();
     }, [audioUrl, audioBuffer]);
 
-    // Derived view time: use dragTime if dragging, otherwise prop currentTime
-    const viewTime = isDragging && dragTime !== null ? dragTime : currentTime;
+    // Physics Refs for momentum
+    const velocityRef = useRef(0);
+    const lastTimestampRef = useRef(0);
+    const lastXRef = useRef(0);
+    const momentumFrameRef = useRef<number | null>(null);
+    const friction = 0.92; // Friction coefficient
+
+    // Derived view time: use dragTime if dragging or momentum is active, otherwise prop currentTime
+    const viewTime = (isDragging || momentumFrameRef.current !== null) && dragTime !== null ? dragTime : currentTime;
 
     // Draw waveform
     React.useLayoutEffect(() => {
@@ -283,9 +290,20 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         draggingRef.current.startX = e.clientX;
         draggingRef.current.startTime = currentTime;
 
+        // Reset physics
+        velocityRef.current = 0;
+        lastTimestampRef.current = performance.now();
+        lastXRef.current = e.clientX;
+
+        // Cancel any existing momentum
+        if (momentumFrameRef.current) {
+            cancelAnimationFrame(momentumFrameRef.current);
+            momentumFrameRef.current = null;
+        }
+
         e.currentTarget.setPointerCapture(e.pointerId);
 
-        // Stop audio while holding/scrubbing
+        // Start scratch mode in audio
         if (onScratch) {
             onScratch(0);
         }
@@ -294,27 +312,91 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (!draggingRef.current.isDragging) return;
 
+        const now = performance.now();
+        const dt_ms = now - lastTimestampRef.current;
+        if (dt_ms < 1) return; // Avoid division by zero
+
         const deltaPixels = e.clientX - draggingRef.current.startX;
-        const dt = -(deltaPixels / pixelsPerSecondRef.current);
-        const newTime = Math.max(0, Math.min(duration, draggingRef.current.startTime + dt));
+        const dt_sec = -(deltaPixels / pixelsPerSecondRef.current);
+        const newTime = Math.max(0, Math.min(duration, draggingRef.current.startTime + dt_sec));
+
+        // Calculate velocity (change in time per change in real time)
+        const dx = e.clientX - lastXRef.current;
+        const timeDiff = -(dx / pixelsPerSecondRef.current);
+        const instantaneousVelocity = timeDiff / (dt_ms / 1000);
+
+        // Smooth velocity a bit
+        velocityRef.current = velocityRef.current * 0.4 + instantaneousVelocity * 0.6;
+
+        lastTimestampRef.current = now;
+        lastXRef.current = e.clientX;
 
         setDragTime(newTime);
         onSeek(newTime);
 
-    }, [duration, onSeek]);
+        if (onScratch) {
+            onScratch(velocityRef.current);
+        }
+
+    }, [duration, onSeek, onScratch]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         setIsDragging(false);
         draggingRef.current.isDragging = false;
-        setDragTime(null);
 
         try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { }
 
-        // Resume audio (if it was playing)
-        if (onReleaseScratch) {
-            onReleaseScratch();
+        // Start momentum if velocity is high enough
+        if (Math.abs(velocityRef.current) > 0.1) {
+            const startMomentum = () => {
+                let lastTime = performance.now();
+                let currentPos = dragTime !== null ? dragTime : currentTime;
+
+                const animate = (now: number) => {
+                    const dt = (now - lastTime) / 1000;
+                    lastTime = now;
+
+                    // Apply friction/decay
+                    velocityRef.current *= friction;
+
+                    // Update position
+                    currentPos += velocityRef.current * dt;
+
+                    // Bounce/Stop at boundaries
+                    if (currentPos <= 0) {
+                        currentPos = 0;
+                        velocityRef.current = 0;
+                    } else if (currentPos >= duration) {
+                        currentPos = duration;
+                        velocityRef.current = 0;
+                    }
+
+                    setDragTime(currentPos);
+                    onSeek(currentPos);
+
+                    if (onScratch) {
+                        onScratch(velocityRef.current);
+                    }
+
+                    if (Math.abs(velocityRef.current) > 0.01) {
+                        momentumFrameRef.current = requestAnimationFrame(animate);
+                    } else {
+                        momentumFrameRef.current = null;
+                        setDragTime(null);
+                        if (onReleaseScratch) onReleaseScratch();
+                    }
+                };
+                momentumFrameRef.current = requestAnimationFrame(animate);
+            };
+            startMomentum();
+        } else {
+            setDragTime(null);
+            // Resume audio
+            if (onReleaseScratch) {
+                onReleaseScratch();
+            }
         }
-    }, [onReleaseScratch]);
+    }, [dragTime, currentTime, duration, onSeek, onScratch, onReleaseScratch]);
 
     return (
         <div
