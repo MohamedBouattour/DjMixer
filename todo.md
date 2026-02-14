@@ -56,3 +56,4 @@ We will implement a realistic vinyl scratch effect by adding physics-based momen
 - [x] Added "Unlock Audio" overlay for robust cross-platform initialization.
 - [x] Implemented sub-audible "Keep-Alive" oscillator to prevent OS-level audio suspension.
 - [x] Added visibility change listeners to auto-resume audio when returning to the tab.
+- [x] Added HTML5 Audio playback to unlockAudio to force iOS Audio Session Category to Playback (fix for silent switch issue).
