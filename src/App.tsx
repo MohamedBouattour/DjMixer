@@ -102,72 +102,96 @@ function App() {
   const deckAGainRef = useRef<GainNode | null>(null);
   const deckBGainRef = useRef<GainNode | null>(null);
 
-  // Initialize audio context
+  // Helper to initialize AudioContext and gain nodes
+  const initAudioContext = useRef(() => {
+    // Support for Webkit (iOS Safari)
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const ctx = new AudioContextClass();
+
+    masterGainRef.current = ctx.createGain();
+    masterGainRef.current.gain.value = masterVolume / 100;
+    masterGainRef.current.connect(ctx.destination);
+
+    deckAGainRef.current = ctx.createGain();
+    deckAGainRef.current.connect(masterGainRef.current);
+
+    deckBGainRef.current = ctx.createGain();
+    deckBGainRef.current.connect(masterGainRef.current);
+
+    return ctx;
+  });
+
+  // Create AudioContext on first user gesture (iOS REQUIRES this)
+  // On iOS Safari, AudioContext created outside a user gesture is permanently suspended.
+  // By creating it inside a click/touchstart handler, it starts in 'running' state immediately.
   useEffect(() => {
-    if (!audioContext) {
-      // Support for Webkit (iOS Safari)
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioContextClass();
-
-      masterGainRef.current = ctx.createGain();
-      masterGainRef.current.gain.value = masterVolume / 100;
-      masterGainRef.current.connect(ctx.destination);
-
-      deckAGainRef.current = ctx.createGain();
-      deckAGainRef.current.connect(masterGainRef.current);
-
-      deckBGainRef.current = ctx.createGain();
-      deckBGainRef.current.connect(masterGainRef.current);
-
-      setAudioContext(ctx);
-    }
-  }, []);
-
-  // Resume AudioContext on first user interaction (Mobile/PWA fix)
-  useEffect(() => {
-    const resumeAudioContext = async () => {
-      const ctx = audioContext;
-      if (ctx) {
-        // iOS Fix: Play silent buffer to unlock audio threads
-        try {
-          const buffer = ctx.createBuffer(1, 1, 22050);
-          const source = ctx.createBufferSource();
-          source.buffer = buffer;
-          source.connect(ctx.destination);
-          source.start(0);
-        } catch (e) {
-          console.warn('Failed to play silent buffer:', e);
-        }
-
-        if (ctx.state === 'suspended') {
+    // If already initialized, just ensure it's running
+    if (audioContext) {
+      const keepAlive = async () => {
+        if (audioContext.state === 'suspended') {
           try {
-            await ctx.resume();
-            console.log('AudioContext resumed by user interaction');
-          } catch (err) {
-            console.warn('Failed to resume AudioContext:', err);
+            await audioContext.resume();
+            console.log('[Audio] Context resumed on interaction');
+          } catch (e) {
+            console.warn('[Audio] Failed to resume:', e);
           }
         }
+      };
+
+      // iOS can re-suspend the context when the app is backgrounded
+      window.addEventListener('click', keepAlive);
+      window.addEventListener('touchstart', keepAlive, { passive: true });
+
+      return () => {
+        window.removeEventListener('click', keepAlive);
+        window.removeEventListener('touchstart', keepAlive);
+      };
+    }
+
+    // First-time initialization: create AudioContext inside user gesture
+    const handleFirstInteraction = async () => {
+      // Create context inside user gesture for iOS compatibility
+      const ctx = initAudioContext.current();
+
+      // iOS Fix: Play silent buffer to fully unlock audio pipeline
+      try {
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      } catch (e) {
+        console.warn('[Audio] Silent buffer play failed:', e);
       }
+
+      // Ensure running
+      if (ctx.state === 'suspended') {
+        try {
+          await ctx.resume();
+        } catch (e) {
+          console.warn('[Audio] Resume failed:', e);
+        }
+      }
+
+      console.log(`[Audio] Context created on user gesture. State: ${ctx.state}`);
+
+      // Remove first-interaction listeners
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+
+      // Trigger re-render with new context
+      setAudioContext(ctx);
     };
 
-    const handleInteraction = async () => {
-      await resumeAudioContext();
-      // Only remove listeners if we are successfully running
-      if (audioContext && audioContext.state === 'running') {
-        window.removeEventListener('click', handleInteraction);
-        window.removeEventListener('touchstart', handleInteraction);
-        window.removeEventListener('keydown', handleInteraction);
-      }
-    };
-
-    window.addEventListener('click', handleInteraction);
-    window.addEventListener('touchstart', handleInteraction);
-    window.addEventListener('keydown', handleInteraction);
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+    window.addEventListener('keydown', handleFirstInteraction);
 
     return () => {
-      window.removeEventListener('click', handleInteraction);
-      window.removeEventListener('touchstart', handleInteraction);
-      window.removeEventListener('keydown', handleInteraction);
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
     };
   }, [audioContext]);
 

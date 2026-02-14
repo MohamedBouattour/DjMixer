@@ -47,6 +47,9 @@ export const Deck: React.FC<DeckProps> = ({
     onLoopSet,
     onLoopClear,
 
+    onScratch,
+    onReleaseScratch,
+
     color,
     shortcuts
 }) => {
@@ -143,6 +146,8 @@ export const Deck: React.FC<DeckProps> = ({
                     currentTime={state.isLoading ? 0 : currentTime}
                     duration={track?.duration || 0}
                     onSeek={onSeek}
+                    onScratch={onScratch}
+                    onReleaseScratch={onReleaseScratch}
                     color={color}
                     bpm={track?.bpm}
                     height={window.innerWidth <= 767 ? 40 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 50 : 60)}
@@ -183,6 +188,9 @@ export const Deck: React.FC<DeckProps> = ({
                                 duration={track.duration || 0}
                                 isPlaying={isPlaying}
                                 color={color}
+                                onScratch={onScratch}
+                                onReleaseScratch={onReleaseScratch}
+                                onSeek={onSeek}
                             />
                         </div>
                     ) : (

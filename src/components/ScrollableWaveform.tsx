@@ -7,6 +7,8 @@ interface ScrollableWaveformProps {
     currentTime: number;
     duration: number;
     onSeek: (time: number) => void;
+    onScratch?: (velocity: number) => void;
+    onReleaseScratch?: () => void;
     color: string;
     bpm?: number;
     height?: number;
@@ -24,6 +26,8 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     currentTime,
     duration,
     onSeek,
+    onScratch,
+    onReleaseScratch,
     color,
     bpm,
     height = 60,
@@ -45,6 +49,14 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     });
 
     const pixelsPerSecondRef = useRef<number>(100);
+
+    // Parse color to RGB components
+    const colorToRGB = useCallback((hex: string) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+    }, []);
 
     // Generate waveform peaks from audio buffer
     useEffect(() => {
@@ -102,7 +114,6 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     }, [audioUrl, audioBuffer]);
 
     // Derived view time: use dragTime if dragging, otherwise prop currentTime
-    // This ensures smooth 60fps dragging even if parent updates are slower
     const viewTime = isDragging && dragTime !== null ? dragTime : currentTime;
 
     // Draw waveform
@@ -131,12 +142,12 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
 
         const containerWidth = rect.width;
 
-        const bgColor = '#111';
-        const gridColor = 'rgba(255, 255, 255, 0.1)';
-        const gridBeatColor = 'rgba(255, 255, 255, 0.3)';
-
-        // Clear
-        ctx.fillStyle = bgColor;
+        // Clear with dark gradient background
+        const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
+        bgGradient.addColorStop(0, '#0d0d0d');
+        bgGradient.addColorStop(0.5, '#151515');
+        bgGradient.addColorStop(1, '#0d0d0d');
+        ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, containerWidth, height);
 
         if (!waveformData) return;
@@ -144,6 +155,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         const pixelsPerSecond = pixelsPerSecondRef.current;
         const peaks = waveformData.peaks;
         const samplesPerSecondVisual = (peaks.length / 2) / waveformData.duration;
+        const rgb = colorToRGB(color);
 
         // Calculate view window based on VIEW TIME (which is smooth)
         const halfWindowSeconds = (containerWidth / pixelsPerSecond) / 2;
@@ -164,7 +176,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, height);
             }
-            ctx.strokeStyle = gridColor;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
             ctx.lineWidth = 1;
             ctx.stroke();
 
@@ -177,19 +189,15 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
                     ctx.lineTo(x, height);
                 }
             }
-            ctx.strokeStyle = gridBeatColor;
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
             ctx.stroke();
         }
 
-        // 2. Draw Waveform
+        // 2. Draw Waveform Bars - Clean mirrored style
         const barWidth = 2;
         const gap = 1;
         const effectivePixelStep = barWidth + gap;
-
-        // Colors
-        const playedColor = color;
-        const unplayedColor = adjustAlpha(color, 0.5);
 
         for (let x = 0; x < containerWidth; x += effectivePixelStep) {
             const timeAtX = startTime + (x / pixelsPerSecond);
@@ -201,54 +209,93 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
             const min = peaks[peakIdx];
             const max = peaks[peakIdx + 1];
 
-            const top = centerY - (max * centerY * 0.9);
-            const bottom = centerY - (min * centerY * 0.9);
-            const barH = bottom - top;
+            const topHeight = max * centerY * 0.85;
+            const bottomHeight = -min * centerY * 0.85;
 
-            if (x < centerX) {
-                ctx.fillStyle = playedColor;
-            } else {
-                ctx.fillStyle = unplayedColor;
+            const isPast = x < centerX;
+            const alpha = isPast ? 1.0 : 0.45;
+
+            // Gradient color based on amplitude for more visual interest
+            const amplitude = Math.max(Math.abs(max), Math.abs(min));
+            const bright = Math.min(1, amplitude * 1.5 + 0.3);
+
+            // Top bar (positive)
+            if (topHeight > 0.5) {
+                const topGrad = ctx.createLinearGradient(0, centerY - topHeight, 0, centerY);
+                topGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * bright})`);
+                topGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * 0.3})`);
+                ctx.fillStyle = topGrad;
+                ctx.fillRect(x, centerY - topHeight, barWidth, topHeight);
             }
 
-            ctx.fillRect(x, top, barWidth, barH);
+            // Bottom bar (negative) - mirrored
+            if (bottomHeight > 0.5) {
+                const botGrad = ctx.createLinearGradient(0, centerY, 0, centerY + bottomHeight);
+                botGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * 0.3})`);
+                botGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * bright})`);
+                ctx.fillStyle = botGrad;
+                ctx.fillRect(x, centerY, barWidth, bottomHeight);
+            }
         }
 
-        // 3. Draw Playhead (Fixed Center)
+        // 3. Center line (subtle divider)
+        ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(containerWidth, centerY);
+        ctx.stroke();
+
+        // 4. Draw Playhead (Fixed Center) - Clean white line with glow
+        ctx.save();
         ctx.shadowColor = color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(centerX, 0);
         ctx.lineTo(centerX, height);
         ctx.stroke();
-        ctx.shadowBlur = 0;
+        ctx.restore();
 
+        // Triangle marker at top
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.moveTo(centerX - 5, 0);
         ctx.lineTo(centerX + 5, 0);
-        ctx.lineTo(centerX, 6);
+        ctx.lineTo(centerX, 7);
         ctx.fill();
 
-    }, [waveformData, viewTime, color, bpm, duration, height]);
-    // Handle Scrubbing (Seek only)
+        // Triangle marker at bottom
+        ctx.beginPath();
+        ctx.moveTo(centerX - 5, height);
+        ctx.lineTo(centerX + 5, height);
+        ctx.lineTo(centerX, height - 7);
+        ctx.fill();
+
+    }, [waveformData, viewTime, color, bpm, duration, height, colorToRGB]);
+
+    // Handle Scrubbing (Drag to seek)
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
         setIsDragging(true);
-        setDragTime(currentTime); // Initialize drag time
+        setDragTime(currentTime);
         draggingRef.current.isDragging = true;
         draggingRef.current.startX = e.clientX;
         draggingRef.current.startTime = currentTime;
 
         e.currentTarget.setPointerCapture(e.pointerId);
-    }, [currentTime]);
+
+        // Stop audio while holding/scrubbing
+        if (onScratch) {
+            onScratch(0);
+        }
+    }, [currentTime, onScratch]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (!draggingRef.current.isDragging) return;
 
         const deltaPixels = e.clientX - draggingRef.current.startX;
-        const dt = -(deltaPixels / pixelsPerSecondRef.current); // Seconds change
+        const dt = -(deltaPixels / pixelsPerSecondRef.current);
         const newTime = Math.max(0, Math.min(duration, draggingRef.current.startTime + dt));
 
         setDragTime(newTime);
@@ -262,7 +309,12 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         setDragTime(null);
 
         try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { }
-    }, []);
+
+        // Resume audio (if it was playing)
+        if (onReleaseScratch) {
+            onReleaseScratch();
+        }
+    }, [onReleaseScratch]);
 
     return (
         <div
@@ -283,15 +335,5 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         </div>
     );
 };
-
-function adjustAlpha(color: string, alpha: number): string {
-    if (color.startsWith('#')) {
-        const r = parseInt(color.slice(1, 3), 16);
-        const g = parseInt(color.slice(3, 5), 16);
-        const b = parseInt(color.slice(5, 7), 16);
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    }
-    return color;
-}
 
 export const ScrollableWaveform = React.memo(ScrollableWaveformComponent);

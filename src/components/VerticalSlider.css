@@ -1,6 +1,6 @@
 /* =================================================
    VERTICAL SLIDER - Pitch Fader
-   Professional DJ Style
+   Professional DJ Style - Touch Optimized
    ================================================= */
 
 .vertical-slider-container {
@@ -24,7 +24,6 @@
 .vertical-slider-track {
     flex: 1;
     width: 12px;
-    /* Increased from 8px (20% + extra for touch) */
     background: linear-gradient(180deg,
             var(--deck-color, #ff0080) 0%,
             #252525 50%,
@@ -34,12 +33,10 @@
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
     cursor: pointer;
     min-height: 100px;
-    width: 40px;
-    /* Invisible broad hit area */
+    /* Broad invisible hit area for touch */
+    width: 48px;
     background-clip: content-box;
-    /* But only paint the 12px strip */
-    padding: 0 14px;
-    /* Centers the 12px content in 40px box */
+    padding: 0 18px;
 }
 
 /* Center line indicator */
@@ -49,7 +46,6 @@
     left: 50%;
     transform: translateX(-50%);
     width: 12px;
-    /* Match visible track width */
     border-radius: 6px;
     pointer-events: none;
 }
@@ -58,28 +54,30 @@
     content: '';
     position: absolute;
     top: 50%;
-    left: 14px;
-    /* Match padding */
-    right: 14px;
+    left: 18px;
+    right: 18px;
     height: 2px;
     background: rgba(255, 255, 255, 0.3);
     transform: translateY(-50%);
     pointer-events: none;
 }
 
+/* =================================================
+   THUMB - Large touch-friendly
+   ================================================= */
+
 .vertical-slider-thumb {
     position: absolute;
     left: 50%;
-    width: 38px;
-    /* Bigger thumb (was 28px) */
-    height: 18px;
-    /* Bigger thumb (was 14px) */
+    width: 44px;
+    height: 22px;
     transform: translateX(-50%);
-    background: linear-gradient(180deg, #fff 0%, #ccc 100%);
+    background: linear-gradient(180deg, #fff 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
     border-radius: 4px;
     box-shadow:
-        0 2px 6px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        0 2px 8px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
     cursor: grab;
     transition: box-shadow 0.15s ease;
     z-index: 10;
@@ -87,25 +85,35 @@
 
 .vertical-slider-thumb:hover {
     box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.6),
-        0 0 10px var(--deck-color, #ff0080),
-        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        0 2px 10px rgba(0, 0, 0, 0.6),
+        0 0 12px var(--deck-color, #ff0080),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .vertical-slider-thumb:active {
     cursor: grabbing;
 }
 
-/* Thumb groove lines */
+/* Thumb groove lines for tactile feel */
 .vertical-slider-thumb::before {
     content: '';
     position: absolute;
     top: 50%;
-    left: 4px;
-    right: 4px;
+    left: 8px;
+    right: 8px;
     height: 1px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.15);
     transform: translateY(-50%);
+}
+
+.vertical-slider-thumb::after {
+    content: '';
+    position: absolute;
+    top: calc(50% - 3px);
+    left: 8px;
+    right: 8px;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.08);
 }
 
 .vertical-slider-value {
@@ -116,17 +124,24 @@
 }
 
 /* =================================================
-   RESPONSIVE
+   RESPONSIVE - Tablet
    ================================================= */
 
 @media screen and (max-width: 1200px) and (min-width: 768px) {
     .vertical-slider-track {
         min-height: 80px;
+        width: 44px;
+        padding: 0 16px;
+    }
+
+    .vertical-slider-track::before {
+        left: 16px;
+        right: 16px;
     }
 
     .vertical-slider-thumb {
-        width: 32px;
-        height: 16px;
+        width: 40px;
+        height: 20px;
     }
 
     .vertical-slider-label {
@@ -138,18 +153,25 @@
     }
 }
 
+/* =================================================
+   RESPONSIVE - Mobile landscape
+   ================================================= */
+
 @media screen and (max-height: 500px) and (orientation: landscape) {
     .vertical-slider-track {
         min-height: 60px;
-        width: 30px;
-        /* Smaller hit area on mobile landscape */
-        padding: 0 11px;
-        /* Center 8px track */
+        width: 40px;
+        padding: 0 14px;
+    }
+
+    .vertical-slider-track::before {
+        left: 14px;
+        right: 14px;
     }
 
     .vertical-slider-thumb {
-        width: 28px;
-        height: 14px;
+        width: 36px;
+        height: 18px;
     }
 
     .vertical-slider-label {
@@ -158,5 +180,26 @@
 
     .vertical-slider-value {
         font-size: 10px;
+    }
+}
+
+/* =================================================
+   RESPONSIVE - Mobile portrait
+   ================================================= */
+
+@media screen and (max-width: 767px) {
+    .vertical-slider-track {
+        width: 52px;
+        padding: 0 20px;
+    }
+
+    .vertical-slider-track::before {
+        left: 20px;
+        right: 20px;
+    }
+
+    .vertical-slider-thumb {
+        width: 48px;
+        height: 24px;
     }
 }

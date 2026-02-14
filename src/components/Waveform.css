@@ -1,23 +1,24 @@
 /* =================================================
    WAVEFORM COMPONENT - Vinyl Jog Wheel
-   Professional DJ Style with Glowing Ring
+   Professional DJ Style with Touch Scratching
    ================================================= */
 
 .vinyl-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1;
-    max-width: 320px;
-    max-height: 320px;
-    margin: 0 auto;
-    cursor: grab;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: none;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 320px;
+  max-height: 320px;
+  margin: 0 auto;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
-.vinyl-container:active {
-    cursor: grabbing;
+.vinyl-container:active,
+.vinyl-container.scratching {
+  cursor: grabbing;
 }
 
 /* =================================================
@@ -25,61 +26,67 @@
    ================================================= */
 
 .vinyl-disc {
-    position: absolute;
-    inset: 8%;
-    border-radius: 50%;
-    background:
-        radial-gradient(circle at center,
-            #0a0a0a 0%,
-            #1a1a1a 20%,
-            #0f0f0f 40%,
-            #1a1a1a 60%,
-            #0d0d0d 87%,
-            #151515 100%);
-    box-shadow:
-        0 4px 30px rgba(0, 0, 0, 0.8),
-        inset 0 0 50px rgba(0, 0, 0, 0.9);
-    transition: transform 0.05s linear;
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    #0a0a0a 0%,
+    #1a1a1a 20%,
+    #0f0f0f 40%,
+    #1a1a1a 60%,
+    #0d0d0d 87%,
+    #151515 100%
+  );
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.8),
+    inset 0 0 50px rgba(0, 0, 0, 0.9);
+  will-change: transform;
 }
 
 /* Grooves - concentric circles */
 .vinyl-groove {
-    position: absolute;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.025);
-    pointer-events: none;
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.025);
+  pointer-events: none;
 }
 
 .groove-1 {
-    inset: 15%;
+  inset: 15%;
 }
-
 .groove-2 {
-    inset: 22%;
+  inset: 22%;
 }
-
 .groove-3 {
-    inset: 29%;
+  inset: 29%;
 }
-
 .groove-4 {
-    inset: 36%;
+  inset: 36%;
 }
-
 .groove-5 {
-    inset: 43%;
+  inset: 43%;
 }
-
 .groove-6 {
-    inset: 50%;
+  inset: 50%;
 }
 
-.groove-7 {
-    inset: 57%;
-}
+/* =================================================
+   POSITION MARKER - Shows rotation visually
+   ================================================= */
 
-.groove-8 {
-    inset: 64%;
+.vinyl-position-marker {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  width: 4px;
+  height: 12%;
+  background: var(--deck-color, #ff0080);
+  border-radius: 2px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px var(--deck-color, #ff0080);
+  pointer-events: none;
+  opacity: 0.9;
 }
 
 /* =================================================
@@ -87,46 +94,48 @@
    ================================================= */
 
 .vinyl-label {
-    position: absolute;
-    inset: 38%;
-    border-radius: 50%;
-    background: var(--deck-color, #ff0080);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    color: white;
-    font-weight: 700;
-    font-size: 12px;
-    text-align: center;
-    box-shadow:
-        inset 0 2px 10px rgba(0, 0, 0, 0.4),
-        0 2px 10px rgba(0, 0, 0, 0.3);
+  position: absolute;
+  inset: 38%;
+  border-radius: 50%;
+  background: var(--deck-color, #ff0080);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  box-shadow:
+    inset 0 2px 10px rgba(0, 0, 0, 0.4),
+    0 2px 10px rgba(0, 0, 0, 0.3);
+  /* Don't capture pointer events on label */
+  pointer-events: none;
 }
 
 .vinyl-label-text {
-    font-size: 10px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    line-height: 1.2;
-    max-width: 90%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Center spindle */
 .label-spindle {
-    position: absolute;
-    width: 12%;
-    height: 12%;
-    background: radial-gradient(circle, #3a3a3a 0%, #1a1a1a 60%, #0a0a0a 100%);
-    border-radius: 50%;
-    box-shadow:
-        inset 0 1px 3px rgba(0, 0, 0, 0.9),
-        0 1px 2px rgba(255, 255, 255, 0.1);
+  position: absolute;
+  width: 12%;
+  height: 12%;
+  background: radial-gradient(circle, #3a3a3a 0%, #1a1a1a 60%, #0a0a0a 100%);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.9),
+    0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
 /* =================================================
@@ -134,16 +143,18 @@
    ================================================= */
 
 .vinyl-reflection {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: linear-gradient(120deg,
-            transparent 35%,
-            rgba(255, 255, 255, 0.04) 45%,
-            rgba(255, 255, 255, 0.07) 50%,
-            rgba(255, 255, 255, 0.04) 55%,
-            transparent 65%);
-    pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    120deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.04) 45%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.04) 55%,
+    transparent 65%
+  );
+  pointer-events: none;
 }
 
 /* =================================================
@@ -151,26 +162,26 @@
    ================================================= */
 
 .progress-ring {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    transform: rotate(-90deg);
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: rotate(-90deg);
 }
 
 .progress-ring-bg {
-    fill: none;
-    stroke: rgba(255, 255, 255, 0.08);
-    stroke-width: 4;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 4;
 }
 
 .progress-ring-fill {
-    fill: none;
-    stroke: var(--deck-color, #ff0080);
-    stroke-width: 5;
-    stroke-linecap: round;
-    transition: stroke-dasharray 0.1s ease-out;
+  fill: none;
+  stroke: var(--deck-color, #ff0080);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.1s ease-out;
 }
 
 /* =================================================
@@ -178,16 +189,16 @@
    ================================================= */
 
 .vinyl-container::before {
-    content: '';
-    position: absolute;
-    inset: 4%;
-    border-radius: 50%;
-    border: 3px solid var(--deck-color, #ff0080);
-    box-shadow:
-        0 0 20px var(--deck-color, #ff0080),
-        inset 0 0 15px rgba(0, 0, 0, 0.5);
-    pointer-events: none;
-    opacity: 0.8;
+  content: "";
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  border: 3px solid var(--deck-color, #ff0080);
+  box-shadow:
+    0 0 20px var(--deck-color, #ff0080),
+    inset 0 0 15px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0.8;
 }
 
 /* =================================================
@@ -195,7 +206,7 @@
    ================================================= */
 
 .tonearm {
-    display: none;
+  display: none;
 }
 
 /* =================================================
@@ -203,7 +214,7 @@
    ================================================= */
 
 .mini-waveform {
-    display: none;
+  display: none;
 }
 
 /* =================================================
@@ -211,23 +222,22 @@
    ================================================= */
 
 .vinyl-container.is-playing .vinyl-disc {
-    animation: subtle-pulse 4s ease-in-out infinite;
+  animation: subtle-pulse 4s ease-in-out infinite;
 }
 
 @keyframes subtle-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 4px 30px rgba(0, 0, 0, 0.8),
+      inset 0 0 50px rgba(0, 0, 0, 0.9);
+  }
 
-    0%,
-    100% {
-        box-shadow:
-            0 4px 30px rgba(0, 0, 0, 0.8),
-            inset 0 0 50px rgba(0, 0, 0, 0.9);
-    }
-
-    50% {
-        box-shadow:
-            0 4px 35px rgba(0, 0, 0, 0.9),
-            inset 0 0 60px rgba(0, 0, 0, 0.95);
-    }
+  50% {
+    box-shadow:
+      0 4px 35px rgba(0, 0, 0, 0.9),
+      inset 0 0 60px rgba(0, 0, 0, 0.95);
+  }
 }
 
 /* =================================================
@@ -235,10 +245,10 @@
    ================================================= */
 
 @media screen and (max-width: 1200px) {
-    .vinyl-container {
-        max-width: 180px !important;
-        max-height: 180px !important;
-        width: 180px !important;
-        height: 180px !important;
-    }
+  .vinyl-container {
+    max-width: 180px !important;
+    max-height: 180px !important;
+    width: 180px !important;
+    height: 180px !important;
+  }
 }

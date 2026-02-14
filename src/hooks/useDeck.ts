@@ -10,7 +10,8 @@ interface UseDeckOptions {
 }
 
 // Global map to track worklet loading status per AudioContext
-const contextWorkletMap = new WeakMap<AudioContext, Promise<void>>();
+// Resolves to true if worklet loaded successfully, false otherwise
+const contextWorkletMap = new WeakMap<AudioContext, Promise<boolean>>();
 
 export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const [state, setState] = useState<DeckState>({
@@ -41,6 +42,10 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const effectsRef = useRef<AudioEffects | null>(null);
     const audioBufferRef = useRef<AudioBuffer | null>(null);
 
+    // Fallback mode refs (AudioBufferSourceNode for iOS)
+    const useWorkletRef = useRef<boolean>(true); // true = worklet mode, false = fallback
+    const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+
     // Animation & Logic Refs
     const animationFrameRef = useRef<number | undefined>(undefined);
     const startTimeRef = useRef<number>(0);
@@ -64,14 +69,32 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     useEffect(() => {
         if (!audioContext || !destination) return;
 
-        // 1. Ensure Worklet is Loaded
+        // 1. Try to load Worklet - track success/failure
         let workletLoadingPromise = contextWorkletMap.get(audioContext);
         if (!workletLoadingPromise) {
-            workletLoadingPromise = audioContext.audioWorklet.addModule('/worklets/scratch-processor.js')
-                .then(() => console.log('Scratch Processor Loaded'))
-                .catch(err => console.error('Failed to load Scratch Processor:', err));
+            // Check if AudioWorklet is available at all
+            if (typeof audioContext.audioWorklet?.addModule === 'function') {
+                workletLoadingPromise = audioContext.audioWorklet.addModule('/worklets/scratch-processor.js')
+                    .then(() => {
+                        console.log('[Audio] Scratch Processor Loaded (Worklet mode)');
+                        return true;
+                    })
+                    .catch(err => {
+                        console.warn('[Audio] Failed to load Scratch Processor, using fallback:', err);
+                        return false;
+                    });
+            } else {
+                console.warn('[Audio] AudioWorklet not supported, using fallback mode');
+                workletLoadingPromise = Promise.resolve(false);
+            }
             contextWorkletMap.set(audioContext, workletLoadingPromise);
         }
+
+        // Determine mode once worklet loading resolves
+        workletLoadingPromise.then(workletAvailable => {
+            useWorkletRef.current = workletAvailable;
+            console.log(`[Audio] Engine mode: ${workletAvailable ? 'AudioWorklet' : 'BufferSource (Fallback)'}`);
+        });
 
         // 2. Create Gain Node (Volume)
         gainNodeRef.current = audioContext.createGain();
@@ -88,13 +111,17 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                 workletNodeRef.current.disconnect();
                 workletNodeRef.current = null;
             }
+            if (sourceNodeRef.current) {
+                try { sourceNodeRef.current.stop(); } catch (_) { /* ignore */ }
+                sourceNodeRef.current.disconnect();
+                sourceNodeRef.current = null;
+            }
             if (effectsRef.current) effectsRef.current.disconnect();
             if (gainNodeRef.current) gainNodeRef.current.disconnect();
         };
     }, [audioContext, destination]);
 
     // UI Update Loop (Syncs UI currentTime with Audio Engine)
-    // We use a ref to store the function so it can reference itself without lint issues
     useEffect(() => {
         updateCurrentTimeRef.current = () => {
             if (isPlayingRef.current && !isScratchingRef.current) {
@@ -111,34 +138,39 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                             const loopOffset = newTime - activeLoop.end;
                             newTime = activeLoop.start + (loopOffset % loopDuration);
 
-                            if (workletNodeRef.current && audioBufferRef.current) {
-                                workletNodeRef.current.port.postMessage({
-                                    type: 'seek',
-                                    position: newTime * audioBufferRef.current.sampleRate
-                                });
-                                startTimeRef.current = audioContext.currentTime;
-                                playOffsetRef.current = newTime;
+                            if (useWorkletRef.current) {
+                                // Worklet mode: send seek message
+                                if (workletNodeRef.current && audioBufferRef.current) {
+                                    workletNodeRef.current.port.postMessage({
+                                        type: 'seek',
+                                        position: newTime * audioBufferRef.current.sampleRate
+                                    });
+                                }
+                            } else {
+                                // Fallback mode: restart source at loop start
+                                restartSourceAtPosition(newTime, rate);
                             }
+
+                            startTimeRef.current = audioContext.currentTime;
+                            playOffsetRef.current = newTime;
                         }
                     }
 
                     // End of track check
                     if (audioBufferRef.current && newTime >= audioBufferRef.current.duration) {
-                        // Reset to start (0)
-
-                        // Stop Audio Engine & Seek to 0
-                        if (workletNodeRef.current) {
+                        if (useWorkletRef.current && workletNodeRef.current) {
                             workletNodeRef.current.parameters.get('playbackRate')?.setValueAtTime(0, audioContext.currentTime);
                             workletNodeRef.current.port.postMessage({
                                 type: 'seek',
                                 position: 0
                             });
+                        } else {
+                            stopFallbackSource();
                         }
 
                         isPlayingRef.current = false;
                         playOffsetRef.current = 0;
 
-                        // Return final stopped state at time 0
                         return {
                             ...prev,
                             currentTime: 0,
@@ -154,6 +186,54 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         };
     }, [audioContext]);
 
+    // ========== FALLBACK ENGINE HELPERS ==========
+
+    const stopFallbackSource = useCallback(() => {
+        if (sourceNodeRef.current) {
+            try { sourceNodeRef.current.stop(); } catch (_) { /* ignore */ }
+            try { sourceNodeRef.current.disconnect(); } catch (_) { /* ignore */ }
+            sourceNodeRef.current = null;
+        }
+    }, []);
+
+    const restartSourceAtPosition = useCallback((position: number, rate: number) => {
+        if (!audioBufferRef.current || !audioContext) return;
+
+        // Stop existing source
+        stopFallbackSource();
+
+        // Create new source
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBufferRef.current;
+        source.playbackRate.value = rate;
+
+        // Connect through effects chain
+        if (effectsRef.current) {
+            source.connect(effectsRef.current.input);
+        } else if (gainNodeRef.current) {
+            source.connect(gainNodeRef.current);
+        }
+
+        source.start(0, position);
+        sourceNodeRef.current = source;
+
+        // Handle natural end
+        source.onended = () => {
+            if (sourceNodeRef.current === source && isPlayingRef.current) {
+                // Track ended naturally
+                isPlayingRef.current = false;
+                playOffsetRef.current = 0;
+                setState(prev => ({
+                    ...prev,
+                    currentTime: 0,
+                    isPlaying: false
+                }));
+            }
+        };
+    }, [audioContext, stopFallbackSource]);
+
+    // ========== TRACK LOADING ==========
+
     const loadTrack = useCallback(async (track: Track) => {
         // 1. IMMEDIATE RESET (Synchronous)
         isPlayingRef.current = false;
@@ -166,30 +246,48 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             animationFrameRef.current = undefined;
         }
 
-        // Stop audio engine immediately
+        // Stop worklet audio engine
         if (workletNodeRef.current) {
             try {
                 const stopParam = workletNodeRef.current.parameters.get('playbackRate');
                 if (stopParam) stopParam.value = 0;
                 workletNodeRef.current.disconnect();
-            } catch (e) { /* ignore cleanup errors */ }
+            } catch (_) { /* ignore cleanup errors */ }
             workletNodeRef.current = null;
         }
+
+        // Stop fallback audio engine
+        stopFallbackSource();
 
         // 2. Clear UI State immediately to "Loading"
         setState(prev => ({
             ...prev,
             isLoading: true,
             isPlaying: false,
-            track: null,  // Hide old track stuff
+            track: null,
             currentTime: 0,
             activeLoop: null,
             cuePoints: []
         }));
 
         try {
-            const loadingPromise = contextWorkletMap.get(audioContext);
-            if (loadingPromise) await loadingPromise;
+            // Wait for worklet loading to complete (determines mode)
+            const workletPromise = contextWorkletMap.get(audioContext);
+            let workletAvailable = false;
+            if (workletPromise) {
+                workletAvailable = await workletPromise;
+            }
+            useWorkletRef.current = workletAvailable;
+
+            // Resume AudioContext if suspended (critical for iOS)
+            if (audioContext.state === 'suspended') {
+                try {
+                    await audioContext.resume();
+                    console.log('[Audio] AudioContext resumed during track load');
+                } catch (e) {
+                    console.warn('[Audio] Failed to resume AudioContext:', e);
+                }
+            }
 
             // Fetch & Decode Audio
             let arrayBuffer: ArrayBuffer;
@@ -208,57 +306,65 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                 bpm = await detectBPM(audioBuffer);
             }
 
-            // Create Worklet Node
-            const workletNode = new AudioWorkletNode(audioContext, 'scratch-processor', {
-                numberOfInputs: 0,
-                numberOfOutputs: 1,
-                outputChannelCount: [2],
-                processorOptions: {}
-            });
+            if (workletAvailable) {
+                // ===== WORKLET MODE =====
+                try {
+                    const workletNode = new AudioWorkletNode(audioContext, 'scratch-processor', {
+                        numberOfInputs: 0,
+                        numberOfOutputs: 1,
+                        outputChannelCount: [2],
+                        processorOptions: {}
+                    });
 
-            // Send Buffer to Worklet
-            const channels: Float32Array[] = [];
-            for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-                channels.push(audioBuffer.getChannelData(i));
-            }
-            workletNode.port.postMessage({
-                type: 'load-buffer',
-                buffer: channels
-            });
-
-            // Connect to effects chain
-            if (effectsRef.current) {
-                workletNode.connect(effectsRef.current.input);
-            } else if (gainNodeRef.current) {
-                workletNode.connect(gainNodeRef.current);
-            }
-
-            // Handle messages FROM worklet (position sync)
-            workletNode.port.onmessage = (event) => {
-                if (event.data.type === 'position') {
-                    const { position } = event.data;
-                    const time = position / audioBuffer.sampleRate;
-
-                    // CRITICAL FIX: Only let Worklet dictate time when SCRATCHING.
-                    // During normal playback, we rely on the JS clock (audioContext.currentTime) for smoothness.
-                    // Allowing Worklet to update refs during normal playback causes "fighting" and jitter.
-                    if (isScratchingRef.current) {
-                        playOffsetRef.current = time;
-                        startTimeRef.current = audioContext.currentTime;
-                        setState(prev => ({ ...prev, currentTime: time }));
+                    // Send Buffer to Worklet
+                    const channels: Float32Array[] = [];
+                    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+                        channels.push(audioBuffer.getChannelData(i));
                     }
-                }
-            };
+                    workletNode.port.postMessage({
+                        type: 'load-buffer',
+                        buffer: channels
+                    });
 
-            workletNodeRef.current = workletNode;
+                    // Connect to effects chain
+                    if (effectsRef.current) {
+                        workletNode.connect(effectsRef.current.input);
+                    } else if (gainNodeRef.current) {
+                        workletNode.connect(gainNodeRef.current);
+                    }
+
+                    // Handle messages FROM worklet (position sync)
+                    workletNode.port.onmessage = (event) => {
+                        if (event.data.type === 'position') {
+                            const { position } = event.data;
+                            const time = position / audioBuffer.sampleRate;
+
+                            if (isScratchingRef.current) {
+                                playOffsetRef.current = time;
+                                startTimeRef.current = audioContext.currentTime;
+                                setState(prev => ({ ...prev, currentTime: time }));
+                            }
+                        }
+                    };
+
+                    workletNodeRef.current = workletNode;
+                    workletNode.parameters.get('playbackRate')?.setValueAtTime(0, audioContext.currentTime);
+                    console.log('[Audio] Track loaded in Worklet mode');
+                } catch (err) {
+                    // Worklet creation failed at runtime, fall back
+                    console.warn('[Audio] Worklet node creation failed, switching to fallback:', err);
+                    useWorkletRef.current = false;
+                    console.log('[Audio] Track loaded in Fallback mode (after worklet failure)');
+                }
+            } else {
+                console.log('[Audio] Track loaded in Fallback mode');
+            }
 
             // Reset State Refs
             isPlayingRef.current = false;
             isScratchingRef.current = false;
             playOffsetRef.current = 0;
             startTimeRef.current = 0;
-
-            workletNode.parameters.get('playbackRate')?.setValueAtTime(0, audioContext.currentTime);
 
             setState(prev => ({
                 ...prev,
@@ -271,23 +377,36 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             }));
 
         } catch (error) {
-            console.error('Failed to load track:', error);
+            console.error('[Audio] Failed to load track:', error);
             setState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [audioContext]);
+    }, [audioContext, stopFallbackSource]);
+
+    // ========== PLAY ==========
 
     const play = useCallback(async () => {
-        if (!workletNodeRef.current) return;
+        if (!audioBufferRef.current) return;
 
+        // Resume AudioContext if suspended (critical for iOS)
         if (audioContext.state === 'suspended') {
-            await audioContext.resume();
+            try {
+                await audioContext.resume();
+            } catch (e) {
+                console.warn('[Audio] Failed to resume AudioContext on play:', e);
+            }
         }
 
         const rate = 1 + (state.pitch / 100);
 
-        // Set playback rate
-        const param = workletNodeRef.current.parameters.get('playbackRate');
-        if (param) param.setValueAtTime(rate, audioContext.currentTime);
+        if (useWorkletRef.current) {
+            // ===== WORKLET MODE =====
+            if (!workletNodeRef.current) return;
+            const param = workletNodeRef.current.parameters.get('playbackRate');
+            if (param) param.setValueAtTime(rate, audioContext.currentTime);
+        } else {
+            // ===== FALLBACK MODE =====
+            restartSourceAtPosition(state.currentTime, rate);
+        }
 
         // Sync state
         startTimeRef.current = audioContext.currentTime;
@@ -300,43 +419,82 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
 
-    }, [audioContext, state.pitch, state.currentTime]);
+    }, [audioContext, state.pitch, state.currentTime, restartSourceAtPosition]);
+
+    // ========== PAUSE ==========
 
     const pause = useCallback(() => {
-        if (workletNodeRef.current) {
-            const param = workletNodeRef.current.parameters.get('playbackRate');
-            if (param) param.setValueAtTime(0, audioContext.currentTime);
-
-            isPlayingRef.current = false;
-            setState(prev => ({ ...prev, isPlaying: false }));
-
-            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if (useWorkletRef.current) {
+            // Worklet mode
+            if (workletNodeRef.current) {
+                const param = workletNodeRef.current.parameters.get('playbackRate');
+                if (param) param.setValueAtTime(0, audioContext.currentTime);
+            }
+        } else {
+            // Fallback mode: stop the source, save position
+            const rate = 1 + (state.pitch / 100);
+            const elapsed = audioContext.currentTime - startTimeRef.current;
+            playOffsetRef.current = playOffsetRef.current + (elapsed * rate);
+            stopFallbackSource();
         }
-    }, [audioContext]);
+
+        isPlayingRef.current = false;
+        setState(prev => ({ ...prev, isPlaying: false }));
+
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    }, [audioContext, state.pitch, stopFallbackSource]);
+
+    // ========== SEEK ==========
 
     const seek = useCallback((time: number) => {
-        if (workletNodeRef.current && audioBufferRef.current) {
-            workletNodeRef.current.port.postMessage({
-                type: 'seek',
-                position: time * audioBufferRef.current.sampleRate
-            });
+        if (!audioBufferRef.current) return;
 
-            playOffsetRef.current = time;
-            startTimeRef.current = audioContext.currentTime;
-
-            setState(prev => ({ ...prev, currentTime: time }));
+        if (useWorkletRef.current) {
+            if (workletNodeRef.current && audioBufferRef.current) {
+                workletNodeRef.current.port.postMessage({
+                    type: 'seek',
+                    position: time * audioBufferRef.current.sampleRate
+                });
+            }
+        } else {
+            // Fallback mode: if playing, restart at new position
+            if (isPlayingRef.current) {
+                const rate = 1 + (state.pitch / 100);
+                restartSourceAtPosition(time, rate);
+            }
         }
-    }, [audioContext]);
+
+        playOffsetRef.current = time;
+        startTimeRef.current = audioContext.currentTime;
+
+        setState(prev => ({ ...prev, currentTime: time }));
+    }, [audioContext, state.pitch, restartSourceAtPosition]);
+
+    // ========== PITCH ==========
 
     const setPitch = useCallback((update: number | ((prev: number) => number)) => {
         setState(prev => {
             const newPitch = typeof update === 'function' ? update(prev.pitch) : update;
 
-            // Only update worklet if playing (not scratching)
-            if (workletNodeRef.current && isPlayingRef.current && !isScratchingRef.current) {
+            if (isPlayingRef.current && !isScratchingRef.current) {
                 const rate = 1 + (newPitch / 100);
-                const param = workletNodeRef.current.parameters.get('playbackRate');
-                if (param) param.linearRampToValueAtTime(rate, audioContext.currentTime + 0.05);
+
+                if (useWorkletRef.current) {
+                    if (workletNodeRef.current) {
+                        const param = workletNodeRef.current.parameters.get('playbackRate');
+                        if (param) param.linearRampToValueAtTime(rate, audioContext.currentTime + 0.05);
+                    }
+                } else {
+                    // Fallback mode: update playbackRate on existing source
+                    if (sourceNodeRef.current) {
+                        sourceNodeRef.current.playbackRate.value = rate;
+                    }
+                    // Also need to update the offset tracking
+                    const oldRate = 1 + (prev.pitch / 100);
+                    const elapsed = audioContext.currentTime - startTimeRef.current;
+                    playOffsetRef.current = playOffsetRef.current + (elapsed * oldRate);
+                    startTimeRef.current = audioContext.currentTime;
+                }
             }
 
             return { ...prev, pitch: newPitch };
@@ -346,6 +504,10 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     // ========== SCRATCHING INTERFACE ==========
 
     const scrub = useCallback((velocity: number) => {
+        if (!useWorkletRef.current) {
+            // Scratching not supported in fallback mode - just seek
+            return;
+        }
         if (!workletNodeRef.current) return;
 
         const isScratchingParam = workletNodeRef.current.parameters.get('isScratching');
@@ -371,12 +533,12 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     }, [audioContext]);
 
     const releaseScratch = useCallback(() => {
+        if (!useWorkletRef.current) return;
         if (!workletNodeRef.current) return;
 
         const isScratchingParam = workletNodeRef.current.parameters.get('isScratching');
 
         if (isScratchingParam) {
-            // Set isScratching to 0 - the worklet's motor simulation will take over
             isScratchingParam.setValueAtTime(0, audioContext.currentTime);
         }
 
