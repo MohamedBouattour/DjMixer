@@ -1,41 +1,80 @@
 /* =================================================
-   HORIZONTAL SLIDER - Crossfader style
+   HORIZONTAL SLIDER - Dynamic Components
    ================================================= */
 
 .horizontal-slider-container {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
     width: 100%;
 }
 
-.horizontal-slider-input {
+.horizontal-slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.horizontal-slider-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.horizontal-slider-value {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.horizontal-slider-track {
+    position: relative;
     width: 100%;
-    height: 48px;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: grab;
-}
-
-.horizontal-slider-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 40px;
-    height: 18px;
-    background: linear-gradient(180deg, #fff 0%, #bbb 100%);
-    border-radius: 3px;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-    margin-top: -6px;
-}
-
-.horizontal-slider-input::-webkit-slider-runnable-track {
-    height: 6px;
     background: #0a0a0a;
-    border-radius: 3px;
+    border-radius: 6px;
+    cursor: pointer;
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+    overflow: visible; /* Allow thumb to overlap */
 }
 
-.horizontal-slider-input:active {
+.track-bg {
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.track-fill {
+    position: absolute;
+    height: 100%;
+    left: 0;
+    border-radius: 6px;
+}
+
+.center-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(-50%);
+}
+
+.slider-thumb {
+    position: absolute;
+    top: 50%;
+    height: 130%; /* Slightly taller than track */
+    transform: translateY(-50%);
+    background: linear-gradient(180deg, #fff 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    cursor: grab;
+    z-index: 5;
+}
+
+.slider-thumb:active {
     cursor: grabbing;
 }

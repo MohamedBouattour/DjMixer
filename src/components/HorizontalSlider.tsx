@@ -25,9 +25,9 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
     showValue = true,
     valueFormatter = (v) => `${Math.round(v)}%`,
     color = '#00ff88',
-    height = 24,
+    height = 31,
     className = '',
-    thumbWidth = 36,
+    thumbWidth = 47,
     showCenterLine = false,
 }) => {
     const trackRef = useRef<HTMLDivElement>(null);
@@ -101,7 +101,8 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
                 ref={trackRef}
                 style={{
                     height: `${height}px`,
-                    '--slider-color': color
+                    '--slider-color': color,
+                    touchAction: 'none'
                 } as React.CSSProperties}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}

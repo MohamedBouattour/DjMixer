@@ -34,6 +34,8 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     const lastTouchTimeRef = useRef(0);
     const centerRef = useRef({ x: 0, y: 0 });
 
+    const [isScratching, setIsScratching] = React.useState(false);
+
     // Calculate angle from center to a point
     const getAngle = useCallback((clientX: number, clientY: number) => {
         const center = centerRef.current;
@@ -46,7 +48,6 @@ const WaveformComponent: React.FC<WaveformProps> = ({
             if (isPlaying && discRef.current && !isTouchingRef.current) {
                 const now = performance.now();
                 const deltaTime = now - lastTimeRef.current;
-                // Standard vinyl: 33.33 RPM = ~200 degrees per second
                 const rotationSpeed = (33.33 / 60) * 360;
                 rotationRef.current += (rotationSpeed * deltaTime) / 1000;
                 discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
@@ -81,8 +82,8 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         lastAngleRef.current = angle;
         lastTouchTimeRef.current = performance.now();
         isTouchingRef.current = true;
+        setIsScratching(true);
 
-        // Capture pointer for smooth tracking
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
         if (onScratch) {
@@ -90,51 +91,54 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         }
     }, [getAngle, onScratch]);
 
+    const throttledSeek = useCallback((time: number) => {
+        if (!onSeek) return;
+        const now = performance.now();
+        if (now - lastTouchTimeRef.current > 32) {
+            onSeek(time);
+        }
+    }, [onSeek]);
+
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (!isTouchingRef.current) return;
 
         const now = performance.now();
-        const dt = (now - lastTouchTimeRef.current) / 1000; // seconds
-        if (dt < 0.005) return; // Throttle to prevent jitter
+        const dt = (now - lastTouchTimeRef.current) / 1000;
+        if (dt < 0.01) return;
 
         const angle = getAngle(e.clientX, e.clientY);
         let deltaAngle = angle - lastAngleRef.current;
 
-        // Handle wrap-around (e.g., -179 to 179)
         if (deltaAngle > 180) deltaAngle -= 360;
         if (deltaAngle < -180) deltaAngle += 360;
 
-        // Update visual rotation
         if (discRef.current) {
             rotationRef.current += deltaAngle;
             discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
         }
 
-        // Convert angular velocity to playback rate
-        // Full rotation (360°) per second = 1x speed (33.33 RPM)
-        const angularVelocity = deltaAngle / dt; // deg/sec
-        const playbackRate = angularVelocity / 200; // 200 deg/sec = normal speed
+        const angularVelocity = deltaAngle / dt;
+        const playbackRate = angularVelocity / 200;
 
         if (onScratch) {
             onScratch(playbackRate);
         }
 
-        // Also update seek position based on rotation
         if (onSeek && duration > 0) {
-            // 1 full rotation = ~1.8 seconds of audio (33.33 RPM)
             const secondsPerDegree = (1 / (33.33 / 60)) / 360;
             const seekDelta = deltaAngle * secondsPerDegree;
             const newTime = Math.max(0, Math.min(duration, currentTime + seekDelta));
-            onSeek(newTime);
+            throttledSeek(newTime);
         }
 
         lastAngleRef.current = angle;
         lastTouchTimeRef.current = now;
-    }, [getAngle, onScratch, onSeek, duration, currentTime]);
+    }, [getAngle, onScratch, onSeek, duration, currentTime, throttledSeek]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         if (!isTouchingRef.current) return;
         isTouchingRef.current = false;
+        setIsScratching(false);
 
         try {
             (e.target as HTMLElement).releasePointerCapture(e.pointerId);
@@ -150,7 +154,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
 
     return (
         <div
-            className={`vinyl-container ${isPlaying ? 'playing' : ''} ${isTouchingRef.current ? 'scratching' : ''}`}
+            className={`vinyl-container ${isPlaying ? 'playing' : ''} ${isScratching ? 'scratching' : ''}`}
             ref={containerRef}
             style={{ '--deck-color': color, touchAction: 'none' } as React.CSSProperties}
             onPointerDown={handlePointerDown}

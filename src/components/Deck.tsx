@@ -150,7 +150,7 @@ export const Deck: React.FC<DeckProps> = ({
                     onReleaseScratch={onReleaseScratch}
                     color={color}
                     bpm={track?.bpm}
-                    height={window.innerWidth <= 767 ? 40 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 50 : 60)}
+                    height={window.innerWidth <= 767 ? 52 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 65 : 78)}
                     isLoading={state.isLoading}
                 />
             )}
@@ -258,7 +258,7 @@ export const Deck: React.FC<DeckProps> = ({
                         </div>
 
                         <div className="performance-controls">
-                            <div className="effects-grid-performance">
+                            <div className="effects-grid-performance" style={{ touchAction: 'none' }}>
                                 <button
                                     className={`btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('reverb')}
@@ -304,7 +304,7 @@ export const Deck: React.FC<DeckProps> = ({
                                 >TRM</button>
                             </div>
 
-                            <div className="cues-row">
+                             <div className="cues-row" style={{ touchAction: 'none' }}>
                                 {[0, 1].map(index => (
                                     <button
                                         key={index}
@@ -326,7 +326,7 @@ export const Deck: React.FC<DeckProps> = ({
                                 ))}
                             </div>
 
-                            <div className="loop-control">
+                            <div className="loop-control" style={{ touchAction: 'none' }}>
                                 <button
                                     className={`btn-magic-loop ${activeLoop?.active || isHoldingLoop ? 'active' : ''} ${isHoldingLoop ? 'holding' : ''}`}
                                     onMouseDown={handleLoopDown}

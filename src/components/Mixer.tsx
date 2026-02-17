@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { DeckState } from '../types';
 import VerticalSlider from './VerticalSlider';
+import HorizontalSlider from './HorizontalSlider';
 import './Mixer.css';
 
 interface MixerProps {
@@ -43,7 +44,7 @@ export const Mixer: React.FC<MixerProps> = ({
                             label={band.toUpperCase()}
                             showValue={false}
                             color={color}
-                            height={100}
+                            height={130}
                             className="eq-slider-vertical compact"
                         />
                     ))}
@@ -142,13 +143,17 @@ export const Mixer: React.FC<MixerProps> = ({
 
                 {/* Crossfader section */}
                 <div className="crossfader-section">
-                    <input
-                        type="range"
-                        className="crossfader"
-                        min="0"
-                        max="100"
+                    <HorizontalSlider
                         value={crossfaderValue}
-                        onChange={(e) => onCrossfaderChange(Number(e.target.value))}
+                        min={0}
+                        max={100}
+                        onChange={onCrossfaderChange}
+                        color="#ffffff"
+                        height={42}
+                        thumbWidth={62}
+                        showValue={false}
+                        className="mixer-crossfader"
+                        showCenterLine={true}
                     />
                 </div>
             </div>

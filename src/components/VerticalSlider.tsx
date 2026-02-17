@@ -23,7 +23,7 @@ const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
     showValue = true,
     valueFormatter = (v: number) => `${Math.round(v)}%`,
     color = '#00ff88',
-    height = 120,
+    height = 156,
     className = '',
 }) => {
     const trackRef = useRef<HTMLDivElement>(null);

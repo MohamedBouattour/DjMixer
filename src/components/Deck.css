@@ -223,8 +223,8 @@
 }
 
 .btn-play-pause {
-    width: 78px;
-    height: 78px;
+    width: 101px;
+    height: 101px;
     border-radius: 50%;
     background: #252525;
     border: 2px solid rgba(255, 255, 255, 0.15);
@@ -253,8 +253,8 @@
 }
 
 .btn-play-pause svg {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
 }
 
 /* =================================================
@@ -275,13 +275,13 @@
 
 .btn-effect {
     flex: 1;
-    min-width: 72px;
-    height: 51px;
+    min-width: 94px;
+    height: 66px;
     background: #252525;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     color: #aaa;
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 700;
     transition: all 0.15s ease;
 }
@@ -306,12 +306,12 @@
 
 .btn-cue {
     flex: 1;
-    height: 51px;
+    height: 66px;
     background: #252525;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     color: #aaa;
-    font-size: 20px;
+    font-size: 26px;
     font-weight: 700;
     transition: all 0.15s ease;
 }
@@ -338,7 +338,7 @@
 
 .btn-magic-loop {
     width: 100%;
-    height: 57px;
+    height: 74px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -347,10 +347,10 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
     color: #888;
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    letter-spacing: 0.5px;
+    transition: all 0.15s ease;
     transition: all 0.15s ease;
 }
 
@@ -443,25 +443,25 @@
     }
 
     .btn-play-pause {
-        width: 46px;
-        height: 46px;
+        width: 60px;
+        height: 60px;
     }
 
     .btn-play-pause svg {
-        width: 18px;
-        height: 18px;
+        width: 24px;
+        height: 24px;
     }
 
     .btn-effect,
     .btn-cue {
-        height: 30px;
-        font-size: 9px;
-        min-width: 40px;
+        height: 39px;
+        font-size: 12px;
+        min-width: 52px;
     }
 
     .btn-magic-loop {
-        height: 32px;
-        font-size: 9px;
+        height: 42px;
+        font-size: 12px;
     }
 
     .btn-magic-loop svg {
@@ -512,8 +512,8 @@
     }
 
     .btn-play-pause {
-        width: 36px;
-        height: 36px;
+        width: 47px;
+        height: 47px;
     }
 
     .btn-play-pause svg {
@@ -523,14 +523,14 @@
 
     .btn-effect,
     .btn-cue {
-        height: 24px;
-        font-size: 8px;
-        min-width: 30px;
+        height: 31px;
+        font-size: 10px;
+        min-width: 39px;
     }
 
     .btn-magic-loop {
-        height: 24px;
-        font-size: 8px;
+        height: 31px;
+        font-size: 10px;
     }
 
     .btn-magic-loop svg {
@@ -699,8 +699,8 @@
    ================================================= */
 @media screen and (max-width: 767px) {
     .btn-play-pause {
-        width: 52px;
-        height: 52px;
+        width: 68px;
+        height: 68px;
     }
 
     .btn-play-pause svg {
@@ -709,19 +709,19 @@
     }
 
     .btn-effect {
-        min-width: 48px;
-        height: 34px;
-        font-size: 10px;
-    }
-
-    .btn-cue {
-        height: 34px;
+        min-width: 62px;
+        height: 44px;
         font-size: 13px;
     }
 
+    .btn-cue {
+        height: 44px;
+        font-size: 17px;
+    }
+
     .btn-magic-loop {
-        height: 38px;
-        font-size: 10px;
+        height: 49px;
+        font-size: 13px;
     }
 
     .btn-magic-loop svg {

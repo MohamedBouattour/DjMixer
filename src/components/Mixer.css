@@ -46,9 +46,8 @@
 }
 
 .mixer-settings-btn {
-    width: 48px;
-    /* Bigger button */
-    height: 48px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
     background: #2a2a2a;
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -67,9 +66,8 @@
 }
 
 .mixer-settings-btn svg {
-    width: 28px;
-    /* Bigger icon */
-    height: 28px;
+    width: 36px;
+    height: 36px;
 }
 
 /* =================================================
@@ -106,10 +104,9 @@
 .fader-track-container,
 .volume-slider-container {
     flex: 1;
-    width: 46px;
-    /* Bigger container for bigger slider */
-    min-width: 46px;
-    max-width: 52px;
+    width: 60px;
+    min-width: 60px;
+    max-width: 68px;
     background: linear-gradient(180deg,
             #3a3a3a 0%,
             #2a2a2a 10%,
@@ -151,9 +148,8 @@
 
 .volume-fader::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 44px;
-    /* Bigger thumb */
-    height: 24px;
+    width: 57px;
+    height: 31px;
     background: linear-gradient(180deg,
             #ffffff 0%,
             #e8e8e8 30%,
@@ -174,8 +170,8 @@
 
 /* Firefox */
 .volume-fader::-moz-range-thumb {
-    width: 44px;
-    height: 24px;
+    width: 57px;
+    height: 31px;
     background: linear-gradient(180deg,
             #ffffff 0%,
             #e8e8e8 30%,
@@ -201,9 +197,8 @@
     display: flex;
     flex-direction: column-reverse;
     gap: 2px;
-    width: 22px;
-    /* Bigger VU meter */
-    min-width: 22px;
+    width: 28px;
+    min-width: 28px;
     flex-shrink: 0;
     padding: 4px 3px;
     background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
@@ -267,13 +262,12 @@
 }
 
 .mix-label-btn {
-    font-size: 19px;
-    /* Bigger MIX button */
+    font-size: 25px;
     font-weight: 800;
     color: #fff;
     background: linear-gradient(135deg, #ff0080 0%, #00d4ff 100%);
     border: none;
-    padding: 14px 24px;
+    padding: 18px 31px;
     border-radius: 8px;
     letter-spacing: 1px;
     cursor: pointer;
@@ -310,7 +304,7 @@
 
 .crossfader {
     width: 100%;
-    height: 44px;
+    height: 57px;
     /* Large touch area */
     -webkit-appearance: none;
     appearance: none;
@@ -325,9 +319,8 @@
 
 .crossfader::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 70px;
-    /* Bigger crossfader thumb for touch */
-    height: 32px;
+    width: 91px;
+    height: 42px;
     background: linear-gradient(180deg, #fff 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
     border-radius: 5px;
     cursor: pointer;
@@ -337,7 +330,7 @@
 }
 
 .crossfader::-webkit-slider-runnable-track {
-    height: 10px;
+    height: 13px;
     /* Thicker track */
     background: linear-gradient(90deg, #ff0080 0%, #333 50%, #00d4ff 100%);
     border-radius: 5px;
@@ -346,8 +339,8 @@
 
 /* Firefox */
 .crossfader::-moz-range-thumb {
-    width: 70px;
-    height: 32px;
+    width: 91px;
+    height: 42px;
     background: linear-gradient(180deg, #fff 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
     border-radius: 5px;
     border: none;
@@ -356,7 +349,7 @@
 }
 
 .crossfader::-moz-range-track {
-    height: 10px;
+    height: 13px;
     background: linear-gradient(90deg, #ff0080 0%, #333 50%, #00d4ff 100%);
     border-radius: 5px;
 }
@@ -558,8 +551,8 @@
     }
 
     .mixer-settings-btn {
-        width: 36px;
-        height: 36px;
+        width: 47px;
+        height: 47px;
     }
 
     .mixer-settings-btn svg {
@@ -574,19 +567,19 @@
 
     .fader-track-container,
     .volume-slider-container {
-        width: 40px;
-        min-width: 40px;
-        max-width: 44px;
+        width: 52px;
+        min-width: 52px;
+        max-width: 58px;
     }
 
     .volume-fader::-webkit-slider-thumb {
-        width: 38px;
-        height: 20px;
+        width: 49px;
+        height: 26px;
     }
 
     .vu-meter {
-        width: 18px;
-        min-width: 18px;
+        width: 24px;
+        min-width: 24px;
     }
 
     .mix-center {
@@ -599,8 +592,8 @@
     }
 
     .mix-label-btn {
-        font-size: 14px;
-        padding: 10px 16px;
+        font-size: 18px;
+        padding: 13px 21px;
     }
 
     .crossfader-section {
@@ -608,8 +601,8 @@
     }
 
     .crossfader::-webkit-slider-thumb {
-        width: 56px;
-        height: 28px;
+        width: 73px;
+        height: 36px;
         margin-top: -10px;
     }
 }
@@ -636,9 +629,8 @@
     }
 
     .mixer-settings-btn {
-        width: 28px;
-        /* Bigger touch target */
-        height: 28px;
+        width: 36px;
+        height: 36px;
     }
 
     .mixer-settings-btn svg {
@@ -657,21 +649,20 @@
 
     .fader-track-container,
     .volume-slider-container {
-        width: 34px;
-        /* Increased */
-        min-width: 34px;
-        max-width: 38px;
+        width: 44px;
+        min-width: 44px;
+        max-width: 50px;
     }
 
     .volume-fader::-webkit-slider-thumb {
-        width: 32px;
-        height: 20px;
+        width: 42px;
+        height: 26px;
         /* Bigger thumb */
     }
 
     .vu-meter {
-        width: 14px;
-        min-width: 14px;
+        width: 18px;
+        min-width: 18px;
         padding: 1px;
     }
 
@@ -692,9 +683,8 @@
     }
 
     .mix-label-btn {
-        font-size: 11px;
-        padding: 8px 12px;
-        /* Bigger touch area */
+        font-size: 14px;
+        padding: 10px 16px;
     }
 
     .crossfader-section {
@@ -706,8 +696,8 @@
     }
 
     .crossfader::-webkit-slider-thumb {
-        width: 56px;
-        height: 26px;
+        width: 73px;
+        height: 34px;
         margin-top: -9px;
     }
 
