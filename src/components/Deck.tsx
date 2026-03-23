@@ -66,7 +66,7 @@ export const Deck: React.FC<DeckProps> = ({
         if (showEffects) {
             const handleClickOutside = (e: MouseEvent) => {
                 const target = e.target as HTMLElement;
-                if (!target.closest('.effects-popup') && !target.closest('.btn-fx-toggle')) {
+                if (!target.closest('.deck-effects-popup') && !target.closest('.deck-btn-fx-toggle')) {
                     setShowEffects(false);
                 }
             };
@@ -127,12 +127,12 @@ export const Deck: React.FC<DeckProps> = ({
                     </div>
                 </div>
                 {track && (
-                    <div className="track-info">
-                        <div className="track-name">{track.name}</div>
+                    <div className="deck-track-info">
+                        <div className="deck-track-name">{track.name}</div>
                         {effectiveBPM && (
-                            <div className="bpm-display">
-                                <span className="bpm-label">BPM</span>
-                                <span className="bpm-value">{effectiveBPM}</span>
+                            <div className="deck-bpm-display">
+                                <span className="deck-bpm-label">BPM</span>
+                                <span className="deck-bpm-value">{effectiveBPM}</span>
                             </div>
                         )}
                     </div>
@@ -158,7 +158,7 @@ export const Deck: React.FC<DeckProps> = ({
             <div className="deck-vinyl-row">
                 {/* Deck A: Pitch Slider on LEFT */}
                 {deckId === 'A' && (
-                    <div className="pitch-control-vertical" style={{ marginRight: 'var(--gap-lg, 12px)' }}>
+                    <div className="deck-pitch-control-vertical" style={{ marginRight: 'var(--gap-lg, 12px)' }}>
                         <VerticalSlider
                             value={pitch}
                             min={-10}
@@ -168,7 +168,7 @@ export const Deck: React.FC<DeckProps> = ({
                             showValue={true}
                             valueFormatter={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
                             color={color}
-                            className="pitch-slider-vertical"
+                            className="deck-pitch-slider-vertical"
                         />
                     </div>
                 )}
@@ -176,8 +176,8 @@ export const Deck: React.FC<DeckProps> = ({
                 {/* Central Vinyl / Loading / Placeholder Area */}
                 <div className="deck-center-stage">
                     {state.isLoading ? (
-                        <div className="waveform-loading">
-                            <div className="loading-spinner"></div>
+                        <div className="deck-waveform-loading">
+                            <div className="deck-loading-spinner"></div>
                             <span>Downloading track...</span>
                         </div>
                     ) : track ? (
@@ -194,7 +194,7 @@ export const Deck: React.FC<DeckProps> = ({
                             />
                         </div>
                     ) : (
-                        <div className="waveform-placeholder">
+                        <div className="deck-waveform-placeholder">
                             <span>Load a track to begin</span>
                         </div>
                     )}
@@ -202,7 +202,7 @@ export const Deck: React.FC<DeckProps> = ({
 
                 {/* Deck B: Pitch Slider on RIGHT */}
                 {deckId === 'B' && (
-                    <div className="pitch-control-vertical" style={{ marginLeft: 'var(--gap-lg, 12px)' }}>
+                    <div className="deck-pitch-control-vertical" style={{ marginLeft: 'var(--gap-lg, 12px)' }}>
                         <VerticalSlider
                             value={pitch}
                             min={-10}
@@ -212,7 +212,7 @@ export const Deck: React.FC<DeckProps> = ({
                             showValue={true}
                             valueFormatter={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
                             color={color}
-                            className="pitch-slider-vertical"
+                            className="deck-pitch-slider-vertical"
                         />
                     </div>
                 )}
@@ -221,15 +221,15 @@ export const Deck: React.FC<DeckProps> = ({
             <div className="deck-controls">
                 <div className="deck-transport">
                     <div className="deck-transport-main">
-                        <div className="playback-controls">
+                        <div className="deck-playback-controls">
                             {isPlaying ? (
-                                <button className="btn-play-pause active" onClick={onPause}>
+                                <button className="deck-btn-play-pause active" onClick={onPause}>
                                     <PauseIcon />
                                     {shortcuts?.play && <span className="shortcut-badge play-badge">{shortcuts.play}</span>}
                                 </button>
                             ) : (
                                 <button
-                                    className="btn-play-pause"
+                                    className="deck-btn-play-pause"
                                     onClick={onPlay}
                                     disabled={!track}
                                 >
@@ -240,7 +240,7 @@ export const Deck: React.FC<DeckProps> = ({
 
                             {/* FX Button - visible only on small screens */}
                             <button
-                                className={`btn-fx-toggle ${showEffects ? 'active' : ''}`}
+                                className={`deck-btn-fx-toggle ${showEffects ? 'active' : ''}`}
                                 onClick={() => setShowEffects(!showEffects)}
                                 title="Open Effects"
                             >
@@ -257,20 +257,20 @@ export const Deck: React.FC<DeckProps> = ({
 
                         </div>
 
-                        <div className="performance-controls">
-                            <div className="effects-grid-performance" style={{ touchAction: 'none' }}>
+                        <div className="deck-performance-controls">
+                            <div className="deck-effects-grid-performance" style={{ touchAction: 'none' }}>
                                 <button
-                                    className={`btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('reverb')}
                                     title="Reverb"
                                 >REV</button>
                                 <button
-                                    className={`btn-effect ${activeEffects?.delay ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.delay ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('delay')}
                                     title="Delay"
                                 >DLY</button>
                                 <button
-                                    className={`btn-effect ${activeEffects?.filter ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.filter ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('filter')}
                                     title="Low Pass Filter"
                                 >
@@ -278,37 +278,37 @@ export const Deck: React.FC<DeckProps> = ({
                                     {shortcuts?.effect && <span className="shortcut-badge tiny">{shortcuts.effect}</span>}
                                 </button>
                                 <button
-                                    className={`btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('hpf')}
                                     title="High Pass Filter"
                                 >HPF</button>
                                 <button
-                                    className={`btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('distortion')}
                                     title="Distortion"
                                 >DST</button>
                                 <button
-                                    className={`btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('bitcrusher')}
                                     title="Bitcrusher"
                                 >BIT</button>
                                 <button
-                                    className={`btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('flanger')}
                                     title="Flanger"
                                 >FLG</button>
                                 <button
-                                    className={`btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
+                                    className={`deck-btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
                                     onClick={() => onToggleEffect('tremolo')}
                                     title="Tremolo"
                                 >TRM</button>
                             </div>
 
-                             <div className="cues-row" style={{ touchAction: 'none' }}>
+                             <div className="deck-cues-row" style={{ touchAction: 'none' }}>
                                 {[0, 1].map(index => (
                                     <button
                                         key={index}
-                                        className={`btn-cue ${cuePoints[index] !== undefined ? 'active' : ''}`}
+                                        className={`deck-btn-cue ${cuePoints[index] !== undefined ? 'active' : ''}`}
                                         onClick={(e) => {
                                             if (e.shiftKey) {
                                                 onDeleteCue(index);
@@ -326,9 +326,9 @@ export const Deck: React.FC<DeckProps> = ({
                                 ))}
                             </div>
 
-                            <div className="loop-control" style={{ touchAction: 'none' }}>
+                            <div className="deck-loop-control" style={{ touchAction: 'none' }}>
                                 <button
-                                    className={`btn-magic-loop ${activeLoop?.active || isHoldingLoop ? 'active' : ''} ${isHoldingLoop ? 'holding' : ''}`}
+                                    className={`deck-btn-magic-loop ${activeLoop?.active || isHoldingLoop ? 'active' : ''} ${isHoldingLoop ? 'holding' : ''}`}
                                     onMouseDown={handleLoopDown}
                                     onMouseUp={handleLoopUp}
                                     onMouseLeave={handleLoopUp}
@@ -347,45 +347,45 @@ export const Deck: React.FC<DeckProps> = ({
             </div>
 
             {/* Effects Popup - for small screens */}
-            <div className={`effects-popup ${showEffects ? 'open' : ''}`} data-deck={deckId}>
-                <div className="effects-popup-header">
+            <div className={`deck-effects-popup ${showEffects ? 'open' : ''}`} data-deck={deckId}>
+                <div className="deck-effects-popup-header">
                     <span>EFFECTS - DECK {deckId}</span>
                     <button
-                        className="effects-popup-close"
+                        className="deck-effects-popup-close"
                         onClick={() => setShowEffects(false)}
                     >✕</button>
                 </div>
-                <div className="effects-popup-grid">
+                <div className="deck-effects-popup-grid">
                     <button
-                        className={`btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.reverb ? 'active' : ''}`}
                         onClick={() => onToggleEffect('reverb')}
                     >REV</button>
                     <button
-                        className={`btn-effect ${activeEffects?.delay ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.delay ? 'active' : ''}`}
                         onClick={() => onToggleEffect('delay')}
                     >DLY</button>
                     <button
-                        className={`btn-effect ${activeEffects?.filter ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.filter ? 'active' : ''}`}
                         onClick={() => onToggleEffect('filter')}
                     >LPF</button>
                     <button
-                        className={`btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.hpf ? 'active' : ''}`}
                         onClick={() => onToggleEffect('hpf')}
                     >HPF</button>
                     <button
-                        className={`btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.distortion ? 'active' : ''}`}
                         onClick={() => onToggleEffect('distortion')}
                     >DST</button>
                     <button
-                        className={`btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.bitcrusher ? 'active' : ''}`}
                         onClick={() => onToggleEffect('bitcrusher')}
                     >BIT</button>
                     <button
-                        className={`btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.flanger ? 'active' : ''}`}
                         onClick={() => onToggleEffect('flanger')}
                     >FLG</button>
                     <button
-                        className={`btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
+                        className={`deck-btn-effect ${activeEffects?.tremolo ? 'active' : ''}`}
                         onClick={() => onToggleEffect('tremolo')}
                     >TRM</button>
                 </div>

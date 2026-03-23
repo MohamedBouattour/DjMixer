@@ -3,7 +3,7 @@
    Professional DJ Style with Touch Scratching
    ================================================= */
 
-.vinyl-container {
+.waveform-vinyl-container {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
@@ -16,8 +16,8 @@
   touch-action: none;
 }
 
-.vinyl-container:active,
-.vinyl-container.scratching {
+.waveform-vinyl-container:active,
+.waveform-vinyl-container.scratching {
   cursor: grabbing;
 }
 
@@ -25,7 +25,7 @@
    VINYL DISC - Main rotating element
    ================================================= */
 
-.vinyl-disc {
+.waveform-vinyl-disc {
   position: absolute;
   inset: 8%;
   border-radius: 50%;
@@ -45,29 +45,29 @@
 }
 
 /* Grooves - concentric circles */
-.vinyl-groove {
+.waveform-vinyl-groove {
   position: absolute;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.025);
   pointer-events: none;
 }
 
-.groove-1 {
+.waveform-groove-1 {
   inset: 15%;
 }
-.groove-2 {
+.waveform-groove-2 {
   inset: 22%;
 }
-.groove-3 {
+.waveform-groove-3 {
   inset: 29%;
 }
-.groove-4 {
+.waveform-groove-4 {
   inset: 36%;
 }
-.groove-5 {
+.waveform-groove-5 {
   inset: 43%;
 }
-.groove-6 {
+.waveform-groove-6 {
   inset: 50%;
 }
 
@@ -75,7 +75,7 @@
    POSITION MARKER - Shows rotation visually
    ================================================= */
 
-.vinyl-position-marker {
+.waveform-vinyl-position-marker {
   position: absolute;
   top: 10%;
   left: 50%;
@@ -93,7 +93,7 @@
    CENTER LABEL
    ================================================= */
 
-.vinyl-label {
+.waveform-vinyl-label {
   position: absolute;
   inset: 38%;
   border-radius: 50%;
@@ -113,7 +113,7 @@
   pointer-events: none;
 }
 
-.vinyl-label-text {
+.waveform-vinyl-label-text {
   font-size: 10px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
@@ -127,7 +127,7 @@
 }
 
 /* Center spindle */
-.label-spindle {
+.waveform-label-spindle {
   position: absolute;
   width: 12%;
   height: 12%;
@@ -142,7 +142,7 @@
    REFLECTION EFFECT
    ================================================= */
 
-.vinyl-reflection {
+.waveform-vinyl-reflection {
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -161,7 +161,7 @@
    PROGRESS RING - Glowing outline
    ================================================= */
 
-.progress-ring {
+.waveform-progress-ring {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -170,13 +170,13 @@
   transform: rotate(-90deg);
 }
 
-.progress-ring-bg {
+.waveform-progress-ring-bg {
   fill: none;
   stroke: rgba(255, 255, 255, 0.08);
   stroke-width: 4;
 }
 
-.progress-ring-fill {
+.waveform-progress-ring-fill {
   fill: none;
   stroke: var(--deck-color, #ff0080);
   stroke-width: 5;
@@ -188,7 +188,7 @@
    OUTER GLOW RING
    ================================================= */
 
-.vinyl-container::before {
+.waveform-vinyl-container::before {
   content: "";
   position: absolute;
   inset: 4%;
@@ -202,26 +202,10 @@
 }
 
 /* =================================================
-   TONEARM (hidden in this design)
-   ================================================= */
-
-.tonearm {
-  display: none;
-}
-
-/* =================================================
-   MINI WAVEFORM (hidden in this design)
-   ================================================= */
-
-.mini-waveform {
-  display: none;
-}
-
-/* =================================================
    PLAYING STATE - Subtle animation
    ================================================= */
 
-.vinyl-container.is-playing .vinyl-disc {
+.waveform-vinyl-container.is-playing .waveform-vinyl-disc {
   animation: subtle-pulse 4s ease-in-out infinite;
 }
 
@@ -245,10 +229,10 @@
    ================================================= */
 
 @media screen and (max-width: 1200px) {
-  .vinyl-container {
-    max-width: 180px !important;
-    max-height: 180px !important;
-    width: 180px !important;
-    height: 180px !important;
+  .waveform-vinyl-container {
+    max-width: 180px;
+    max-height: 180px;
+    width: 180px;
+    height: 180px;
   }
 }

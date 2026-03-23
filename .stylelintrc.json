@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "no-duplicate-selectors": true,
+    "declaration-no-important": true,
+    "custom-property-pattern": "^(color|deck|text|border|gap|radius|font|bp)-.+"
+  }
+}

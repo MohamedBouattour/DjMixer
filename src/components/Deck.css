@@ -49,7 +49,7 @@
     box-shadow: 0 0 12px var(--deck-color, var(--deck-a-primary));
 }
 
-.track-info {
+.deck-track-info {
     display: flex;
     align-items: center;
     gap: var(--gap-lg);
@@ -58,7 +58,7 @@
     overflow: hidden;
 }
 
-.track-name {
+.deck-track-name {
     font-size: 13px;
     font-weight: 600;
     color: var(--color-white);
@@ -67,20 +67,20 @@
     overflow: hidden;
 }
 
-.bpm-display {
+.deck-bpm-display {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-.bpm-label {
+.deck-bpm-label {
     font-size: 9px;
     color: var(--text-muted);
     font-weight: 700;
     letter-spacing: 1px;
 }
 
-.bpm-value {
+.deck-bpm-value {
     font-size: 18px;
     font-weight: 800;
     color: var(--deck-color, var(--deck-a-primary));
@@ -124,7 +124,7 @@
    PITCH SLIDER VERTICAL
    ================================================= */
 
-.pitch-control-vertical {
+.deck-pitch-control-vertical {
     width: 40px;
     height: 100%;
     display: flex;
@@ -134,49 +134,12 @@
     flex-shrink: 0;
 }
 
-.pitch-slider-vertical {
+.deck-pitch-slider-vertical {
     flex: 1;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-}
-
-/* =================================================
-   TIME DISPLAY
-   ================================================= */
-
-.time-display {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
-}
-
-.current-time {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-white);
-    letter-spacing: 0.5px;
-}
-
-.current-time .text-xs {
-    font-size: 10px;
-    color: var(--color-gray);
-    font-weight: 500;
-    margin-left: 2px;
-}
-
-.total-time {
-    font-size: 11px;
-    color: var(--deck-color, var(--color-gray));
-    font-weight: 600;
-    margin-top: 2px;
-}
-
-.separator {
-    display: none;
 }
 
 /* =================================================
@@ -206,20 +169,14 @@
    PLAYBACK CONTROLS
    ================================================= */
 
-.playback-controls {
+.deck-playback-controls {
     display: flex;
     align-items: center;
     gap: var(--gap-md);
     width: 100%;
 }
 
-/* Push time display to the right */
-.playback-controls .time-display {
-    margin-left: auto;
-    align-items: flex-end;
-}
-
-.btn-play-pause {
+.deck-btn-play-pause {
     width: 101px;
     height: 101px;
     border-radius: 50%;
@@ -233,23 +190,23 @@
     flex-shrink: 0;
 }
 
-.btn-play-pause:hover:not(:disabled) {
+.deck-btn-play-pause:hover:not(:disabled) {
     border-color: var(--deck-color, var(--deck-a-primary));
     box-shadow: 0 0 15px var(--deck-color, var(--deck-a-primary));
 }
 
-.btn-play-pause.active {
+.deck-btn-play-pause.active {
     background: var(--deck-color, var(--deck-a-primary));
     border-color: var(--deck-color, var(--deck-a-primary));
     box-shadow: 0 0 20px var(--deck-color, var(--deck-a-primary));
 }
 
-.btn-play-pause:disabled {
+.deck-btn-play-pause:disabled {
     opacity: 0.3;
     cursor: not-allowed;
 }
 
-.btn-play-pause svg {
+.deck-btn-play-pause svg {
     width: 44px;
     height: 44px;
 }
@@ -258,19 +215,19 @@
    PERFORMANCE CONTROLS - EFFECTS & CUES
    ================================================= */
 
-.performance-controls {
+.deck-performance-controls {
     display: flex;
     flex-direction: column;
     gap: var(--radius-md);
 }
 
-.effects-grid-performance {
+.deck-effects-grid-performance {
     display: flex;
     gap: var(--gap-sm);
     flex-wrap: wrap;
 }
 
-.btn-effect {
+.deck-btn-effect {
     flex: 1;
     min-width: 94px;
     height: 66px;
@@ -283,12 +240,12 @@
     transition: all 0.15s ease;
 }
 
-.btn-effect:hover {
+.deck-btn-effect:hover {
     border-color: var(--deck-color, var(--deck-a-primary));
     color: var(--color-white);
 }
 
-.btn-effect.active {
+.deck-btn-effect.active {
     background: var(--deck-color, var(--deck-a-primary));
     border-color: var(--deck-color, var(--deck-a-primary));
     color: var(--color-white);
@@ -296,12 +253,12 @@
 }
 
 /* Cue buttons */
-.cues-row {
+.deck-cues-row {
     display: flex;
     gap: var(--gap-sm);
 }
 
-.btn-cue {
+.deck-btn-cue {
     flex: 1;
     height: 66px;
     background: var(--color-bg-control);
@@ -313,12 +270,12 @@
     transition: all 0.15s ease;
 }
 
-.btn-cue:hover {
+.deck-btn-cue:hover {
     border-color: var(--deck-color, var(--deck-a-primary));
     color: var(--color-white);
 }
 
-.btn-cue.active {
+.deck-btn-cue.active {
     background: var(--deck-color, var(--deck-a-primary));
     border-color: var(--deck-color, var(--deck-a-primary));
     color: var(--color-white);
@@ -329,11 +286,11 @@
    LOOP CONTROL
    ================================================= */
 
-.loop-control {
+.deck-loop-control {
     margin-top: var(--gap-sm);
 }
 
-.btn-magic-loop {
+.deck-btn-magic-loop {
     width: 100%;
     height: 74px;
     display: flex;
@@ -350,25 +307,25 @@
     transition: all 0.15s ease;
 }
 
-.btn-magic-loop:hover {
+.deck-btn-magic-loop:hover {
     border-color: var(--deck-color, var(--deck-a-primary));
     color: var(--color-white);
 }
 
-.btn-magic-loop.holding {
+.deck-btn-magic-loop.holding {
     border-color: var(--deck-color, var(--deck-a-primary));
     color: var(--deck-color, var(--deck-a-primary));
     background: rgba(255, 255, 255, 0.02);
 }
 
-.btn-magic-loop.active {
+.deck-btn-magic-loop.active {
     background: var(--deck-color, var(--deck-a-primary));
     border-color: var(--deck-color, var(--deck-a-primary));
     color: var(--color-white);
     box-shadow: 0 0 15px var(--deck-color, var(--deck-a-primary));
 }
 
-.btn-magic-loop svg {
+.deck-btn-magic-loop svg {
     width: 24px;
     height: 24px;
 }
@@ -377,8 +334,8 @@
    WAVEFORM PLACEHOLDERS
    ================================================= */
 
-.waveform-placeholder,
-.waveform-loading {
+.deck-waveform-placeholder,
+.deck-waveform-loading {
     width: 100%;
     aspect-ratio: 1;
     max-width: 320px;
@@ -396,7 +353,7 @@
     gap: var(--gap-md);
 }
 
-.loading-spinner {
+.deck-loading-spinner {
     width: 24px;
     height: 24px;
     border: 2px solid rgba(255, 255, 255, 0.1);
@@ -430,50 +387,42 @@
         padding: 3px var(--gap-md);
     }
 
-    .track-name {
+    .deck-track-name {
         font-size: 11px;
     }
 
-    .bpm-value {
+    .deck-bpm-value {
         font-size: 14px;
     }
 
-    .btn-play-pause {
+    .deck-btn-play-pause {
         width: 60px;
         height: 60px;
     }
 
-    .btn-play-pause svg {
+    .deck-btn-play-pause svg {
         width: 24px;
         height: 24px;
     }
 
-    .btn-effect,
-    .btn-cue {
+    .deck-btn-effect,
+    .deck-btn-cue {
         height: 39px;
         font-size: 12px;
         min-width: 52px;
     }
 
-    .btn-magic-loop {
+    .deck-btn-magic-loop {
         height: 42px;
         font-size: 12px;
     }
 
-    .btn-magic-loop svg {
+    .deck-btn-magic-loop svg {
         width: 16px;
         height: 16px;
     }
 
-    .current-time {
-        font-size: 13px;
-    }
-
-    .total-time {
-        font-size: 9px;
-    }
-
-    .pitch-control-vertical {
+    .deck-pitch-control-vertical {
         width: 32px;
     }
 }
@@ -499,37 +448,37 @@
         letter-spacing: 0.5px;
     }
 
-    .track-name {
+    .deck-track-name {
         font-size: 10px;
     }
 
-    .bpm-value {
+    .deck-bpm-value {
         font-size: 12px;
     }
 
-    .btn-play-pause {
+    .deck-btn-play-pause {
         width: 47px;
         height: 47px;
     }
 
-    .btn-play-pause svg {
+    .deck-btn-play-pause svg {
         width: 16px;
         height: 16px;
     }
 
-    .btn-effect,
-    .btn-cue {
+    .deck-btn-effect,
+    .deck-btn-cue {
         height: 31px;
         font-size: 10px;
         min-width: 39px;
     }
 
-    .btn-magic-loop {
+    .deck-btn-magic-loop {
         height: 31px;
         font-size: 10px;
     }
 
-    .btn-magic-loop svg {
+    .deck-btn-magic-loop svg {
         width: 12px;
         height: 12px;
     }
@@ -538,28 +487,16 @@
         gap: var(--gap-sm);
     }
 
-    .pitch-control-vertical {
+    .deck-pitch-control-vertical {
         width: 20px;
-    }
-
-    .pitch-slider-vertical {
-        width: 20px;
-    }
-
-    .current-time {
-        font-size: 10px;
-    }
-
-    .total-time {
-        font-size: 8px;
     }
 
     /* Hide effects grid on small landscape */
-    .effects-grid-performance {
+    .deck-effects-grid-performance {
         display: none;
     }
 
-    .btn-fx-toggle {
+    .deck-btn-fx-toggle {
         display: flex;
     }
 }
@@ -568,7 +505,7 @@
    FX TOGGLE BUTTON - Hidden by default
    ================================================= */
 
-.btn-fx-toggle {
+.deck-btn-fx-toggle {
     display: none;
     width: 42px;
     height: 42px;
@@ -586,7 +523,7 @@
     transition: all 0.15s ease;
 }
 
-.btn-fx-toggle:hover {
+.deck-btn-fx-toggle:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 15px rgba(255, 0, 128, 0.4);
 }
@@ -595,7 +532,7 @@
    EFFECTS POPUP - Hidden by default
    ================================================= */
 
-.effects-popup {
+.deck-effects-popup {
     display: none;
     position: fixed;
     bottom: 0;
@@ -614,26 +551,26 @@
     transition: transform 0.25s ease;
 }
 
-.effects-popup.open {
+.deck-effects-popup.open {
     display: flex;
     transform: translateY(0);
 }
 
-.effects-popup-header {
+.deck-effects-popup-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--gap-lg);
 }
 
-.effects-popup-header span {
+.deck-effects-popup-header span {
     font-size: 12px;
     font-weight: 800;
     color: var(--deck-color, var(--deck-a-primary));
     letter-spacing: 1px;
 }
 
-.effects-popup-close {
+.deck-effects-popup-close {
     width: 28px;
     height: 28px;
     border-radius: 50%;
@@ -647,18 +584,18 @@
     cursor: pointer;
 }
 
-.effects-popup-close:hover {
+.deck-effects-popup-close:hover {
     background: var(--color-red);
     color: var(--color-white);
 }
 
-.effects-popup-grid {
+.deck-effects-popup-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: var(--gap-md);
 }
 
-.effects-popup-grid .btn-effect {
+.deck-effects-popup-grid .deck-btn-effect {
     height: 44px;
     font-size: 12px;
     min-width: 0;
@@ -669,11 +606,11 @@
    ================================================= */
 
 @media screen and (max-width: 1200px) and (min-width: 768px) {
-    .effects-grid-performance {
+    .deck-effects-grid-performance {
         display: none;
     }
 
-    .btn-fx-toggle {
+    .deck-btn-fx-toggle {
         display: flex;
     }
 }
@@ -683,8 +620,8 @@
    ================================================= */
 @media screen and (max-width: 1200px) {
 
-    .waveform-placeholder,
-    .waveform-loading {
+    .deck-waveform-placeholder,
+    .deck-waveform-loading {
         max-width: 180px;
     }
 }
@@ -693,33 +630,33 @@
    RESPONSIVE - Mobile Portrait (Restore Original Sizes)
    ================================================= */
 @media screen and (max-width: 767px) {
-    .btn-play-pause {
+    .deck-btn-play-pause {
         width: 68px;
         height: 68px;
     }
 
-    .btn-play-pause svg {
+    .deck-btn-play-pause svg {
         width: 22px;
         height: 22px;
     }
 
-    .btn-effect {
+    .deck-btn-effect {
         min-width: 62px;
         height: 44px;
         font-size: 13px;
     }
 
-    .btn-cue {
+    .deck-btn-cue {
         height: 44px;
         font-size: 17px;
     }
 
-    .btn-magic-loop {
+    .deck-btn-magic-loop {
         height: 49px;
         font-size: 13px;
     }
 
-    .btn-magic-loop svg {
+    .deck-btn-magic-loop svg {
         width: 16px;
         height: 16px;
     }
