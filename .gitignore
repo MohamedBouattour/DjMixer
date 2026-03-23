@@ -30,3 +30,6 @@ backend/cache/
 release/
 .env
 backend/.env
+
+GEMINI.md
+

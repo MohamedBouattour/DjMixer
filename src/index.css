@@ -102,9 +102,9 @@ button {
   overflow: hidden;
 }
 
-/* Hide app header - we don't need it */
+/* App header - shown on desktop */
 .app-header {
-  display: none !important;
+  display: flex;
 }
 
 /* Main content area */
@@ -114,7 +114,6 @@ button {
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-  height: 100vh;
 }
 
 /* Top waveform section - spans both decks */
@@ -149,10 +148,6 @@ button {
   --deck-glow: var(--deck-b-glow);
 }
 
-/* Center mixer section - handled in App.css */
-.center-section {
-  /* Styles moved to App.css for scalable layout */
-}
 
 /* =================================================
    Legacy Component Components

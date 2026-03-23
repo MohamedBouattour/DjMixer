@@ -735,7 +735,6 @@ function App() {
             <button
               className="settings-btn"
               onClick={() => setIsTrackSelectorOpen(true)}
-              style={{ marginRight: "10px" }}
               title="Open Library"
             >
               <svg
@@ -755,7 +754,6 @@ function App() {
               className="settings-btn"
               onClick={() => setIsSettingsOpen(true)}
               title="Settings"
-              style={{ right: "50%" }}
             >
               <svg
                 width="24"
