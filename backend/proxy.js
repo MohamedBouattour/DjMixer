@@ -96,7 +96,7 @@ async function fetchRapidAPI(videoId) {
     throw new Error('RapidAPI timeout');
 }
 
-app.get('/search', async (req, res) => {
+app.get('/api/search', async (req, res) => {
     try {
         const query = req.query.q;
         const source = req.query.source; // 'spotify' or 'youtube' (default)
@@ -194,7 +194,7 @@ app.get('/search', async (req, res) => {
     }
 });
 
-app.get('/stream', async (req, res) => {
+app.get('/api/stream', async (req, res) => {
     try {
         let videoId = req.query.videoId;
         if (!videoId) return res.status(400).json({ error: 'videoId required' });
@@ -263,8 +263,47 @@ app.get('/stream', async (req, res) => {
 
             // FALLBACK / LOCALHOST: yt-dlp
             const cacheFilePath = path.join(cacheDir, `${videoId}.mp3`);
+            const metadataPath = path.join(cacheDir, 'metadata.json');
 
-            // Serve cache if exists
+            // 1. Ensure metadata is present
+            try {
+                let metadata = {};
+                let metadataChanged = false;
+                if (fs.existsSync(metadataPath)) {
+                    try {
+                        metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+                    } catch (e) {
+                        console.warn(`[METADATA] Error parsing metadata.json: ${e.message}`);
+                        metadata = {};
+                    }
+                }
+
+                if (!metadata[videoId]) {
+                    console.log(`[METADATA] Fetching missing info for ${videoId}...`);
+                    const r = await yts({ videoId: videoId });
+                    if (r) {
+                        metadata[videoId] = {
+                            id: r.videoId,
+                            title: r.title,
+                            artist: r.author.name,
+                            author: r.author.name,
+                            duration: r.seconds,
+                            timestamp: r.timestamp,
+                            thumbnail: r.thumbnail,
+                            source: 'youtube'
+                        };
+                        metadataChanged = true;
+                    }
+                }
+
+                if (metadataChanged) {
+                    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+                }
+            } catch (err) {
+                console.warn(`[METADATA] Error handling metadata for ${videoId}: ${err.message}`);
+            }
+
+            // 2. Serve cache if exists
             if (fs.existsSync(cacheFilePath) && fs.statSync(cacheFilePath).size > 0) {
                 const stat = fs.statSync(cacheFilePath);
                 console.log(`[STREAM] Serving cached: ${videoId}`);
@@ -276,6 +315,7 @@ app.get('/stream', async (req, res) => {
                 return;
             }
 
+            // 3. Download if not exists
             console.log(`[STREAM] Using yt-dlp for ${videoId}`);
             const url = `https://www.youtube.com/watch?v=${videoId}`;
 
@@ -296,6 +336,7 @@ app.get('/stream', async (req, res) => {
             fs.createReadStream(cacheFilePath).pipe(res);
         }
 
+
     } catch (error) {
         console.error('[STREAM] Error:', error);
         if (!res.headersSent) {
@@ -304,8 +345,44 @@ app.get('/stream', async (req, res) => {
     }
 });
 
+// Cache listing endpoint
+app.get('/api/cache', (req, res) => {
+    try {
+        const metadataPath = path.join(cacheDir, 'metadata.json');
+        let metadata = {};
+        if (fs.existsSync(metadataPath)) {
+            metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+        }
+
+        const files = fs.readdirSync(cacheDir)
+            .filter(f => f.endsWith('.mp3'))
+            .map(f => f.replace('.mp3', ''));
+
+        const cachedTracks = [];
+        for (const videoId of files) {
+            if (metadata[videoId]) {
+                cachedTracks.push(metadata[videoId]);
+            } else {
+                // If no metadata, return basic info
+                cachedTracks.push({
+                    id: videoId,
+                    title: `Cached Track (${videoId})`,
+                    artist: 'Unknown',
+                    source: 'youtube'
+                });
+            }
+        }
+
+        res.json(cachedTracks);
+    } catch (error) {
+        console.error('[CACHE] Error scanning cache:', error);
+        res.status(500).json({ error: 'Cache scan failed' });
+    }
+});
+
+
 // Version check endpoint for PWA updates
-app.get('/version', (req, res) => {
+app.get('/api/version', (req, res) => {
     try {
         if (!staticDir) return res.json({ version: 'api-only' });
 
@@ -334,6 +411,7 @@ app.get('/version', (req, res) => {
 app.get('*', (req, res) => {
     if (staticDir) {
         const indexPath = path.join(staticDir, 'index.html');
+        console.log(`[SERVER] Checking for index.html at: ${indexPath}`);
         if (fs.existsSync(indexPath)) {
             res.sendFile(indexPath);
             return;

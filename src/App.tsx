@@ -30,7 +30,7 @@ function App() {
   useEffect(() => {
     const checkVersion = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/version`);
+        const res = await fetch(API_ENDPOINTS.VERSION);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -290,14 +290,38 @@ function App() {
 
   const downloadingTracksRef = useRef<Set<string>>(new Set());
 
-  // Load tracks from DB
+  // Load tracks from DB and Cache
   useEffect(() => {
     const loadTracks = async () => {
       try {
+        // 1. Get local tracks from IndexedDB
         const storedTracks = await getAllTracksFromDB();
-        setTracks(storedTracks);
+
+        // 2. Fetch cached tracks from backend
+        let cachedTracks: Track[] = [];
+        try {
+          const res = await fetch(API_ENDPOINTS.CACHE);
+          if (res.ok) {
+            const data = await res.json();
+            cachedTracks = data.map((item: any) => ({
+              id: item.id,
+              name: item.title || item.name || "Unknown Track",
+              duration: item.duration || 0,
+              url: `${API_BASE_URL}/stream?videoId=${item.id}`,
+              bpm: item.bpm,
+            }));
+          }
+        } catch (e) {
+          console.warn("[CACHE] Failed to fetch server cache:", e);
+        }
+
+        // 3. Merge: prefer local tracks (they have the File/Blob)
+        const localIds = new Set(storedTracks.map((t) => t.id));
+        const newFromCache = cachedTracks.filter((t) => !localIds.has(t.id));
+
+        setTracks([...storedTracks, ...newFromCache]);
       } catch (error) {
-        console.error("Failed to load tracks from DB:", error);
+        console.error("Failed to load tracks:", error);
       }
     };
     loadTracks();
