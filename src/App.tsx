@@ -11,7 +11,6 @@ import { useSettings } from "./contexts/SettingsContext";
 import { getKeyLabel } from "./utils/keyHelpers";
 import { detectBPM } from "./utils/audioUtils";
 import { API_BASE_URL, API_ENDPOINTS } from "./config";
-import "./App.css";
 
 function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
