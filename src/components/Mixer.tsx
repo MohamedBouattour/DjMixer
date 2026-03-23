@@ -67,15 +67,15 @@ export const Mixer: React.FC<MixerProps> = ({
             <div className="mixer glass-panel">
                 {/* Top row: VOL labels with settings gear in center and library on right */}
                 <div className="mixer-header-row">
-                    <span className="vol-label deck-a">VOL</span>
-                    <span className="vol-label deck-b">VOL</span>
+                    <span className="mixer-vol-label deck-a">VOL</span>
+                    <span className="mixer-vol-label deck-b">VOL</span>
                 </div>
 
                 {/* Main faders section - Side by side volume sliders with VU meters */}
                 <div className="mixer-faders-section">
                     {/* Deck A: Slider + VU */}
-                    <div className="fader-column">
-                        <div className="volume-slider-container">
+                    <div className="mixer-fader-column">
+                        <div className="mixer-volume-slider-container">
                             <VerticalSlider
                                 value={deckAState.volume}
                                 min={0}
@@ -84,25 +84,25 @@ export const Mixer: React.FC<MixerProps> = ({
                                 label=""
                                 showValue={false}
                                 color="#ff0080"
-                                className="volume-slider-vertical"
+                                className="mixer-volume-slider-vertical"
                             />
                         </div>
-                        <div className="vu-meter">
+                        <div className="mixer-vu-meter">
                             {Array.from({ length: 12 }).map((_, i) => {
                                 const segmentIndex = i;
                                 const isActive = segmentIndex < vuLevelA;
                                 const isPeak = segmentIndex >= 10;
                                 const isHigh = segmentIndex >= 8;
                                 return (
-                                    <div key={i} className={`vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
+                                    <div key={i} className={`mixer-vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
                                 );
                             })}
                         </div>
                     </div>
 
                     {/* Center: MIX label and volume percentages */}
-                    <div className="mix-center">
-                        <span className="volume-percent deck-a-percent">{Math.round(deckAState.volume)}%</span>
+                    <div className="mixer-center">
+                        <span className="mixer-volume-percent deck-a-percent">{Math.round(deckAState.volume)}%</span>
                         <button
                             className="mix-label-btn"
                             onClick={() => setIsEQPopupOpen(true)}
@@ -110,23 +110,23 @@ export const Mixer: React.FC<MixerProps> = ({
                         >
                             MIX
                         </button>
-                        <span className="volume-percent deck-b-percent">{Math.round(deckBState.volume)}%</span>
+                        <span className="mixer-volume-percent deck-b-percent">{Math.round(deckBState.volume)}%</span>
                     </div>
 
                     {/* Deck B: VU + Slider */}
-                    <div className="fader-column">
-                        <div className="vu-meter">
+                    <div className="mixer-fader-column">
+                        <div className="mixer-vu-meter">
                             {Array.from({ length: 12 }).map((_, i) => {
                                 const segmentIndex = i;
                                 const isActive = segmentIndex < vuLevelB;
                                 const isPeak = segmentIndex >= 10;
                                 const isHigh = segmentIndex >= 8;
                                 return (
-                                    <div key={i} className={`vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
+                                    <div key={i} className={`mixer-vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
                                 );
                             })}
                         </div>
-                        <div className="volume-slider-container">
+                        <div className="mixer-volume-slider-container">
                             <VerticalSlider
                                 value={deckBState.volume}
                                 min={0}
@@ -135,14 +135,14 @@ export const Mixer: React.FC<MixerProps> = ({
                                 label=""
                                 showValue={false}
                                 color="#00d4ff"
-                                className="volume-slider-vertical"
+                                className="mixer-volume-slider-vertical"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Crossfader section */}
-                <div className="crossfader-section">
+                <div className="mixer-crossfader-section">
                     <HorizontalSlider
                         value={crossfaderValue}
                         min={0}
