@@ -147,6 +147,22 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
 
     // --- Content Renders ---
 
+    const handleSyncCache = async () => {
+        if (!window.confirm('Synchronize metadata for all cached tracks? This might take a while.')) return;
+        setIsSearching(true);
+        try {
+            const res = await fetch(API_ENDPOINTS.SYNC);
+            const data = await res.json();
+            alert(data.message || 'Sync complete');
+            // Refresh tracks list if needed
+        } catch (err) {
+            console.error(err);
+            alert('Sync failed');
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
     const renderLibrary = () => {
         const filteredTracks = tracks.filter(t =>
             t.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -168,6 +184,9 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
+                    <button className="action-btn" onClick={handleSyncCache} disabled={isSearching} title="Update info for cached YouTube tracks">
+                        Sync Metadata
+                    </button>
                     <label className="action-btn file-input-label">
                         <input
                             type="file"

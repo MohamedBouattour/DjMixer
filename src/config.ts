@@ -7,5 +7,6 @@ export const API_ENDPOINTS = {
   STREAM: `${API_BASE_URL}/stream`,
   AUTH: `${API_BASE_URL}/auth`,
   CACHE: `${API_BASE_URL}/cache`,
+  SYNC: `${API_BASE_URL}/cache/sync`,
   VERSION: `${API_BASE_URL}/version`,
 };

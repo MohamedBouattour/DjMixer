@@ -253,6 +253,30 @@ app.get('/api/stream', async (req, res) => {
                     const downloadUrl = await fetchRapidAPI(videoId);
                     console.log(`[STREAM] RapidAPI Success: ${downloadUrl}`);
 
+                    // Store metadata even in RapidAPI mode if we can (Background check)
+                    const metadataPath = path.join(cacheDir, 'metadata.json');
+                    if (!fs.existsSync(metadataPath) || !JSON.parse(fs.readFileSync(metadataPath, 'utf8'))[videoId]) {
+                        console.log(`[METADATA] Background fetching missing info for ${videoId}...`);
+                        yts({ videoId: videoId }).then(r => {
+                            if (r) {
+                                let metadata = {};
+                                try { metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8')); } catch (e) {}
+                                metadata[videoId] = {
+                                    id: r.videoId,
+                                    title: r.title,
+                                    artist: r.author.name,
+                                    author: r.author.name,
+                                    duration: r.seconds,
+                                    timestamp: r.timestamp,
+                                    thumbnail: r.thumbnail,
+                                    source: 'youtube'
+                                };
+                                fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+                                console.log(`[METADATA] Background success for ${videoId}`);
+                            }
+                        }).catch(e => console.error(`[METADATA] Background error: ${e.message}`));
+                    }
+
                     // Redirect to the final URL for efficiency
                     return res.redirect(downloadUrl);
                 } catch (err) {
@@ -351,7 +375,11 @@ app.get('/api/cache', (req, res) => {
         const metadataPath = path.join(cacheDir, 'metadata.json');
         let metadata = {};
         if (fs.existsSync(metadataPath)) {
-            metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            try {
+                metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            } catch (e) {
+                metadata = {};
+            }
         }
 
         const files = fs.readdirSync(cacheDir)
@@ -377,6 +405,67 @@ app.get('/api/cache', (req, res) => {
     } catch (error) {
         console.error('[CACHE] Error scanning cache:', error);
         res.status(500).json({ error: 'Cache scan failed' });
+    }
+});
+
+// Cache synchronization endpoint - fetches missing metadata
+app.get('/api/cache/sync', async (req, res) => {
+    try {
+        const metadataPath = path.join(cacheDir, 'metadata.json');
+        let metadata = {};
+        if (fs.existsSync(metadataPath)) {
+            try {
+                metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            } catch (e) {
+                metadata = {};
+            }
+        }
+
+        const files = fs.readdirSync(cacheDir)
+            .filter(f => f.endsWith('.mp3'))
+            .map(f => f.replace('.mp3', ''));
+
+        const missingIds = files.filter(id => !metadata[id]);
+        
+        if (missingIds.length === 0) {
+            return res.json({ message: 'All tracks synchronized', count: 0 });
+        }
+
+        console.log(`[SYNC] Syncing ${missingIds.length} tracks...`);
+        let syncedCount = 0;
+
+        // Process in small batches to avoid rate limits
+        for (const id of missingIds) {
+            try {
+                const r = await yts({ videoId: id });
+                if (r) {
+                    metadata[id] = {
+                        id: r.videoId,
+                        title: r.title,
+                        artist: r.author.name,
+                        author: r.author.name,
+                        duration: r.seconds,
+                        timestamp: r.timestamp,
+                        thumbnail: r.thumbnail,
+                        source: 'youtube'
+                    };
+                    syncedCount++;
+                    // Optional: throttle if many IDs
+                    if (syncedCount % 5 === 0) {
+                        fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+                    }
+                }
+            } catch (err) {
+                console.warn(`[SYNC] Failed to sync ${id}: ${err.message}`);
+            }
+        }
+
+        fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+        res.json({ message: `Successfully synced ${syncedCount} tracks`, count: syncedCount });
+
+    } catch (error) {
+        console.error('[SYNC] Error during synchronization:', error);
+        res.status(500).json({ error: 'Synchronization failed' });
     }
 });
 
