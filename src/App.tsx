@@ -841,16 +841,7 @@ function App() {
           <Deck
             deckId="A"
             state={deckAState}
-            onPlay={deckA.play}
-            onPause={deckA.pause}
-            onSeek={deckA.seek}
-            onPitchChange={deckA.setPitch}
-            // onScratch and onReleaseScratch removed as they are not supported in old useDeck
-            onToggleEffect={deckA.toggleEffect}
-            onCue={deckA.handleCue}
-            onDeleteCue={deckA.deleteCue}
-            onLoopSet={deckA.setLoop}
-            onLoopClear={deckA.clearLoop}
+            controls={deckA}
             color="#ff0080"
             shortcuts={
               !isMobile
@@ -901,16 +892,7 @@ function App() {
           <Deck
             deckId="B"
             state={deckBState}
-            onPlay={deckB.play}
-            onPause={deckB.pause}
-            onSeek={deckB.seek}
-            onPitchChange={deckB.setPitch}
-            // onScratch and onReleaseScratch removed as they are not supported in old useDeck
-            onToggleEffect={deckB.toggleEffect}
-            onCue={deckB.handleCue}
-            onDeleteCue={deckB.deleteCue}
-            onLoopSet={deckB.setLoop}
-            onLoopClear={deckB.clearLoop}
+            controls={deckB}
             color="#00d4ff"
             shortcuts={
               !isMobile

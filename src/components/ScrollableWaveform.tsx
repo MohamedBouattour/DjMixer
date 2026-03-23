@@ -6,9 +6,12 @@ interface ScrollableWaveformProps {
     audioBuffer?: AudioBuffer | null;
     currentTime: number;
     duration: number;
+    isPlaying: boolean;
     onSeek: (time: number) => void;
     onScratch?: (velocity: number) => void;
     onReleaseScratch?: () => void;
+    onScratchStart?: () => void;
+    onScratchEnd?: () => void;
     color: string;
     bpm?: number;
     height?: number;
@@ -25,9 +28,12 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     audioBuffer,
     currentTime,
     duration,
+    isPlaying,
     onSeek,
     onScratch,
     onReleaseScratch,
+    onScratchStart,
+    onScratchEnd,
     color,
     bpm,
     height = 60,
@@ -41,29 +47,35 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     // Use refs for high-frequency updates to avoid React render overhead
     const currentTimeRef = useRef(currentTime);
     const dragTimeRef = useRef<number | null>(null);
+    const isPlayingRef = useRef(isPlaying);
     
-    // Update local ref when prop changes (if not dragging)
+    // ✅ Phase 6: Device detection for optimization
+    const isMobile = window.innerWidth < 768;
+    const pixelsPerSecondRef = useRef<number>(isMobile ? 60 : 100);
+
+    // Update local refs when props change
+    useEffect(() => {
+        isPlayingRef.current = isPlaying;
+    }, [isPlaying]);
+
     useEffect(() => {
         if (!isDragging) {
             currentTimeRef.current = currentTime;
         }
     }, [currentTime, isDragging]);
 
-    const pixelsPerSecondRef = useRef<number>(100);
-
     // Physics Refs for momentum
     const velocityRef = useRef(0);
     const lastTimestampRef = useRef(0);
     const lastXRef = useRef(0);
     const momentumFrameRef = useRef<number | null>(null);
-    const friction = 0.95; // Slightly less friction for better coasting
+    const friction = 0.95;
 
     // Dragging mechanics
     const draggingRef = useRef({
         isDragging: false,
         startX: 0,
-        startTime: 0,
-        lastOnSeekTime: 0
+        startTime: 0
     });
 
     const colorToRGB = useCallback((hex: string) => {
@@ -72,6 +84,25 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         const b = parseInt(hex.slice(5, 7), 16);
         return { r, g, b };
     }, []);
+
+    // ✅ Bug 4 & 6 Fix: Pre-compute gradients
+    const cachedGradientRef = useRef<{top: CanvasGradient, bottom: CanvasGradient} | null>(null);
+    useEffect(() => {
+        if (!canvasRef.current || !color) return;
+        const ctx = canvasRef.current.getContext('2d')!;
+        const h = height;
+        const rgb = colorToRGB(color);
+        
+        const topGrad = ctx.createLinearGradient(0, 0, 0, h/2);
+        topGrad.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},1)`);
+        topGrad.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0.3)`);
+        
+        const bottomGrad = ctx.createLinearGradient(0, h/2, 0, h);
+        bottomGrad.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},0.3)`);
+        bottomGrad.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},1)`);
+        
+        cachedGradientRef.current = { top: topGrad, bottom: bottomGrad };
+    }, [color, height, colorToRGB]);
 
     // Generate waveform peaks
     useEffect(() => {
@@ -86,7 +117,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
                 if (audioBuffer) {
                     buffer = audioBuffer;
                 } else {
-                    const audioContext = new AudioContext();
+                    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
                     const response = await fetch(audioUrl);
                     const arrayBuffer = await response.arrayBuffer();
                     buffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -101,11 +132,14 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
                 const peaks = new Float32Array(numPeaks * 2);
                 const channel = buffer.getChannelData(0);
 
+                // ✅ Phase 6: Faster analysis step on mobile
+                const step = isMobile ? 20 : 10;
+
                 for (let i = 0; i < numPeaks; i++) {
                     const start = i * samplesPerPixel;
                     const end = Math.min(start + samplesPerPixel, channel.length);
                     let min = 0; let max = 0;
-                    for (let j = start; j < end; j += 10) {
+                    for (let j = start; j < end; j += step) {
                         const sample = channel[j];
                         if (sample < min) min = sample;
                         if (sample > max) max = sample;
@@ -118,7 +152,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
             }
         };
         generatePeaks();
-    }, [audioUrl, audioBuffer]);
+    }, [audioUrl, audioBuffer, isMobile]);
 
     // Drawing Logic
     const draw = useCallback(() => {
@@ -130,7 +164,10 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
 
         const viewTime = dragTimeRef.current !== null ? dragTimeRef.current : currentTimeRef.current;
 
-        const dpr = window.devicePixelRatio || 1;
+        // ✅ Phase 6: Lower DPR for performance on low-end
+        const isLowEnd = (navigator.hardwareConcurrency || 4) <= 4;
+        const dpr = isLowEnd ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+        
         const rect = containerRef.current.getBoundingClientRect();
         const containerWidth = rect.width;
 
@@ -147,18 +184,13 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         ctx.resetTransform();
         ctx.scale(dpr, dpr);
 
-        // Clear
-        const bgGradient = ctx.createLinearGradient(0, 0, 0, height);
-        bgGradient.addColorStop(0, '#0d0d0d');
-        bgGradient.addColorStop(0.5, '#151515');
-        bgGradient.addColorStop(1, '#0d0d0d');
-        ctx.fillStyle = bgGradient;
+        // Background
+        ctx.fillStyle = '#0d0d0d';
         ctx.fillRect(0, 0, containerWidth, height);
 
         const pixelsPerSecond = pixelsPerSecondRef.current;
         const peaks = waveformData.peaks;
         const samplesPerSecondVisual = (peaks.length / 2) / waveformData.duration;
-        const rgb = colorToRGB(color);
 
         const halfWindowSeconds = (containerWidth / pixelsPerSecond) / 2;
         const startTime = viewTime - halfWindowSeconds;
@@ -193,35 +225,34 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         const barWidth = 2;
         const gap = 1;
         const step = barWidth + gap;
-        for (let x = 0; x < containerWidth; x += step) {
-            const timeAtX = startTime + (x / pixelsPerSecond);
-            if (timeAtX < 0 || timeAtX > waveformData.duration) continue;
+        
+        if (cachedGradientRef.current) {
+            for (let x = 0; x < containerWidth; x += step) {
+                const timeAtX = startTime + (x / pixelsPerSecond);
+                if (timeAtX < 0 || timeAtX > waveformData.duration) continue;
 
-            const peakIdx = Math.floor(timeAtX * samplesPerSecondVisual) * 2;
-            if (peakIdx >= peaks.length - 1) continue;
+                const peakIdx = Math.floor(timeAtX * samplesPerSecondVisual) * 2;
+                if (peakIdx >= peaks.length - 1) continue;
 
-            const min = peaks[peakIdx];
-            const max = peaks[peakIdx + 1];
-            const topHeight = max * centerY * 0.85;
-            const bottomHeight = -min * centerY * 0.85;
+                const min = peaks[peakIdx];
+                const max = peaks[peakIdx + 1];
+                const topHeight = max * centerY * 0.85;
+                const bottomHeight = -min * centerY * 0.85;
 
-            const alpha = x < centerX ? 1.0 : 0.45;
-            const amp = Math.max(Math.abs(max), Math.abs(min));
-            const bright = Math.min(1, amp * 1.5 + 0.3);
+                const alpha = x < centerX ? 1.0 : 0.45;
+                ctx.globalAlpha = alpha;
 
-            if (topHeight > 0.5) {
-                const g = ctx.createLinearGradient(0, centerY - topHeight, 0, centerY);
-                g.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * bright})`);
-                g.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * 0.3})`);
-                ctx.fillStyle = g; ctx.fillRect(x, centerY - topHeight, barWidth, topHeight);
-            }
-            if (bottomHeight > 0.5) {
-                const g = ctx.createLinearGradient(0, centerY, 0, centerY + bottomHeight);
-                g.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * 0.3})`);
-                g.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha * bright})`);
-                ctx.fillStyle = g; ctx.fillRect(x, centerY, barWidth, bottomHeight);
+                if (topHeight > 0.5) {
+                    ctx.fillStyle = cachedGradientRef.current.top;
+                    ctx.fillRect(x, centerY - topHeight, barWidth, topHeight);
+                }
+                if (bottomHeight > 0.5) {
+                    ctx.fillStyle = cachedGradientRef.current.bottom;
+                    ctx.fillRect(x, centerY, barWidth, bottomHeight);
+                }
             }
         }
+        ctx.globalAlpha = 1.0;
 
         // Playhead
         ctx.save();
@@ -235,29 +266,38 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         ctx.beginPath(); ctx.moveTo(centerX - 5, 0); ctx.lineTo(centerX + 5, 0); ctx.lineTo(centerX, 7); ctx.fill();
         ctx.beginPath(); ctx.moveTo(centerX - 5, height); ctx.lineTo(centerX + 5, height); ctx.lineTo(centerX, height - 7); ctx.fill();
 
-    }, [waveformData, color, bpm, height, colorToRGB]);
+    }, [waveformData, color, bpm, height]);
 
-    // Animation Loop
+    // ✅ Bug 4 Fix: Conditional Animation Loop
     useEffect(() => {
+        const shouldAnimate = isPlaying || isDragging;
+        if (!shouldAnimate) {
+            draw(); // Draw once if state changes but not playing
+            return;
+        }
+
         let frameId: number;
-        const loop = () => {
-            draw();
+        // ✅ Phase 6: 30FPS on mobile
+        const TARGET_FPS = isMobile ? 30 : 60;
+        const FRAME_INTERVAL = 1000 / TARGET_FPS;
+        let lastDrawTime = 0;
+
+        const loop = (now: number) => {
+            if (now - lastDrawTime >= FRAME_INTERVAL) {
+                draw();
+                lastDrawTime = now;
+            }
             frameId = requestAnimationFrame(loop);
         };
+        
         frameId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(frameId);
-    }, [draw]);
-
-    const throttledSeek = useCallback((time: number) => {
-        const now = performance.now();
-        if (now - draggingRef.current.lastOnSeekTime > 32) { // ~30fps throttle for global seek
-            onSeek(time);
-            draggingRef.current.lastOnSeekTime = now;
-        }
-    }, [onSeek]);
+    }, [draw, isPlaying, isDragging, isMobile]);
 
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
         setIsDragging(true);
+        onScratchStart?.();
+        
         dragTimeRef.current = currentTimeRef.current;
         draggingRef.current.isDragging = true;
         draggingRef.current.startX = e.clientX;
@@ -273,7 +313,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         }
         e.currentTarget.setPointerCapture(e.pointerId);
         if (onScratch) onScratch(0);
-    }, [onScratch]);
+    }, [onScratch, onScratchStart]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         if (!draggingRef.current.isDragging) return;
@@ -295,21 +335,20 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         lastXRef.current = e.clientX;
 
         dragTimeRef.current = newTime;
-        throttledSeek(newTime); // Call throttled version
 
         if (onScratch) onScratch(velocityRef.current);
-    }, [duration, throttledSeek, onScratch]);
+    }, [duration, onScratch]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         setIsDragging(false);
         draggingRef.current.isDragging = false;
         
-        // Final sync
         if (dragTimeRef.current !== null) {
             onSeek(dragTimeRef.current);
         }
+        onScratchEnd?.();
 
-        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore capture release error */ }
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { }
 
         if (Math.abs(velocityRef.current) > 0.05) {
             const animate = (now: number) => {
@@ -323,7 +362,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
                     else if (nextTime >= duration) { nextTime = duration; velocityRef.current = 0; }
                     
                     dragTimeRef.current = nextTime;
-                    throttledSeek(nextTime);
+                    onSeek(nextTime); 
                     if (onScratch) onScratch(velocityRef.current);
                 }
 
@@ -341,7 +380,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
             dragTimeRef.current = null;
             if (onReleaseScratch) onReleaseScratch();
         }
-    }, [duration, onSeek, onScratch, onReleaseScratch, throttledSeek]);
+    }, [duration, onSeek, onScratch, onReleaseScratch, onScratchEnd]);
 
     return (
         <div

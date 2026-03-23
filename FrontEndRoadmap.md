@@ -1,164 +1,165 @@
-🔍 CSS Audit Summary
-The project has 12 CSS files across src/ and src/components/ totaling ~90KB of styles . The core problems cluster into 5 categories: duplicate selectors, dead code, hardcoded values, !important abuse, and broken CSS architecture ownership.
+🔴 Critical Issues Found
 
-Critical Issues Found
+1. Hardcoded Color Values (No Token Usage)
+   Multiple files bypass the design system tokens defined in index.css and use raw hex values directly.
 
-1. Duplicate Selectors Across Files
-   The most severe issue — the same selectors are defined in both App.css and index.css with conflicting values :
+Offenders:
 
-Selector App.css index.css Conflict
-.app position: fixed, padding: env(...) padding: 5px, background gradient ✅ Conflicting
-.app-header display: none !important display: none !important ♻️ Exact duplicate
-.app-main height: 100vh only height: 100vh + flex-direction: column ✅ Conflicting
-.decks-section width: 100% No width Partial overlap
-.center-section Full layout Empty block Dead code
-.settings-floating-btn display: flex !important ×2 MQs display: flex !important ♻️ Triple duplicate
-body overflow/user-select Full body block Covered in html,body,#root ♻️ Redundant
-In Mixer.css, the /_ ADVANCED CONTROLS POPUP _/ section header appears twice back-to-back, and /_ RESPONSIVE - Tablet _/ media query header is duplicated as well .
+AuthModal.css: #1e1e1e, #252525, #888, #ff0080, #00d4ff, #ff4444 — all hardcoded despite tokens existing in :root
 
-2. Dead / Commented-Out Code
-   .center-section {} in index.css — empty block with comment "Styles moved to App.css"
+SettingsModal.css: #1e1e1e, #252525, #333, #888, #ccc, #ff4444
 
-/_ Legacy Component Components _/ section — empty with no rules
+VerticalSlider.css: #888, #252525, #ff0080 hardcoded inline instead of using var(--deck-color)
 
-Two consecutive empty responsive section headers: /_ RESPONSIVE - Landscape mobile _/ and /_ RESPONSIVE - Global _/
+HorizontalSlider.css: #0a0a0a, #888 hardcoded
 
-transition: all 0.15s ease is declared twice on .btn-magic-loop in Deck.css
+2. Duplicate user-select: none Declaration
+   user-select: none appears on both html/body/#root AND body separately, creating a redundant double-declaration. The body block also duplicates -webkit-tap-highlight-color: transparent which is already in the \* reset.
 
-orientation.css exists as a dedicated file yet orientation warning styles are also fully defined in index.css
+3. Mixed Use of --gap-_ and --radius-_ as Spacing
+   --radius-md and --radius-lg are used as gap/padding values in Deck.css and Mixer.css — which is semantically wrong and confusing. For example: gap: var(--radius-md) in .deck-performance-controls.
 
-3. Hardcoded Values Ignoring the Design System
-   index.css defines a complete design system with CSS custom properties (--deck-a-primary, --border-subtle, --gap-md, --radius-lg, etc.) that are barely used in component files . Instead, Deck.css and Mixer.css repeat raw hex values everywhere:
+4. Duplicate Responsive Blocks
+   The media query @media screen and (max-width: 1200px) and (min-width: 768px) appears in Deck.css, Mixer.css, VerticalSlider.css, and index.css — all with overlapping rules that could be consolidated.
 
-#ff0080 / #00d4ff instead of var(--deck-a-primary) / var(--deck-b-primary)
+The .deck-effects-grid-performance { display: none } rule appears twice in Deck.css — once inside @media (max-height: 500px) and once inside @media (max-width: 1200px).
 
-rgba(255,255,255,0.08) instead of var(--border-subtle)
+5. .settings-overlay Ghost Selector
+   In SettingsModal.css, the selector .settings-modal-overlay, .settings-overlay targets .settings-overlay which doesn't appear to exist anywhere in the TSX — a dead selector increasing specificity noise.
 
-8px, 12px, 4px gaps instead of var(--gap-md), var(--gap-lg), var(--gap-sm)
+6. Inconsistent Close Button Pattern
+   Both AuthModal.css and SettingsModal.css define near-identical .auth-close-btn / .settings-close-btn / .advanced-controls-close styles (32-42px circle, #333 background, hover → red). This button pattern appears 3+ times across files.
 
-4px, 6px, 8px radii instead of var(--radius-sm/md/lg)
+7. Duplicate Modal Base Pattern
+   .auth-modal and .settings-modal share identical base styles: background: #1e1e1e, border: 1px solid rgba(255,255,255,0.1), border-radius: 12px, box-shadow: 0 20px 60px rgba(0,0,0,0.8) — fully duplicated.
 
-4. !important Overuse
-   There are 9+ !important declarations used to fight cascade specificity rather than fix the actual selector architecture . .settings-floating-btn { display: flex !important } appears in 3 separate locations.
-
-5. Broken File Ownership Architecture
-   App.css and index.css both attempt to define the global layout, creating an unclear and fragile cascade. The breakpoint max-width: 1200px is repeated in App.css, Deck.css, and Mixer.css with no shared breakpoint tokens .
-
+📋 CSS Quality Summary Table
+File Size Hardcoded Colors Duplicate Rules Token Usage Grade
+index.css 9KB Some user-select x2, tap-highlight x2 ✅ Good B
+Deck.css 14KB None Media query ×2, display:none ×2 ✅ Good B+
+Mixer.css 13KB #3a3a3a inline --radius as spacing ✅ Good B
+VerticalSlider.css 4.5KB #888, #252525 None ⚠️ Partial C+
+HorizontalSlider.css 1.6KB #888, #0a0a0a None ⚠️ Partial C+
+AuthModal.css 2.4KB All hardcoded None ❌ None D
+SettingsModal.css 5.5KB All hardcoded Ghost selector ❌ None D
+Waveform.css 5.3KB None None ✅ Full A
+ScrollableWaveform.css 1.9KB None None ✅ Full A
+UnifiedTrackSelector.css 5.6KB Some — ⚠️ Partial C+
 🗺️ Full Refactoring Roadmap
-Phase 1 — Audit & Baseline (Day 1)
-Goal: freeze a working visual snapshot before touching anything.
+Phase 1 — Design Token Completion (1–2 days)
+Goal: Make all hardcoded values traceable to :root tokens.
 
-Take browser screenshots of all 3 breakpoints (desktop, tablet ≤1200px, small landscape ≤500px height)
+Add missing tokens to index.css > :root:
 
-Run npx stylelint "src/\*_/_.css" to generate a linting baseline report
+css
+--color-bg-modal: #1e1e1e;
+--color-bg-header: #252525;
+--color-bg-control-dark: #333;
+--color-border-light: rgba(255, 255, 255, 0.1);
+--color-text-hint: #888;
+--color-text-light: #ccc;
+--shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.8);
+--radius-circle: 50%;
+--radius-xxl: 50px; /_ for toggle pills _/
+Replace all hardcoded hex values in AuthModal.css, SettingsModal.css, VerticalSlider.css, and HorizontalSlider.css with the new tokens.
 
-Create branch refactor/css-cleanup from main
+Fix VerticalSlider.css and HorizontalSlider.css to use var(--deck-color, var(--deck-a-primary)) consistently.
 
-Optionally install PurgeCSS or VSCode CSS Peek to map unused class names
+Phase 2 — Extract Shared Component Classes (1–2 days)
+Goal: Eliminate the duplicated modal, close button, and overlay patterns.
 
-Phase 2 — Merge & Consolidate Global Files (Day 2)
-Goal: one file owns global layout, one file owns the design system.
+Create src/styles/shared.css (imported once in main.tsx):
 
-Merge App.css into index.css — index.css becomes the single global stylesheet
+.modal-base — shared background, border, border-radius, shadow for all modals
 
-Keep the :root design tokens at the top
+.modal-overlay-base — shared position: fixed; inset: 0; backdrop-filter: blur(...)
 
-Merge .app into one definitive block: keep position: fixed from App.css, background gradient from index.css
+.icon-btn-close — shared 32px circle close button with hover → red state
 
-Remove the conflicting .app-main definition from index.css (keep App.css version with correct flex-direction)
+.modal-header-base — shared display: flex; justify-content: space-between; border-bottom
 
-Delete App.css after migration; update main.tsx / App.tsx imports
+In AuthModal.css and SettingsModal.css: Replace duplicate declarations with composition using @apply (if using PostCSS) or via shared class names in the TSX.
 
-Delete orientation.css after confirming its content is already in index.css; remove its import
+Remove the ghost selector .settings-overlay from SettingsModal.css.
 
-Phase 3 — Kill Dead Code (Day 2–3)
-Goal: remove every empty block, stale comment, and commented-out rule.
+Phase 3 — Fix Semantic Token Misuse (half day)
+Goal: Separate spacing tokens from radius tokens.
 
-Delete empty section blocks in index.css: .center-section {}, /_ Legacy Component Components _/, both empty responsive headers
+In index.css, add explicit spacing tokens:
 
-Remove stale display: none !important for .effects, .mini-waveform, .shortcut-badge, .center-toggle-btn — confirm these elements don't exist in JSX; if confirmed, delete the HTML elements or keep one canonical hide rule
+css
+--space-xs: 2px;
+--space-sm: 6px; /_ avoid collision with --gap-sm: 4px _/
+--space-md: 8px;
+--space-lg: 12px;
+Audit all gap: var(--radius-_) and padding: var(--radius-_) in Deck.css and Mixer.css — replace with appropriate --gap-_ or new --space-_ tokens.
 
-Remove the duplicate transition: all 0.15s ease on .btn-magic-loop in Deck.css
+Rename usage confusion between --gap-_ (flex/grid gaps) and layout padding — standardize as --gap-_ for gaps only and --gap-\* or inline values for padding.
 
-Remove duplicate /_ ADVANCED CONTROLS POPUP _/ header block and duplicate /_ RESPONSIVE - Tablet _/ header in Mixer.css
+Phase 4 — Deduplicate Media Queries (1 day)
+Goal: Single source of truth per breakpoint per component.
 
-Remove .separator { display: none } if element is not rendered in JSX
+Deck.css: Merge the two @media (max-width: 1200px) blocks into one (currently split across the file). Remove the duplicate .deck-effects-grid-performance { display: none }.
 
-Phase 4 — Tokenize All Hardcoded Values (Day 3–4)
-Goal: every component references var(--token) instead of raw values.
+SettingsModal.css: The small landscape media query references undefined classes (.close-btn, .settings-hint, .layout-selector, .layout-btn, .key-mapping-list, .key-mapping-item, .action-label, .key-btn, .settings-actions, .reset-btn, .settings-footer) — audit against actual TSX and remove dead rules.
 
-In Deck.css — replace all occurrences of:
+Consider moving breakpoints to CSS custom property media queries or a dedicated src/styles/breakpoints.css file for shared reference across components.
 
-#ff0080 → var(--deck-a-primary) (already overridden per deck via --deck-color)
+Phase 5 — Reset & Base Cleanup (half day)
+Goal: Remove redundant global declarations.
 
-#00d4ff → var(--deck-b-primary)
+In index.css, consolidate the html/body/#root block and the body block — user-select, overflow: hidden, and -webkit-tap-highlight-color appear across both. Keep body as the single place for all base body rules.
 
-#252525 → var(--color-bg-control)
+Ensure outline: none in \* {} is not overriding accessibility — add a focused :focus-visible rule as a proper alternative:
 
-rgba(255,255,255,0.08) → var(--border-subtle)
+css
+_:focus { outline: none; }
+_:focus-visible { outline: 2px solid var(--deck-a-primary); outline-offset: 2px; }
+Audit position: fixed on .app — this is already set alongside overflow: hidden on body, check if both are necessary.
 
-rgba(255,255,255,0.15) → var(--border-medium)
+Phase 6 — Stylelint Enforcement (half day)
+Goal: Prevent regressions automatically.
 
-All gap values → var(--gap-sm/md/lg/xl)
+Review the existing .stylelintrc.json and add rules:
 
-All border-radius values → var(--radius-sm/md/lg/xl)
+"declaration-no-important": true — remove all !important (found in Mixer.css)
 
-Repeat the same token replacement in Mixer.css
+"color-no-invalid-hex": true
 
-Add missing tokens to :root if needed (e.g., --color-bg-gradient, --breakpoint-tablet: 1200px)
+"custom-property-no-missing-var-function": true
 
-Phase 5 — Fix !important Abuse (Day 4)
-Goal: zero !important declarations except truly unavoidable overrides.
+"no-duplicate-selectors": true
 
-For .app-header { display: none !important } — keep only one in index.css; increase specificity if needed (#root .app-header)
+Add stylelint to the pre-commit hook via lint-staged.
 
-For .settings-floating-btn { display: flex !important } × 3 — collapse into one rule at base level; the MQ overrides are redundant since the default is already flex
+Run npx stylelint "src/\*_/_.css" --fix as the initial automated pass.
 
-For .floating-actions { display: flex !important } in both orientation MQs — the declarations are identical to the base style; delete both MQ overrides entirely
+Phase 7 — (Optional) CSS Modules Migration (3–5 days)
+Goal: Eliminate global scope and class name collision risk entirely.
 
-For .btn-fx-toggle { display: flex !important } in responsive MQ — replace with a proper cascade: default display: none, then @media { display: flex } without !important
+Since the project is React + Vite, migrating from plain .css files to CSS Modules (.module.css) is low-cost and high-value:
 
-Phase 6 — Consolidate Responsive Breakpoints (Day 5)
-Goal: one place defines breakpoint values; all MQs use them.
+Rename files: Deck.css → Deck.module.css
 
-Add CSS custom media queries (or SCSS variables if migrating): --bp-tablet: 1200px, --bp-mobile: 767px, --bp-small-landscape: (max-height: 500px) and (orientation: landscape)
+Update imports: import styles from './Deck.module.css'
 
-Audit all 3 main CSS files for max-width: 1200px and max-height: 500px breakpoints — ensure each file's MQ only contains that component's responsive rules, not global layout overrides
+Replace className="deck-btn-play-pause" with className={styles.deckBtnPlayPause}
 
-Move global layout responsive rules (body, .app, .decks-section) to index.css only
+Keep index.css global for the design tokens (:root) and the body/reset rules only
 
-Phase 7 — CSS Architecture Hardening (Day 5–6)
-Goal: prevent regressions with naming conventions and tooling.
+Move shared component classes from Phase 2 into a shared.module.css
 
-Prefix all component class names with their component name to avoid global collisions: .deck-_ (already mostly done), .mixer-_, .waveform-\* — audit Mixer.css for bare names like .vol-label, .mix-center, .vu-meter that could clash
+This eliminates all risk of .deck clashing with external libraries and makes refactoring fully traceable.
 
-Add stylelint rules to eslint.config.js or a .stylelintrc:
+⚡ Quick Wins (Do First)
+These can be done in under 2 hours without any breaking changes:
 
-json
-"no-duplicate-selectors": true,
-"declaration-no-important": true,
-"custom-property-pattern": "^(color|deck|text|border|gap|radius|font|bp)-.+"
-Add a pre-commit hook (via husky + lint-staged) that runs stylelint on changed CSS files
+Remove duplicate user-select: none in index.css
 
-Phase 8 — Validation & Regression (Day 6–7)
-Goal: confirm nothing broke visually.
+Remove ghost selector .settings-overlay in SettingsModal.css
 
-Re-take screenshots at all 3 breakpoints and diff against Phase 1 baseline
+Remove duplicate deck-effects-grid-performance { display: none } in Deck.css
 
-Test on Safari (PWA env() padding, overscroll-behavior) and Firefox (::-moz-range-\* rules still active)
+Replace #ff0080 and #00d4ff inline in AuthModal.css with var(--deck-a-primary) and var(--deck-b-primary)
 
-Run Lighthouse CSS coverage report — verify reduced unused CSS percentage
-
-Merge refactor/css-cleanup → main via PR with before/after screenshots in description
-
-Effort Estimate
-Phase Effort Risk
-Phase 1 – Audit 2h 🟢 None
-Phase 2 – Merge global files 3h 🟡 Medium (cascade order)
-Phase 3 – Dead code 1h 🟢 Low
-Phase 4 – Tokenize values 4h 🟡 Medium (many occurrences)
-Phase 5 – Fix !important 2h 🟡 Medium (specificity side effects)
-Phase 6 – Breakpoints 2h 🟢 Low
-Phase 7 – Architecture 3h 🟠 High (rename impacts TSX)
-Phase 8 – Validation 2h 🟢 Low
-Total estimated effort: ~19h spread across 7 days. Phases 2–5 deliver the highest visual and maintenance ROI and should be prioritized if time is constrained.
+Add declaration-no-important to .stylelintrc.json to block future regressions

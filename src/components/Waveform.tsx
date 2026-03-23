@@ -2,193 +2,234 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import './Waveform.css';
 
 interface WaveformProps {
-    audioUrl: string | null;
     currentTime: number;
     duration?: number;
     isPlaying: boolean;
     color: string;
     onScratch?: (velocity: number) => void;
     onReleaseScratch?: () => void;
+    onScratchStart?: () => void;
+    onScratchEnd?: () => void;
     onSeek?: (time: number) => void;
 }
 
 const WaveformComponent: React.FC<WaveformProps> = ({
     currentTime,
-    duration = 0,
+    duration = 300,
     isPlaying,
     color,
     onScratch,
     onReleaseScratch,
+    onScratchStart,
+    onScratchEnd,
     onSeek
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const discRef = useRef<HTMLDivElement>(null);
-    const rotationRef = useRef<number>(0);
-    const isDragging = useRef<boolean>(false);
-    const lastAngle = useRef<number>(0);
-    const lastTime = useRef<number>(0);
-    const velocity = useRef<number>(0);
+    const groovesCanvasRef = useRef<HTMLCanvasElement>(null);
+    const rotationRef = useRef(0);
+    const lastTimeRef = useRef(0);
+    const animationRef = useRef<number | null>(null);
+    const momentumRef = useRef<number | null>(null);
 
-    const getAngle = (clientX: number, clientY: number) => {
-        if (!containerRef.current) return 0;
+    // Refs for animation loop to avoid dependency re-runs
+    const isPlayingRef = useRef(isPlaying);
+    const isTouchingRef = useRef(false);
+    const lastAngularVelocityRef = useRef(0);
+
+    useEffect(() => {
+        isPlayingRef.current = isPlaying;
+    }, [isPlaying]);
+
+    // Scratch state tracking
+    const lastAngleRef = useRef(0);
+    const lastTouchTimeRef = useRef(0);
+    const centerRef = useRef({ x: 0, y: 0 });
+
+    // ✅ Bug 1 Fix: Single persistent animation loop
+    useEffect(() => {
+        const animate = (now: number) => {
+            if (isPlayingRef.current && !isTouchingRef.current && discRef.current && !momentumRef.current) {
+                const delta = now - lastTimeRef.current;
+                const rotationSpeed = (33.33 / 60) * 360;
+                rotationRef.current += (rotationSpeed * delta) / 1000;
+                discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
+            }
+            lastTimeRef.current = now;
+            animationRef.current = requestAnimationFrame(animate);
+        };
+
+        lastTimeRef.current = performance.now();
+        animationRef.current = requestAnimationFrame(animate);
+
+        return () => {
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            if (momentumRef.current) cancelAnimationFrame(momentumRef.current);
+        };
+    }, []);
+
+    // Draw grooves once
+    useEffect(() => {
+        if (!groovesCanvasRef.current) return;
+        const canvas = groovesCanvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const size = 400;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.clearRect(0, 0, size, size);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
+        ctx.lineWidth = 1;
+        const center = size / 2;
+        [0.15, 0.22, 0.29, 0.36, 0.43, 0.50].forEach(percent => {
+            const radius = (size * (1 - percent * 2)) / 2;
+            ctx.beginPath();
+            ctx.arc(center, center, radius, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+    }, []);
+
+    const getAngle = useCallback((clientX: number, clientY: number) => {
+        const center = centerRef.current;
+        return Math.atan2(clientY - center.y, clientX - center.x) * (180 / Math.PI);
+    }, []);
+
+    const handlePointerDown = useCallback((e: React.PointerEvent) => {
+        if (!containerRef.current) return;
+        if (momentumRef.current) {
+            cancelAnimationFrame(momentumRef.current);
+            momentumRef.current = null;
+        }
+
         const rect = containerRef.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        return Math.atan2(clientY - centerY, clientX - centerX);
-    };
+        centerRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 
-    const handleStart = (clientX: number, clientY: number) => {
-        isDragging.current = true;
-        lastAngle.current = getAngle(clientX, clientY);
-        lastTime.current = performance.now();
-        velocity.current = 0;
-    };
+        const angle = getAngle(e.clientX, e.clientY);
+        lastAngleRef.current = angle;
+        lastTouchTimeRef.current = performance.now();
+        isTouchingRef.current = true;
 
-    const handleMove = useCallback((clientX: number, clientY: number) => {
-        if (!isDragging.current) return;
+        containerRef.current.classList.add('scratching');
+        onScratchStart?.();
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        onScratch?.(0);
+    }, [getAngle, onScratch, onScratchStart]);
 
-        const currentAngle = getAngle(clientX, clientY);
-        const currentTimeNow = performance.now();
-        const deltaTime = currentTimeNow - lastTime.current;
+    const handlePointerMove = useCallback((e: React.PointerEvent) => {
+        if (!isTouchingRef.current) return;
 
-        let deltaAngle = currentAngle - lastAngle.current;
-        // Handle wrap-around
-        if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
-        if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
+        const now = performance.now();
+        const dt = (now - lastTouchTimeRef.current) / 1000;
+        if (dt < 0.01) return;
 
-        rotationRef.current += (deltaAngle * 180) / Math.PI;
+        const angle = getAngle(e.clientX, e.clientY);
+        let deltaAngle = angle - lastAngleRef.current;
+        if (deltaAngle > 180) deltaAngle -= 360;
+        if (deltaAngle < -180) deltaAngle += 360;
+
         if (discRef.current) {
+            rotationRef.current += deltaAngle;
             discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
         }
 
-        // Calculate velocity for scratching
-        if (deltaTime > 0) {
-            const currentVelocity = deltaAngle / (deltaTime / 1000); // radians per second
-            velocity.current = currentVelocity;
-            onScratch?.(currentVelocity);
+        const angularVelocity = deltaAngle / dt;
+        lastAngularVelocityRef.current = angularVelocity;
+        onScratch?.(angularVelocity / 200);
+
+        if (onSeek && duration > 0) {
+            const secondsPerDegree = (1 / (33.33 / 60)) / 360;
+            const seekDelta = deltaAngle * secondsPerDegree;
+            onSeek(Math.max(0, Math.min(duration, currentTime + seekDelta)));
         }
 
-        lastAngle.current = currentAngle;
-        lastTime.current = currentTimeNow;
-    }, [onScratch]);
+        lastAngleRef.current = angle;
+        lastTouchTimeRef.current = now;
+    }, [getAngle, onScratch, onSeek, duration, currentTime]);
 
-    const handleEnd = useCallback(() => {
-        if (!isDragging.current) return;
-        isDragging.current = false;
-        onReleaseScratch?.();
-    }, [onReleaseScratch]);
+    // ✅ Phase 5: Implement scratch inertia / deceleration
+    const handlePointerUp = useCallback((e: React.PointerEvent) => {
+        if (!isTouchingRef.current) return;
+        isTouchingRef.current = false;
+        containerRef.current?.classList.remove('scratching');
 
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
-        const handleMouseUp = () => handleEnd();
-        const handleTouchMove = (e: TouchEvent) => {
-            if (e.touches[0]) {
-                handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
+
+        const VINYL_DECELERATION = 0.92;
+        let scratchVelocity = lastAngularVelocityRef.current;
+        let lastMomentumTime = performance.now();
+
+        const decelerate = (now: number) => {
+            const dt = (now - lastMomentumTime) / 1000;
+            lastMomentumTime = now;
+            
+            scratchVelocity *= VINYL_DECELERATION;
+            rotationRef.current += scratchVelocity * dt;
+            
+            if (discRef.current) {
+                discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
+            }
+
+            // Map velocity back to playback rate during deceleration
+            onScratch?.(scratchVelocity / 200);
+
+            if (Math.abs(scratchVelocity) > 5) {
+                momentumRef.current = requestAnimationFrame(decelerate);
+            } else {
+                momentumRef.current = null;
+                onScratchEnd?.();
+                onReleaseScratch?.();
             }
         };
-        const handleTouchEnd = () => handleEnd();
 
-        if (isDragging.current) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            window.addEventListener('touchmove', handleTouchMove, { passive: false });
-            window.addEventListener('touchend', handleTouchEnd);
+        if (Math.abs(scratchVelocity) > 10) {
+            momentumRef.current = requestAnimationFrame(decelerate);
+        } else {
+            onScratchEnd?.();
+            onReleaseScratch?.();
         }
+    }, [onScratch, onScratchEnd, onReleaseScratch]);
 
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-            window.removeEventListener('touchmove', handleTouchMove);
-            window.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, [handleMove, handleEnd]);
-
-    // Constant rotation when playing
-    useEffect(() => {
-        let animationFrame: number;
-        let lastTimestamp: number;
-
-        const animate = (timestamp: number) => {
-            if (!lastTimestamp) lastTimestamp = timestamp;
-            const dt = timestamp - lastTimestamp;
-            lastTimestamp = timestamp;
-
-            if (isPlaying && !isDragging.current) {
-                // 33.3 RPM = 33.3 * 360 / 60 degrees per second = 199.8 deg/s
-                rotationRef.current += (199.8 * dt) / 1000;
-                if (discRef.current) {
-                    discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
-                }
-            }
-            animationFrame = requestAnimationFrame(animate);
-        };
-
-        animationFrame = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(animationFrame);
-    }, [isPlaying]);
-
-    const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-    const dashArray = 283; // 2 * PI * 45 (approx)
-    const dashOffset = dashArray - (dashArray * progress) / 100;
+    const progress = duration > 0 ? (currentTime / duration) * 360 : 0;
 
     return (
         <div
+            className={`waveform-vinyl-container ${isPlaying ? 'is-playing' : ''}`}
             ref={containerRef}
-            className={`waveform-vinyl-container ${isPlaying ? 'is-playing' : ''} ${isDragging.current ? 'scratching' : ''}`}
-            onMouseDown={(e) => handleStart(e.clientX, e.clientY)}
-            onTouchStart={(e) => {
-                if (e.touches[0]) {
-                    handleStart(e.touches[0].clientX, e.touches[0].clientY);
-                }
-            }}
-            onClick={() => {
-                // Simple seek on click if not dragging
-                if (!isDragging.current && onSeek && containerRef.current) {
-                    // Logic for seeking based on click position could go here
-                }
-            }}
+            style={{ '--deck-color': color, touchAction: 'none' } as React.CSSProperties}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onPointerLeave={handlePointerUp}
         >
-            {/* Outer progress ring */}
-            <svg className="waveform-progress-ring" viewBox="0 0 100 100">
-                <circle
-                    className="waveform-progress-ring-bg"
-                    cx="50"
-                    cy="50"
-                    r="48"
+            <div className="waveform-vinyl-disc" ref={discRef}>
+                <canvas 
+                    ref={groovesCanvasRef} 
+                    className="waveform-vinyl-grooves-canvas"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
                 />
+                <div className="waveform-vinyl-position-marker"></div>
+                <div className="waveform-vinyl-label" style={{ background: color }}>
+                    <div className="waveform-vinyl-label-text">DJ PRO</div>
+                    <div className="waveform-label-spindle"></div>
+                </div>
+                <div className="waveform-vinyl-reflection"></div>
+            </div>
+            <svg className="waveform-progress-ring" viewBox="0 0 100 100">
+                <circle className="waveform-progress-ring-bg" cx="50" cy="50" r="48" />
                 <circle
                     className="waveform-progress-ring-fill"
                     cx="50"
                     cy="50"
                     r="48"
-                    style={{
-                        strokeDasharray: `${dashArray}`,
-                        strokeDashoffset: `${dashOffset}`,
-                        stroke: color
-                    }}
+                    style={{ stroke: color, strokeDasharray: `${(progress / 360) * 301.59} 301.59` }}
                 />
             </svg>
-
-            <div ref={discRef} className="waveform-vinyl-disc">
-                {/* Visual grooves */}
-                <div className="waveform-vinyl-groove waveform-groove-1"></div>
-                <div className="waveform-vinyl-groove waveform-groove-2"></div>
-                <div className="waveform-vinyl-groove waveform-groove-3"></div>
-                <div className="waveform-vinyl-groove waveform-groove-4"></div>
-                <div className="waveform-vinyl-groove waveform-groove-5"></div>
-                <div className="waveform-vinyl-groove waveform-groove-6"></div>
-
-                {/* Reflection effect */}
-                <div className="waveform-vinyl-reflection"></div>
-
-                {/* Position marker */}
-                <div className="waveform-vinyl-position-marker"></div>
-
-                {/* Center label */}
-                <div className="waveform-vinyl-label" style={{ background: color }}>
-                    <div className="waveform-vinyl-label-text">DJ PRO</div>
-                    <div className="waveform-label-spindle"></div>
-                </div>
+            <div className={`waveform-tonearm ${isPlaying ? 'is-playing' : ''}`}>
+                <div className="waveform-tonearm-base"></div>
+                <div className="waveform-tonearm-arm"></div>
+                <div className="waveform-tonearm-head"></div>
             </div>
         </div>
     );

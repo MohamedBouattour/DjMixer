@@ -39,6 +39,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const animationFrameRef = useRef<number | undefined>(undefined);
 
     const isPlayingRef = useRef(false);
+    const isScratchingRef = useRef(false);
     const activeLoopRef = useRef<{ start: number; end: number; active: boolean } | null>(null);
 
     // Ref for the update function to avoid circular dependency in useCallback
@@ -138,12 +139,10 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                 if (track.file) {
                     arrayBuffer = await track.file.arrayBuffer();
                 } else {
-                    // Fetch if not local file
                     const response = await fetch(track.url);
                     arrayBuffer = await response.arrayBuffer();
                 }
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
                 bpm = await detectBPM(audioBuffer);
             } catch (error) {
                 console.error('BPM detection failed:', error);
@@ -172,7 +171,6 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             isPlayingRef.current = true;
             setState(prev => ({ ...prev, isPlaying: true }));
 
-            // Cancel any existing loop to prevent duplicates
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }
@@ -201,12 +199,38 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const setPitch = useCallback((update: number | ((prev: number) => number)) => {
         setState(prev => {
             const newPitch = typeof update === 'function' ? update(prev.pitch) : update;
-            if (audioElementRef.current) {
+            if (audioElementRef.current && !isScratchingRef.current) {
                 const playbackRate = 1 + (newPitch / 100);
                 audioElementRef.current.playbackRate = playbackRate;
             }
             return { ...prev, pitch: newPitch };
         });
+    }, []);
+
+    // ✅ Bug 2 Fix: Scratching audio contract
+    const startScratch = useCallback(() => {
+        isScratchingRef.current = true;
+        if (audioElementRef.current) {
+            audioElementRef.current.playbackRate = 0;
+        }
+    }, []);
+
+    const endScratch = useCallback(() => {
+        isScratchingRef.current = false;
+        if (audioElementRef.current) {
+            // Restore playback rate based on current pitch
+            audioElementRef.current.playbackRate = 1 + (state.pitch / 100);
+        }
+    }, [state.pitch]);
+
+    const setScratchRate = useCallback((rate: number) => {
+        if (audioElementRef.current && isScratchingRef.current) {
+            // Velocity-based playback rate modulation
+            // Use Math.abs for rate but keep direction if browser supports negative playbackRate
+            // Most browsers don't support negative playbackRate on HTMLMediaElement, 
+            // but we can at least modulate the speed.
+            audioElementRef.current.playbackRate = Math.abs(rate);
+        }
     }, []);
 
     const setVolume = useCallback((update: number | ((prev: number) => number)) => {
@@ -232,30 +256,14 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const setEffect = useCallback((effect: 'reverb' | 'delay' | 'filter' | 'distortion' | 'bitcrusher' | 'flanger' | 'tremolo' | 'hpf', value: number) => {
         if (effectsRef.current) {
             switch (effect) {
-                case 'reverb':
-                    effectsRef.current.setReverb(value);
-                    break;
-                case 'delay':
-                    effectsRef.current.setDelay(value);
-                    break;
-                case 'filter':
-                    effectsRef.current.setFilter(value);
-                    break;
-                case 'distortion':
-                    effectsRef.current.setDistortion(value);
-                    break;
-                case 'bitcrusher':
-                    effectsRef.current.setBitcrusher(value);
-                    break;
-                case 'flanger':
-                    effectsRef.current.setFlanger(value);
-                    break;
-                case 'tremolo':
-                    effectsRef.current.setTremolo(value);
-                    break;
-                case 'hpf':
-                    effectsRef.current.setHPF(value);
-                    break;
+                case 'reverb': effectsRef.current.setReverb(value); break;
+                case 'delay': effectsRef.current.setDelay(value); break;
+                case 'filter': effectsRef.current.setFilter(value); break;
+                case 'distortion': effectsRef.current.setDistortion(value); break;
+                case 'bitcrusher': effectsRef.current.setBitcrusher(value); break;
+                case 'flanger': effectsRef.current.setFlanger(value); break;
+                case 'tremolo': effectsRef.current.setTremolo(value); break;
+                case 'hpf': effectsRef.current.setHPF(value); break;
             }
         }
     }, []);
@@ -265,7 +273,6 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             const isActive = prev.activeEffects[effect];
             const newValue = !isActive;
 
-            // Apply effect immediately
             if (effectsRef.current) {
                 const value = newValue ? (effect === 'distortion' || effect === 'bitcrusher' ? 20 : 50) : 0;
                 switch (effect) {
@@ -276,7 +283,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                     case 'bitcrusher': effectsRef.current.setBitcrusher(value); break;
                     case 'flanger': effectsRef.current.setFlanger(value); break;
                     case 'tremolo': effectsRef.current.setTremolo(value); break;
-                    case 'hpf': effectsRef.current.setHPF(newValue ? 40 : 0); break; // 40 = ~4kHz? 
+                    case 'hpf': effectsRef.current.setHPF(newValue ? 40 : 0); break;
                 }
             }
 
@@ -294,13 +301,11 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         setState(prev => {
             const newCuePoints = [...prev.cuePoints];
             if (newCuePoints[index] !== undefined) {
-                // Jump
                 if (audioElementRef.current) {
                     audioElementRef.current.currentTime = newCuePoints[index]!;
                 }
                 return prev;
             } else {
-                // Set
                 if (audioElementRef.current) {
                     newCuePoints[index] = audioElementRef.current.currentTime;
                 }
@@ -338,6 +343,9 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         pause,
         seek,
         setPitch,
+        startScratch,
+        endScratch,
+        setScratchRate,
         setVolume,
         setEQ,
         setEffect,
@@ -347,7 +355,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         setLoop,
         clearLoop,
         setIsLoading
-    }), [loadTrack, play, pause, seek, setPitch, setVolume, setEQ, setEffect, toggleEffect, handleCue, deleteCue, setLoop, clearLoop, setIsLoading]);
+    }), [loadTrack, play, pause, seek, setPitch, startScratch, endScratch, setScratchRate, setVolume, setEQ, setEffect, toggleEffect, handleCue, deleteCue, setLoop, clearLoop, setIsLoading]);
 
     return {
         state,
