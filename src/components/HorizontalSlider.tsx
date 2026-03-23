@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import './HorizontalSlider.css';
 
 interface HorizontalSliderProps {
@@ -32,55 +32,79 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
 }) => {
     const trackRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
+    const rectRef = useRef<DOMRect | null>(null);
+    const onChangeRef = useRef(onChange);
+    const minRef = useRef(min);
+    const maxRef = useRef(max);
+    const pointerIdRef = useRef<number | null>(null);
+
+    // Keep refs current
+    onChangeRef.current = onChange;
+    minRef.current = min;
+    maxRef.current = max;
 
     const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
-    const calculateValue = (clientX: number) => {
-        if (!trackRef.current) return;
+    const calculateValue = useCallback((clientX: number) => {
+        if (!rectRef.current) return;
 
-        const rect = trackRef.current.getBoundingClientRect();
+        const rect = rectRef.current;
         const relativeX = clientX - rect.left;
         const clampedX = Math.max(0, Math.min(relativeX, rect.width));
         const newPercentage = clampedX / rect.width;
-        const newValue = min + (newPercentage * (max - min));
+        const newValue = minRef.current + (newPercentage * (maxRef.current - minRef.current));
 
-        onChange(newValue);
-    };
+        onChangeRef.current(newValue);
+    }, []);
+
+    // Global pointer move/up handlers for reliable mobile touch tracking
+    useEffect(() => {
+        const handleGlobalPointerMove = (e: PointerEvent) => {
+            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
+            e.preventDefault();
+            calculateValue(e.clientX);
+        };
+
+        const handleGlobalPointerUp = (e: PointerEvent) => {
+            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
+            isDragging.current = false;
+            rectRef.current = null;
+            pointerIdRef.current = null;
+            document.body.style.userSelect = '';
+            document.body.style.webkitUserSelect = '';
+        };
+
+        document.addEventListener('pointermove', handleGlobalPointerMove, { passive: false });
+        document.addEventListener('pointerup', handleGlobalPointerUp);
+        document.addEventListener('pointercancel', handleGlobalPointerUp);
+
+        return () => {
+            document.removeEventListener('pointermove', handleGlobalPointerMove);
+            document.removeEventListener('pointerup', handleGlobalPointerUp);
+            document.removeEventListener('pointercancel', handleGlobalPointerUp);
+        };
+    }, [calculateValue]);
 
     const handlePointerDown = (e: React.PointerEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (!trackRef.current) return;
+
+        // Cache rect at start of drag to avoid layout thrashing
+        rectRef.current = trackRef.current.getBoundingClientRect();
         isDragging.current = true;
-        e.currentTarget.setPointerCapture(e.pointerId);
+        pointerIdRef.current = e.pointerId;
+
+        try {
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {
+            // Some browsers may not support pointer capture
+        }
+
         calculateValue(e.clientX);
         document.body.style.userSelect = 'none';
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isDragging.current) return;
-        e.preventDefault();
-        calculateValue(e.clientX);
-    };
-
-    const handlePointerUp = (e: React.PointerEvent) => {
-        if (!isDragging.current) return;
-        isDragging.current = false;
-        try {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch {
-            // Pointer capture may be lost
-        }
-        document.body.style.userSelect = '';
-    };
-
-    const handlePointerCancel = (e: React.PointerEvent) => {
-        isDragging.current = false;
-        try {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch {
-            // Pointer capture may be lost
-        }
-        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = 'none';
     };
 
     return (
@@ -105,10 +129,6 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
                     touchAction: 'none'
                 } as React.CSSProperties}
                 onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
-                onPointerCancel={handlePointerCancel}
             >
                 {/* Background Track */}
                 <div className="track-bg" />

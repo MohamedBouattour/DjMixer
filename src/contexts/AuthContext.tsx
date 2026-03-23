@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { API_ENDPOINTS } from '../config';
 
 interface User {
     id: string;
@@ -45,7 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             // Call backend for authentication
-            const response = await fetch('/auth/login', {
+            const response = await fetch(`${API_ENDPOINTS.AUTH}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -69,7 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const register = async (email: string, username: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             // Call backend for registration
-            const response = await fetch('/auth/register', {
+            const response = await fetch(`${API_ENDPOINTS.AUTH}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, username, password })

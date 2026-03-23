@@ -1,9 +1,9 @@
-// Use relative paths to let the Vite proxy (dev) or the Express server (prod) handle routing.
-// This is the most robust way to ensure the frontend can always find the backend.
-export const API_BASE_URL = '';
+// In production, the frontend is on Render and backend is on the VPS.
+// In development, Vite proxy handles routing to localhost:3002.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 export const API_ENDPOINTS = {
-    SEARCH: '/search',
-    STREAM: '/stream',
-    AUTH: '/auth',
+  SEARCH: `${API_BASE_URL}/search`,
+  STREAM: `${API_BASE_URL}/stream`,
+  AUTH: `${API_BASE_URL}/auth`,
 };

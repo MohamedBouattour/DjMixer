@@ -307,7 +307,7 @@ app.get('/stream', async (req, res) => {
 // Version check endpoint for PWA updates
 app.get('/version', (req, res) => {
     try {
-        if (!staticDir) return res.status(503).json({ error: 'Static dir not loaded' });
+        if (!staticDir) return res.json({ version: 'api-only' });
 
         const assetsDir = path.join(staticDir, 'assets');
         if (!fs.existsSync(assetsDir)) return res.json({ version: 'dev' });

@@ -1,4 +1,4 @@
-import React, { useRef, memo } from 'react';
+import React, { useRef, useCallback, useEffect, memo } from 'react';
 import './VerticalSlider.css';
 
 interface VerticalSliderProps {
@@ -29,21 +29,57 @@ const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
     const trackRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
     const rectRef = useRef<DOMRect | null>(null);
+    const onChangeRef = useRef(onChange);
+    const minRef = useRef(min);
+    const maxRef = useRef(max);
+    const pointerIdRef = useRef<number | null>(null);
+
+    // Keep refs in sync without re-attaching listeners
+    onChangeRef.current = onChange;
+    minRef.current = min;
+    maxRef.current = max;
 
     const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
 
-    const calculateValue = (clientY: number) => {
+    const calculateValue = useCallback((clientY: number) => {
         if (!rectRef.current) return;
 
         const rect = rectRef.current;
-        // Calculate height from bottom, since slider goes up
         const relativeY = rect.bottom - clientY;
         const clampedY = Math.max(0, Math.min(relativeY, rect.height));
         const newPercentage = clampedY / rect.height;
-        const newValue = min + (newPercentage * (max - min));
+        const newValue = minRef.current + (newPercentage * (maxRef.current - minRef.current));
 
-        onChange(newValue);
-    };
+        onChangeRef.current(newValue);
+    }, []);
+
+    // Global pointer move/up handlers attached to document for reliable mobile touch tracking
+    useEffect(() => {
+        const handleGlobalPointerMove = (e: PointerEvent) => {
+            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
+            e.preventDefault();
+            calculateValue(e.clientY);
+        };
+
+        const handleGlobalPointerUp = (e: PointerEvent) => {
+            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
+            isDragging.current = false;
+            rectRef.current = null;
+            pointerIdRef.current = null;
+            document.body.style.userSelect = '';
+            document.body.style.webkitUserSelect = '';
+        };
+
+        document.addEventListener('pointermove', handleGlobalPointerMove, { passive: false });
+        document.addEventListener('pointerup', handleGlobalPointerUp);
+        document.addEventListener('pointercancel', handleGlobalPointerUp);
+
+        return () => {
+            document.removeEventListener('pointermove', handleGlobalPointerMove);
+            document.removeEventListener('pointerup', handleGlobalPointerUp);
+            document.removeEventListener('pointercancel', handleGlobalPointerUp);
+        };
+    }, [calculateValue]);
 
     const handlePointerDown = (e: React.PointerEvent) => {
         if (!trackRef.current) return;
@@ -51,45 +87,22 @@ const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
         e.preventDefault();
         e.stopPropagation();
 
-        // Cache the rect
+        // Cache the rect once at the start of the drag
         rectRef.current = trackRef.current.getBoundingClientRect();
         isDragging.current = true;
+        pointerIdRef.current = e.pointerId;
 
-        e.currentTarget.setPointerCapture(e.pointerId);
+        // Capture pointer so we keep receiving events even if finger moves off element
+        try {
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {
+            // Some browsers may not support pointer capture
+        }
+
         calculateValue(e.clientY);
 
-        // Prevent text selection while dragging
         document.body.style.userSelect = 'none';
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!isDragging.current) return;
-        e.preventDefault();
-        calculateValue(e.clientY);
-    };
-
-    const handlePointerUp = (e: React.PointerEvent) => {
-        if (!isDragging.current) return;
-        isDragging.current = false;
-        rectRef.current = null;
-
-        try {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch {
-            // Pointer capture may already be released
-        }
-        document.body.style.userSelect = '';
-    };
-
-    const handlePointerCancel = (e: React.PointerEvent) => {
-        isDragging.current = false;
-        rectRef.current = null;
-        try {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch {
-            // Pointer capture may already be released
-        }
-        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = 'none';
     };
 
     return (
@@ -103,10 +116,6 @@ const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
                 ref={trackRef}
                 style={{ '--slider-color': color, touchAction: 'none' } as React.CSSProperties}
                 onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
-                onPointerCancel={handlePointerCancel}
                 onDoubleClick={(e) => e.preventDefault()}
             >
                 {/* Colored fill indicator */}
