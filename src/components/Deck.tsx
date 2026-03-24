@@ -23,6 +23,8 @@ interface DeckProps {
         deleteCue: (index: number) => void;
         setLoop: (start: number, end: number) => void;
         clearLoop: () => void;
+        // ✅ Bug H Fix: Add setIsLoading to controls type
+        setIsLoading: (isLoading: boolean) => void;
     };
     color: string;
     shortcuts?: {
@@ -46,6 +48,19 @@ export const Deck: React.FC<DeckProps> = ({
     } = controls;
 
     const [showEffects, setShowEffects] = useState(false);
+
+    // ✅ Bug G Fix: Dynamic waveform height on resize
+    const [waveHeight, setWaveHeight] = useState(() => 
+        window.innerWidth <= 767 ? 52 : (window.innerWidth < 1200 ? 65 : 78)
+    );
+
+    useEffect(() => {
+        const handleResize = () => {
+            setWaveHeight(window.innerWidth <= 767 ? 52 : (window.innerWidth < 1200 ? 65 : 78));
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const loopStartRef = useRef<number>(0);
     const ignoreClickRef = useRef<boolean>(false);
@@ -138,12 +153,12 @@ export const Deck: React.FC<DeckProps> = ({
                     isPlaying={isPlaying}
                     onSeek={seek}
                     onScratch={setScratchRate}
-                    onReleaseScratch={endScratch}
+                    // ✅ Bug C Fix: Remove redundant onReleaseScratch, use onScratchEnd only
                     onScratchStart={startScratch}
                     onScratchEnd={endScratch}
                     color={color}
                     bpm={track?.bpm}
-                    height={window.innerWidth <= 767 ? 52 : (window.innerWidth < 1200 && window.innerWidth >= 768 ? 65 : 78)}
+                    height={waveHeight}
                     isLoading={state.isLoading}
                 />
             )}
@@ -181,7 +196,7 @@ export const Deck: React.FC<DeckProps> = ({
                                 isPlaying={isPlaying}
                                 color={color}
                                 onScratch={setScratchRate}
-                                onReleaseScratch={endScratch}
+                                // ✅ Bug C Fix: Remove redundant onReleaseScratch, use onScratchEnd only
                                 onScratchStart={startScratch}
                                 onScratchEnd={endScratch}
                                 onSeek={seek}

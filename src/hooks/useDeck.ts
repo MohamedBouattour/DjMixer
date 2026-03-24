@@ -41,12 +41,23 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const isPlayingRef = useRef(false);
     const isScratchingRef = useRef(false);
     const activeLoopRef = useRef<{ start: number; end: number; active: boolean } | null>(null);
+    
+    // ✅ Bug B Fix: Stabilize endScratch with pitchRef
+    const pitchRef = useRef(state.pitch);
+    useEffect(() => {
+        pitchRef.current = state.pitch;
+    }, [state.pitch]);
 
     // Ref for the update function to avoid circular dependency in useCallback
     const updateCurrentTimeRef = useRef<() => void>(() => { });
 
+    // ✅ Bug A Fix: Reliable setup when audioContext/destination becomes available
     useEffect(() => {
         if (!audioContext || !destination) return;
+
+        // Cleanup previous if exists
+        if (gainNodeRef.current) gainNodeRef.current.disconnect();
+        if (effectsRef.current) effectsRef.current.disconnect();
 
         // Create gain node
         gainNodeRef.current = audioContext.createGain();
@@ -57,37 +68,39 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         effectsRef.current.connectToDestination(gainNodeRef.current);
         gainNodeRef.current.connect(destination);
 
+        // If we already have an audio element, reconnect it
+        if (audioElementRef.current && !sourceNodeRef.current) {
+            sourceNodeRef.current = audioContext.createMediaElementSource(audioElementRef.current);
+            effectsRef.current.connect(sourceNodeRef.current);
+        } else if (audioElementRef.current && sourceNodeRef.current) {
+            // Reconnect existing source to new effects chain
+            effectsRef.current.connect(sourceNodeRef.current);
+        }
+
         return () => {
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
-            if (sourceNodeRef.current) {
-                sourceNodeRef.current.disconnect();
-            }
-            if (effectsRef.current) {
-                effectsRef.current.disconnect();
-            }
-            if (gainNodeRef.current) {
-                gainNodeRef.current.disconnect();
-            }
+            if (gainNodeRef.current) gainNodeRef.current.disconnect();
+            if (effectsRef.current) effectsRef.current.disconnect();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [audioContext, destination]);
 
+    // ✅ Bug D Fix: updateCurrentTime continues while paused
     const updateCurrentTime = useCallback(() => {
-        if (audioElementRef.current && isPlayingRef.current) {
-            const currentTime = audioElementRef.current.currentTime;
+        if (audioElementRef.current) {
+            const ct = audioElementRef.current.currentTime;
 
             // Handle Loop
             if (activeLoopRef.current && activeLoopRef.current.active) {
-                if (currentTime >= activeLoopRef.current.end) {
+                if (ct >= activeLoopRef.current.end) {
                     audioElementRef.current.currentTime = activeLoopRef.current.start;
                 }
             }
 
-            setState(prev => ({ ...prev, currentTime: audioElementRef.current!.currentTime }));
-            animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
+            // Only update state if time actually changed significantly to avoid React spam
+            setState(prev => prev.currentTime !== ct ? { ...prev, currentTime: ct } : prev);
         }
+        
+        // Always reschedule to keep seeking visual working while paused
+        animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
     }, []);
 
     // Keep ref updated
@@ -96,11 +109,15 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const loadTrack = useCallback(async (track: Track) => {
         setState(prev => ({ ...prev, isLoading: true }));
 
-        // Stop current playback
+        // ✅ Bug E Fix: Revoke previous blob URL
         if (audioElementRef.current) {
             audioElementRef.current.pause();
+            if (audioElementRef.current.src.startsWith('blob:')) {
+                URL.revokeObjectURL(audioElementRef.current.src);
+            }
             if (sourceNodeRef.current) {
                 sourceNodeRef.current.disconnect();
+                sourceNodeRef.current = null;
             }
         }
 
@@ -119,14 +136,11 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         audio.addEventListener('ended', () => {
             isPlayingRef.current = false;
             setState(prev => ({ ...prev, isPlaying: false, currentTime: 0 }));
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
         });
 
-        // Create source node and connect
-        sourceNodeRef.current = audioContext.createMediaElementSource(audio);
-        if (effectsRef.current) {
+        // Create source node and connect if context is available
+        if (audioContext && destination && effectsRef.current) {
+            sourceNodeRef.current = audioContext.createMediaElementSource(audio);
             effectsRef.current.connect(sourceNodeRef.current);
         }
 
@@ -142,8 +156,8 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
                     const response = await fetch(track.url);
                     arrayBuffer = await response.arrayBuffer();
                 }
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                bpm = await detectBPM(audioBuffer);
+                const decodedBuffer = await (audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()).decodeAudioData(arrayBuffer);
+                bpm = await detectBPM(decodedBuffer);
             } catch (error) {
                 console.error('BPM detection failed:', error);
                 if (!bpm) bpm = 120;
@@ -160,7 +174,12 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             cuePoints: []
         }));
         activeLoopRef.current = null;
-    }, [audioContext]);
+        
+        // Start time update loop even if paused
+        if (!animationFrameRef.current) {
+            animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
+        }
+    }, [audioContext, destination]);
 
     const play = useCallback(async () => {
         if (audioElementRef.current) {
@@ -170,11 +189,6 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             audioElementRef.current.play();
             isPlayingRef.current = true;
             setState(prev => ({ ...prev, isPlaying: true }));
-
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
-            animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
         }
     }, [audioContext]);
 
@@ -183,15 +197,13 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
             audioElementRef.current.pause();
             isPlayingRef.current = false;
             setState(prev => ({ ...prev, isPlaying: false }));
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
         }
     }, []);
 
     const seek = useCallback((time: number) => {
         if (audioElementRef.current) {
             audioElementRef.current.currentTime = time;
+            // ✅ Bug D: Immediate state update for visual playhead
             setState(prev => ({ ...prev, currentTime: time }));
         }
     }, []);
@@ -207,7 +219,6 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         });
     }, []);
 
-    // ✅ Bug 2 Fix: Scratching audio contract
     const startScratch = useCallback(() => {
         isScratchingRef.current = true;
         if (audioElementRef.current) {
@@ -215,20 +226,16 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         }
     }, []);
 
+    // ✅ Bug B Fix: stable endScratch using pitchRef
     const endScratch = useCallback(() => {
         isScratchingRef.current = false;
         if (audioElementRef.current) {
-            // Restore playback rate based on current pitch
-            audioElementRef.current.playbackRate = 1 + (state.pitch / 100);
+            audioElementRef.current.playbackRate = 1 + (pitchRef.current / 100);
         }
-    }, [state.pitch]);
+    }, []);
 
     const setScratchRate = useCallback((rate: number) => {
         if (audioElementRef.current && isScratchingRef.current) {
-            // Velocity-based playback rate modulation
-            // Use Math.abs for rate but keep direction if browser supports negative playbackRate
-            // Most browsers don't support negative playbackRate on HTMLMediaElement, 
-            // but we can at least modulate the speed.
             audioElementRef.current.playbackRate = Math.abs(rate);
         }
     }, []);

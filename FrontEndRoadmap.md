@@ -1,165 +1,155 @@
-🔴 Critical Issues Found
+🔴 Critical Bugs
+Bug A — useDeck initialized with null AudioContext
+In App.tsx, useDeck is called before the AudioContext is created :
 
-1. Hardcoded Color Values (No Token Usage)
-   Multiple files bypass the design system tokens defined in index.css and use raw hex values directly.
+ts
+const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+// ...
+const { state: deckAState, controls: deckA } = useDeck({
+audioContext: audioContext!, // ← null! on first render
+destination: deckAGainRef.current!, // ← also null!
+});
+Inside useDeck.ts, the useEffect that creates the gain + effects chain has if (!audioContext || !destination) return — so it silently does nothing. The audio chain is never wired until the user taps "Start Session". But since useDeck doesn't re-run its setup when audioContext changes from null → real context (the deps array only has [audioContext, destination], but destination is a ref value captured at call time), the effect won't re-fire reliably. Result: tracks play with no effects chain, no gain node, and no crossfader routing.
 
-Offenders:
+Fix: Move useDeck calls inside a conditional block or pass a stable non-null context. Better: initialize AudioContext eagerly on module load (suspended), and only call resume() on user gesture.
 
-AuthModal.css: #1e1e1e, #252525, #888, #ff0080, #00d4ff, #ff4444 — all hardcoded despite tokens existing in :root
+Bug B — endScratch uses stale state.pitch closure
+In useDeck.ts :
 
-SettingsModal.css: #1e1e1e, #252525, #333, #888, #ccc, #ff4444
+ts
+const endScratch = useCallback(() => {
+isScratchingRef.current = false;
+if (audioElementRef.current) {
+audioElementRef.current.playbackRate = 1 + (state.pitch / 100); // ← stale closure
+}
+}, [state.pitch]); // ← rebuilds on every pitch change
+Every time the user changes pitch, endScratch is rebuilt and passed as a new function reference to Deck → Waveform. This causes Waveform's handlePointerUp useCallback to also rebuild (since onScratchEnd is a dep), which restarts pointer capture state on mobile mid-gesture.
 
-VerticalSlider.css: #888, #252525, #ff0080 hardcoded inline instead of using var(--deck-color)
+Fix: Use a ref for pitch inside useDeck:
 
-HorizontalSlider.css: #0a0a0a, #888 hardcoded
+ts
+const pitchRef = useRef(state.pitch);
+useEffect(() => { pitchRef.current = state.pitch; }, [state.pitch]);
 
-2. Duplicate user-select: none Declaration
-   user-select: none appears on both html/body/#root AND body separately, creating a redundant double-declaration. The body block also duplicates -webkit-tap-highlight-color: transparent which is already in the \* reset.
+const endScratch = useCallback(() => {
+isScratchingRef.current = false;
+if (audioElementRef.current) {
+audioElementRef.current.playbackRate = 1 + (pitchRef.current / 100);
+}
+}, []); // stable forever
+Bug C — Deck.tsx passes endScratch as BOTH onReleaseScratch AND onScratchEnd
+In the latest Deck.tsx :
 
-3. Mixed Use of --gap-_ and --radius-_ as Spacing
-   --radius-md and --radius-lg are used as gap/padding values in Deck.css and Mixer.css — which is semantically wrong and confusing. For example: gap: var(--radius-md) in .deck-performance-controls.
+tsx
+<ScrollableWaveform
+onReleaseScratch={endScratch} // ← endScratch called once
+onScratchEnd={endScratch} // ← endScratch called AGAIN
+/>
+<Waveform
+onReleaseScratch={endScratch} // ← endScratch called once
+onScratchEnd={endScratch} // ← endScratch called AGAIN
+/>
+endScratch fires twice on every scratch release — setting isScratchingRef = false twice and writing playbackRate twice. On the vinyl, during the deceleration phase in handlePointerUp, onScratch?.(scratchVelocity / 200) is still firing (velocity modulation) but isScratchingRef is already false from the first endScratch call, so setScratchRate in useDeck does nothing (guarded by if (isScratchingRef.current)). The disc decelerates visually but audio snaps back to normal rate immediately instead of decelerating with the disc.
 
-4. Duplicate Responsive Blocks
-   The media query @media screen and (max-width: 1200px) and (min-width: 768px) appears in Deck.css, Mixer.css, VerticalSlider.css, and index.css — all with overlapping rules that could be consolidated.
+Fix: Pick one prop — use onScratchEnd only, remove onReleaseScratch passthrough to endScratch:
 
-The .deck-effects-grid-performance { display: none } rule appears twice in Deck.css — once inside @media (max-height: 500px) and once inside @media (max-width: 1200px).
+tsx
+<Waveform
+onScratchStart={startScratch}
+onScratchEnd={endScratch} // ← only this
+onScratch={setScratchRate}
+onSeek={seek}
+// onReleaseScratch={...} ← remove or pass a no-op
+/>
+Bug D — updateCurrentTime rAF loop stops when isPlayingRef becomes false but never restarts
+In useDeck.ts :
 
-5. .settings-overlay Ghost Selector
-   In SettingsModal.css, the selector .settings-modal-overlay, .settings-overlay targets .settings-overlay which doesn't appear to exist anywhere in the TSX — a dead selector increasing specificity noise.
+ts
+const updateCurrentTime = useCallback(() => {
+if (audioElementRef.current && isPlayingRef.current) {
+// ...
+animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
+}
+// ← if isPlayingRef.current = false, loop just stops, no re-schedule
+}, []);
+When pause() is called, isPlayingRef.current = false and the loop drops. When play() is called again, it starts a new requestAnimationFrame — but updateCurrentTime captures the closure at mount time via useCallback([], []). Since updateCurrentTimeRef.current is updated, this works — except: the loop only runs when isPlayingRef.current is true, so seeking while paused never updates state.currentTime in React state, and the waveform playhead doesn't move when you drag while paused.
 
-6. Inconsistent Close Button Pattern
-   Both AuthModal.css and SettingsModal.css define near-identical .auth-close-btn / .settings-close-btn / .advanced-controls-close styles (32-42px circle, #333 background, hover → red). This button pattern appears 3+ times across files.
+Fix: Always reschedule, use the ref flag only to update state:
 
-7. Duplicate Modal Base Pattern
-   .auth-modal and .settings-modal share identical base styles: background: #1e1e1e, border: 1px solid rgba(255,255,255,0.1), border-radius: 12px, box-shadow: 0 20px 60px rgba(0,0,0,0.8) — fully duplicated.
+ts
+const updateCurrentTime = useCallback(() => {
+if (audioElementRef.current) {
+// Always update currentTime if audio element exists
+const ct = audioElementRef.current.currentTime;
+setState(prev => prev.currentTime !== ct ? { ...prev, currentTime: ct } : prev);
+}
+if (isPlayingRef.current) {
+animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
+}
+}, []);
+And in seek(), call setState directly for immediate visual update:
 
-📋 CSS Quality Summary Table
-File Size Hardcoded Colors Duplicate Rules Token Usage Grade
-index.css 9KB Some user-select x2, tap-highlight x2 ✅ Good B
-Deck.css 14KB None Media query ×2, display:none ×2 ✅ Good B+
-Mixer.css 13KB #3a3a3a inline --radius as spacing ✅ Good B
-VerticalSlider.css 4.5KB #888, #252525 None ⚠️ Partial C+
-HorizontalSlider.css 1.6KB #888, #0a0a0a None ⚠️ Partial C+
-AuthModal.css 2.4KB All hardcoded None ❌ None D
-SettingsModal.css 5.5KB All hardcoded Ghost selector ❌ None D
-Waveform.css 5.3KB None None ✅ Full A
-ScrollableWaveform.css 1.9KB None None ✅ Full A
-UnifiedTrackSelector.css 5.6KB Some — ⚠️ Partial C+
-🗺️ Full Refactoring Roadmap
-Phase 1 — Design Token Completion (1–2 days)
-Goal: Make all hardcoded values traceable to :root tokens.
+ts
+const seek = useCallback((time: number) => {
+if (audioElementRef.current) {
+audioElementRef.current.currentTime = time;
+setState(prev => ({ ...prev, currentTime: time })); // ← immediate update
+}
+}, []);
+Bug E — useDeck loadTrack creates a new Audio element but doesn't revoke the previous blob URL
+ts
+const audio = new Audio(track.url);
+audioElementRef.current = audio;
+The old audioElementRef.current is replaced without calling URL.revokeObjectURL() on the previous blob URL . Over multiple track loads, memory leaks accumulate. On mobile with 512MB RAM, this can crash the tab after 3–4 track switches.
 
-Add missing tokens to index.css > :root:
+Fix:
 
-css
---color-bg-modal: #1e1e1e;
---color-bg-header: #252525;
---color-bg-control-dark: #333;
---color-border-light: rgba(255, 255, 255, 0.1);
---color-text-hint: #888;
---color-text-light: #ccc;
---shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.8);
---radius-circle: 50%;
---radius-xxl: 50px; /_ for toggle pills _/
-Replace all hardcoded hex values in AuthModal.css, SettingsModal.css, VerticalSlider.css, and HorizontalSlider.css with the new tokens.
+ts
+// Before creating new Audio:
+if (audioElementRef.current?.src?.startsWith('blob:')) {
+URL.revokeObjectURL(audioElementRef.current.src);
+}
+🟡 Medium Bugs
+Bug F — Waveform.tsx: vinyl-container class, but CSS uses waveform-vinyl-container
+The latest Waveform.tsx correctly renders className="waveform-vinyl-container" , but Waveform.css still has the old unprefixed selectors (.vinyl-container, .vinyl-disc, etc.) from before the CSS rename refactor . The outer glow ring ::before pseudo-element, the is-playing state, and the responsive max-width override all target .vinyl-container — none of them apply to the renamed element.
 
-Fix VerticalSlider.css and HorizontalSlider.css to use var(--deck-color, var(--deck-a-primary)) consistently.
+Fix: Update Waveform.css to rename all selectors from .vinyl-_ → .waveform-vinyl-_ to match the new TSX class names.
 
-Phase 2 — Extract Shared Component Classes (1–2 days)
-Goal: Eliminate the duplicated modal, close button, and overlay patterns.
+Bug G — ScrollableWaveform height passed via window.innerWidth at render time
+In Deck.tsx :
 
-Create src/styles/shared.css (imported once in main.tsx):
+tsx
+height={window.innerWidth <= 767 ? 52 : (window.innerWidth < 1200 ... ? 65 : 78)}
+This is read once at render, never updated on resize. Rotating a tablet or resizing the browser → wrong waveform height, canvas is drawn at wrong pixel dimensions → blurry or clipped waveform.
 
-.modal-base — shared background, border, border-radius, shadow for all modals
+Fix: Use the existing isMobile state already computed in App.tsx, or add a resize listener inside Deck:
 
-.modal-overlay-base — shared position: fixed; inset: 0; backdrop-filter: blur(...)
+tsx
+const [waveHeight, setWaveHeight] = useState(() =>
+window.innerWidth <= 767 ? 52 : window.innerWidth < 1200 ? 65 : 78
+);
+useEffect(() => {
+const handleResize = () => setWaveHeight(
+window.innerWidth <= 767 ? 52 : window.innerWidth < 1200 ? 65 : 78
+);
+window.addEventListener('resize', handleResize);
+return () => window.removeEventListener('resize', handleResize);
+}, []);
+Bug H — useDeck setIsLoading not in controls type in Deck.tsx
+The DeckProps.controls interface in Deck.tsx does not include setIsLoading , but useDeck exports it and App.tsx calls deck.setIsLoading(true) directly . This is a TypeScript gap — if Deck ever needs to trigger loading state it can't, and TypeScript won't catch misuse of the controls object passed around.
 
-.icon-btn-close — shared 32px circle close button with hover → red state
+Priority Fix Order
 
-.modal-header-base — shared display: flex; justify-content: space-between; border-bottom
+# Bug File Severity Effort
 
-In AuthModal.css and SettingsModal.css: Replace duplicate declarations with composition using @apply (if using PostCSS) or via shared class names in the TSX.
+# Bug File Severity Effort
 
-Remove the ghost selector .settings-overlay from SettingsModal.css.
-
-Phase 3 — Fix Semantic Token Misuse (half day)
-Goal: Separate spacing tokens from radius tokens.
-
-In index.css, add explicit spacing tokens:
-
-css
---space-xs: 2px;
---space-sm: 6px; /_ avoid collision with --gap-sm: 4px _/
---space-md: 8px;
---space-lg: 12px;
-Audit all gap: var(--radius-_) and padding: var(--radius-_) in Deck.css and Mixer.css — replace with appropriate --gap-_ or new --space-_ tokens.
-
-Rename usage confusion between --gap-_ (flex/grid gaps) and layout padding — standardize as --gap-_ for gaps only and --gap-\* or inline values for padding.
-
-Phase 4 — Deduplicate Media Queries (1 day)
-Goal: Single source of truth per breakpoint per component.
-
-Deck.css: Merge the two @media (max-width: 1200px) blocks into one (currently split across the file). Remove the duplicate .deck-effects-grid-performance { display: none }.
-
-SettingsModal.css: The small landscape media query references undefined classes (.close-btn, .settings-hint, .layout-selector, .layout-btn, .key-mapping-list, .key-mapping-item, .action-label, .key-btn, .settings-actions, .reset-btn, .settings-footer) — audit against actual TSX and remove dead rules.
-
-Consider moving breakpoints to CSS custom property media queries or a dedicated src/styles/breakpoints.css file for shared reference across components.
-
-Phase 5 — Reset & Base Cleanup (half day)
-Goal: Remove redundant global declarations.
-
-In index.css, consolidate the html/body/#root block and the body block — user-select, overflow: hidden, and -webkit-tap-highlight-color appear across both. Keep body as the single place for all base body rules.
-
-Ensure outline: none in \* {} is not overriding accessibility — add a focused :focus-visible rule as a proper alternative:
-
-css
-_:focus { outline: none; }
-_:focus-visible { outline: 2px solid var(--deck-a-primary); outline-offset: 2px; }
-Audit position: fixed on .app — this is already set alongside overflow: hidden on body, check if both are necessary.
-
-Phase 6 — Stylelint Enforcement (half day)
-Goal: Prevent regressions automatically.
-
-Review the existing .stylelintrc.json and add rules:
-
-"declaration-no-important": true — remove all !important (found in Mixer.css)
-
-"color-no-invalid-hex": true
-
-"custom-property-no-missing-var-function": true
-
-"no-duplicate-selectors": true
-
-Add stylelint to the pre-commit hook via lint-staged.
-
-Run npx stylelint "src/\*_/_.css" --fix as the initial automated pass.
-
-Phase 7 — (Optional) CSS Modules Migration (3–5 days)
-Goal: Eliminate global scope and class name collision risk entirely.
-
-Since the project is React + Vite, migrating from plain .css files to CSS Modules (.module.css) is low-cost and high-value:
-
-Rename files: Deck.css → Deck.module.css
-
-Update imports: import styles from './Deck.module.css'
-
-Replace className="deck-btn-play-pause" with className={styles.deckBtnPlayPause}
-
-Keep index.css global for the design tokens (:root) and the body/reset rules only
-
-Move shared component classes from Phase 2 into a shared.module.css
-
-This eliminates all risk of .deck clashing with external libraries and makes refactoring fully traceable.
-
-⚡ Quick Wins (Do First)
-These can be done in under 2 hours without any breaking changes:
-
-Remove duplicate user-select: none in index.css
-
-Remove ghost selector .settings-overlay in SettingsModal.css
-
-Remove duplicate deck-effects-grid-performance { display: none } in Deck.css
-
-Replace #ff0080 and #00d4ff inline in AuthModal.css with var(--deck-a-primary) and var(--deck-b-primary)
-
-Add declaration-no-important to .stylelintrc.json to block future regressions
+A Null AudioContext → broken audio chain App.tsx + useDeck.ts 🔴 Critical 2h
+C endScratch fires twice → disc decel broken Deck.tsx 🔴 Critical 15min
+B Stale state.pitch in endScratch useDeck.ts 🔴 Critical 30min
+D rAF loop stops on pause → seek while paused broken useDeck.ts 🔴 Critical 30min
+F CSS class mismatch .vinyl-_ vs .waveform-vinyl-_ Waveform.css 🔴 Critical 30min
+E Blob URL memory leak on track reload useDeck.ts 🟡 Medium 15min
+G Static window.innerWidth for waveform height Deck.tsx 🟡 Medium 20min
+H Missing setIsLoading in controls type Deck.tsx 🟡 Low 5min
+Bugs C + F are the fastest wins — both can be fixed in under an hour and will immediately restore vinyl deceleration physics and the vinyl CSS appearance. Bug A is the root cause of any silent audio issues on first session start.
