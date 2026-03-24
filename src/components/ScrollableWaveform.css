@@ -23,7 +23,7 @@
 
 .scrollable-waveform.dragging {
     cursor: grabbing;
-    border-color: var(--waveform-color, rgba(255, 255, 255, 0.2));
+    border-color: var(--color-waveform, rgba(255, 255, 255, 0.2));
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.05);
 }
 

@@ -53,11 +53,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     if (!isOpen) return null;
 
     return (
-        <div className="settings-modal-overlay" onClick={onClose}>
-            <div className="settings-modal" onClick={e => e.stopPropagation()}>
-                <header className="settings-header">
+        <div className="modal-overlay-base settings-modal-overlay" onClick={onClose}>
+            <div className="modal-base settings-modal" onClick={e => e.stopPropagation()}>
+                <header className="modal-header-base settings-header">
                     <h2 className="settings-title">Settings</h2>
-                    <button className="settings-close-btn" onClick={onClose}>&times;</button>
+                    <button className="icon-btn-close settings-close-btn" onClick={onClose}>&times;</button>
                 </header>
 
                 <div className="settings-content">

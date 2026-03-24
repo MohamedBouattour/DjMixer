@@ -7,7 +7,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: var(--gap-sm);
     height: 100%;
     width: 100%;
     touch-action: none;
@@ -16,7 +16,7 @@
 .vertical-slider-label {
     font-size: 11px;
     font-weight: 700;
-    color: #888;
+    color: var(--color-text-hint);
     letter-spacing: 1px;
     text-transform: uppercase;
 }
@@ -25,10 +25,10 @@
     flex: 1;
     width: 12px;
     background: linear-gradient(180deg,
-            var(--deck-color, #ff0080) 0%,
-            #252525 50%,
-            #252525 100%);
-    border-radius: 6px;
+            var(--deck-color, var(--deck-a-primary)) 0%,
+            var(--color-bg-header) 50%,
+            var(--color-bg-header) 100%);
+    border-radius: var(--radius-md);
     position: relative;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
     cursor: pointer;
@@ -46,7 +46,7 @@
     left: 50%;
     transform: translateX(-50%);
     width: 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     pointer-events: none;
 }
 
@@ -72,8 +72,8 @@
     width: 44px;
     height: 22px;
     transform: translateX(-50%);
-    background: linear-gradient(180deg, #fff 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
-    border-radius: 4px;
+    background: linear-gradient(180deg, var(--color-white) 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
+    border-radius: var(--radius-sm);
     box-shadow:
         0 2px 8px rgba(0, 0, 0, 0.5),
         inset 0 1px 0 rgba(255, 255, 255, 0.9),
@@ -86,7 +86,7 @@
 .vertical-slider-thumb:hover {
     box-shadow:
         0 2px 10px rgba(0, 0, 0, 0.6),
-        0 0 12px var(--deck-color, #ff0080),
+        0 0 12px var(--deck-color, var(--deck-a-primary)),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
@@ -119,8 +119,8 @@
 .vertical-slider-value {
     font-size: 12px;
     font-weight: 700;
-    color: var(--deck-color, #ff0080);
-    text-shadow: 0 0 6px var(--deck-color, #ff0080);
+    color: var(--deck-color, var(--deck-a-primary));
+    text-shadow: 0 0 6px var(--deck-color, var(--deck-a-primary));
 }
 
 /* =================================================

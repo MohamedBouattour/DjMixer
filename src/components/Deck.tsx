@@ -176,7 +176,6 @@ export const Deck: React.FC<DeckProps> = ({
                     ) : track ? (
                         <div className="deck-vinyl-container">
                             <Waveform
-                                audioUrl={track.url}
                                 currentTime={currentTime}
                                 duration={track.duration || 0}
                                 isPlaying={isPlaying}

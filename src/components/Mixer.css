@@ -7,7 +7,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--gap-md);
+    padding: var(--space-md);
     gap: var(--gap-md);
     height: 100%;
     width: 100%;
@@ -24,7 +24,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--gap-sm);
+    padding: 0 var(--space-sm);
     flex-shrink: 0;
     min-height: 24px;
 }
@@ -47,7 +47,7 @@
 .mixer-settings-btn {
     width: 62px;
     height: 62px;
-    border-radius: 50%;
+    border-radius: var(--radius-circle);
     background: var(--color-bg-dark);
     border: 1px solid var(--border-medium);
     color: var(--text-secondary);
@@ -80,7 +80,7 @@
     align-items: stretch;
     justify-content: center;
     gap: var(--gap-md);
-    padding: var(--gap-md);
+    padding: var(--space-md);
     background: rgba(0, 0, 0, 0.4);
     border-radius: var(--radius-lg);
     min-height: 0;
@@ -90,7 +90,7 @@
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    gap: var(--radius-md);
+    gap: var(--gap-md);
     flex: 1;
 }
 
@@ -127,7 +127,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--gap-md) 0;
+    padding: var(--space-md) 0;
 }
 
 /* =================================================
@@ -141,7 +141,7 @@
     width: 28px;
     min-width: 28px;
     flex-shrink: 0;
-    padding: var(--gap-sm) 3px;
+    padding: var(--space-sm) 3px;
     background: linear-gradient(180deg, var(--color-bg-darkest) 0%, #050505 100%);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
@@ -183,7 +183,7 @@
     align-items: center;
     justify-content: center;
     gap: var(--gap-md);
-    padding: var(--gap-sm) var(--gap-xs);
+    padding: var(--space-sm) var(--space-xs);
     min-width: 50px;
 }
 
@@ -236,8 +236,8 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--radius-md);
-    padding: 10px var(--radius-md);
+    gap: var(--gap-md);
+    padding: 10px var(--space-md);
     background: rgba(0, 0, 0, 0.3);
     border-radius: var(--radius-lg);
     flex-shrink: 0;
@@ -299,7 +299,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--gap-xl) 24px;
+    padding: var(--space-xl) 24px;
     border-bottom: 1px solid var(--border-subtle);
     background: rgba(255, 255, 255, 0.03);
 }
@@ -316,7 +316,7 @@
 .advanced-controls-close {
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: var(--radius-circle);
     background: rgba(255, 255, 255, 0.1);
     border: none;
     color: #ccc;
@@ -351,7 +351,7 @@
 .eq-controls-popup-deck {
     background: rgba(0, 0, 0, 0.3);
     border-radius: var(--radius-xl);
-    padding: var(--gap-xl);
+    padding: var(--space-xl);
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -359,7 +359,7 @@
     font-size: 10px;
     font-weight: 800;
     color: var(--color-white);
-    padding: var(--radius-md) var(--radius-lg);
+    padding: var(--space-sm) var(--space-md);
     border-radius: 20px;
     text-align: center;
     margin-bottom: var(--gap-xl);
@@ -380,7 +380,7 @@
 .eq-slider-vertical {
     height: 140px;
     width: 36px;
-    padding: var(--gap-md) 0;
+    padding: var(--space-md) 0;
 }
 
 .eq-slider-vertical .vertical-slider-track {
@@ -393,7 +393,7 @@
     width: 28px;
     height: 14px;
     background: #e0e0e0;
-    border-radius: var(--gap-xs);
+    border-radius: var(--radius-xs);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
 }
 
@@ -418,12 +418,12 @@
 
 @media screen and (max-width: 1200px) and (min-width: 768px) {
     .mixer {
-        padding: var(--radius-md);
-        gap: var(--radius-md);
+        padding: var(--space-sm);
+        gap: var(--gap-sm);
     }
 
     .mixer-header-row {
-        padding: 0 var(--gap-xs);
+        padding: 0 var(--space-xs);
     }
 
     .mixer-vol-label {
@@ -441,8 +441,8 @@
     }
 
     .mixer-faders-section {
-        padding: var(--radius-md);
-        gap: var(--radius-md);
+        padding: var(--space-sm);
+        gap: var(--gap-sm);
     }
 
     .mixer-volume-slider-container {
@@ -458,7 +458,7 @@
 
     .mixer-center {
         min-width: 44px;
-        gap: var(--radius-md);
+        gap: var(--gap-md);
     }
 
     .mixer-volume-percent {
@@ -471,7 +471,7 @@
     }
 
     .mixer-crossfader-section {
-        padding: var(--gap-md) var(--gap-sm);
+        padding: var(--space-md) var(--space-sm);
     }
 }
 
@@ -482,7 +482,7 @@
 @media screen and (max-height: 500px) and (orientation: landscape) {
     .mixer {
         width: 100%;
-        padding: var(--gap-sm);
+        padding: var(--space-sm);
         gap: var(--gap-sm);
     }
 
@@ -491,7 +491,7 @@
         min-height: 20px;
     }
 
-    .mixer-vol-label {
+    .vol-label {
         font-size: 9px;
         letter-spacing: 0;
     }
@@ -507,7 +507,7 @@
     }
 
     .mixer-faders-section {
-        padding: var(--gap-sm);
+        padding: var(--space-sm);
         gap: 3px;
     }
 
@@ -548,7 +548,7 @@
     }
 
     .mixer-crossfader-section {
-        padding: var(--radius-md) var(--gap-sm);
+        padding: var(--space-md) var(--space-sm);
     }
 }
 
@@ -556,7 +556,7 @@
 .mixer-title,
 .eq-controls,
 .eq-toggle-btn.main-eq-btn {
-    display: none !important;
+    display: none;
 }
 
 /* =================================================
@@ -565,7 +565,7 @@
 @media screen and (max-width: 767px) {
     .mix-label-btn {
         font-size: 11px;
-        padding: var(--gap-md) 14px;
+        padding: var(--space-md) 14px;
         border-radius: var(--radius-md);
     }
 

@@ -5,7 +5,7 @@
 .horizontal-slider-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--gap-md);
     width: 100%;
 }
 
@@ -13,13 +13,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: var(--gap-sm);
 }
 
 .horizontal-slider-label {
     font-size: 14px;
     font-weight: 700;
-    color: #888;
+    color: var(--color-text-hint);
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -32,8 +32,8 @@
 .horizontal-slider-track {
     position: relative;
     width: 100%;
-    background: #0a0a0a;
-    border-radius: 6px;
+    background: var(--color-bg-darkest);
+    border-radius: var(--radius-md);
     cursor: pointer;
     box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
     overflow: visible; /* Allow thumb to overlap */
@@ -42,7 +42,7 @@
 .horizontal-track-bg {
     position: absolute;
     inset: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.05);
 }
 
@@ -50,7 +50,7 @@
     position: absolute;
     height: 100%;
     left: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
 }
 
 .horizontal-center-line {
@@ -68,8 +68,8 @@
     top: 50%;
     height: 130%; /* Slightly taller than track */
     transform: translateY(-50%);
-    background: linear-gradient(180deg, #fff 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
-    border-radius: 4px;
+    background: linear-gradient(180deg, var(--color-white) 0%, #e0e0e0 40%, #c8c8c8 60%, #e0e0e0 100%);
+    border-radius: var(--radius-sm);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     cursor: grab;
     z-index: 5;

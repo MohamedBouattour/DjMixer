@@ -6,8 +6,8 @@
     display: flex;
     flex-direction: column;
     background: var(--color-bg-dark);
-    padding: var(--gap-md);
-    gap: var(--gap-md);
+    padding: var(--space-md);
+    gap: var(--space-md);
     position: relative;
     overflow: hidden;
     min-width: 0;
@@ -150,20 +150,20 @@
 .deck-controls {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-md);
+    gap: var(--space-md);
     flex-shrink: 0;
 }
 
 .deck-transport {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-md);
+    gap: var(--space-md);
 }
 
 .deck-transport-main {
     display: flex;
     flex-direction: column;
-    gap: var(--gap-md);
+    gap: var(--space-md);
 }
 
 /* =================================================
@@ -219,7 +219,7 @@
 .deck-performance-controls {
     display: flex;
     flex-direction: column;
-    gap: var(--radius-md);
+    gap: var(--space-md);
 }
 
 .deck-effects-grid-performance {
@@ -297,7 +297,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--radius-md);
+    gap: var(--space-md);
     background: var(--color-bg-control);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
@@ -366,139 +366,6 @@
 @keyframes deck-spin {
     to {
         transform: rotate(360deg);
-    }
-}
-
-/* =================================================
-   RESPONSIVE - Tablet
-   ================================================= */
-
-@media screen and (max-width: 1200px) and (min-width: 768px) {
-    .deck {
-        padding: var(--radius-md);
-        gap: var(--radius-md);
-    }
-
-    .deck-header {
-        height: 24px;
-    }
-
-    .deck-label {
-        font-size: 10px;
-        padding: 3px var(--gap-md);
-    }
-
-    .deck-track-name {
-        font-size: 11px;
-    }
-
-    .deck-bpm-value {
-        font-size: 14px;
-    }
-
-    .deck-btn-play-pause {
-        width: 60px;
-        height: 60px;
-    }
-
-    .deck-btn-play-pause svg {
-        width: 24px;
-        height: 24px;
-    }
-
-    .deck-btn-effect,
-    .deck-btn-cue {
-        height: 39px;
-        font-size: 12px;
-        min-width: 52px;
-    }
-
-    .deck-btn-magic-loop {
-        height: 42px;
-        font-size: 12px;
-    }
-
-    .deck-btn-magic-loop svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    .deck-pitch-control-vertical {
-        width: 32px;
-    }
-}
-
-/* =================================================
-   RESPONSIVE - Small landscape
-   ================================================= */
-
-@media screen and (max-height: 500px) and (orientation: landscape) {
-    .deck {
-        padding: var(--gap-xs);
-        gap: var(--gap-xs);
-    }
-
-    .deck-header {
-        height: 20px;
-        padding-bottom: var(--gap-xs);
-    }
-
-    .deck-label {
-        font-size: 8px;
-        padding: var(--gap-xs) var(--gap-sm);
-        letter-spacing: 0.5px;
-    }
-
-    .deck-track-name {
-        font-size: 10px;
-    }
-
-    .deck-bpm-value {
-        font-size: 12px;
-    }
-
-    .deck-btn-play-pause {
-        width: 47px;
-        height: 47px;
-    }
-
-    .deck-btn-play-pause svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    .deck-btn-effect,
-    .deck-btn-cue {
-        height: 31px;
-        font-size: 10px;
-        min-width: 39px;
-    }
-
-    .deck-btn-magic-loop {
-        height: 31px;
-        font-size: 10px;
-    }
-
-    .deck-btn-magic-loop svg {
-        width: 12px;
-        height: 12px;
-    }
-
-    .deck-vinyl-row {
-        gap: var(--gap-sm);
-    }
-
-    .deck-pitch-control-vertical {
-        width: 20px;
-    }
-
-    /* Hide effects grid on small landscape */
-    .deck-effects-grid-performance {
-        display: none;
-    }
-
-    .deck-btn-fx-toggle {
-        display: flex;
     }
 }
 
@@ -574,7 +441,7 @@
 .deck-effects-popup-close {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: var(--radius-circle);
     background: #333;
     border: 1px solid var(--border-subtle);
     color: var(--color-gray);
@@ -603,27 +470,146 @@
 }
 
 /* =================================================
-   RESPONSIVE - Tablet show FX button, hide effects
+   RESPONSIVE - Tablet & Combined
    ================================================= */
 
-@media screen and (max-width: 1200px) and (min-width: 768px) {
+@media screen and (max-width: 1200px) {
+    .deck-waveform-placeholder,
+    .deck-waveform-loading {
+        max-width: 180px;
+    }
+
+    @media (min-width: 768px) {
+        .deck {
+            padding: var(--space-sm);
+            gap: var(--space-sm);
+        }
+
+        .deck-header {
+            height: 24px;
+        }
+
+        .deck-label {
+            font-size: 10px;
+            padding: 3px var(--gap-md);
+        }
+
+        .deck-track-name {
+            font-size: 11px;
+        }
+
+        .deck-bpm-value {
+            font-size: 14px;
+        }
+
+        .deck-btn-play-pause {
+            width: 60px;
+            height: 60px;
+        }
+
+        .deck-btn-play-pause svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .deck-btn-effect,
+        .deck-btn-cue {
+            height: 39px;
+            font-size: 12px;
+            min-width: 52px;
+        }
+
+        .deck-btn-magic-loop {
+            height: 42px;
+            font-size: 12px;
+        }
+
+        .deck-btn-magic-loop svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .deck-pitch-control-vertical {
+            width: 32px;
+        }
+
+        .deck-btn-fx-toggle {
+            display: flex;
+        }
+    }
+}
+
+/* =================================================
+   RESPONSIVE - Small landscape
+   ================================================= */
+
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .deck {
+        padding: var(--gap-xs);
+        gap: var(--gap-xs);
+    }
+
+    .deck-header {
+        height: 20px;
+        padding-bottom: var(--gap-xs);
+    }
+
+    .deck-label {
+        font-size: 8px;
+        padding: var(--gap-xs) var(--gap-sm);
+        letter-spacing: 0.5px;
+    }
+
+    .deck-track-name {
+        font-size: 10px;
+    }
+
+    .deck-bpm-value {
+        font-size: 12px;
+    }
+
+    .deck-btn-play-pause {
+        width: 47px;
+        height: 47px;
+    }
+
+    .deck-btn-play-pause svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .deck-btn-effect,
+    .deck-btn-cue {
+        height: 31px;
+        font-size: 10px;
+        min-width: 39px;
+    }
+
+    .deck-btn-magic-loop {
+        height: 31px;
+        font-size: 10px;
+    }
+
+    .deck-btn-magic-loop svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    .deck-vinyl-row {
+        gap: var(--gap-sm);
+    }
+
+    .deck-pitch-control-vertical {
+        width: 20px;
+    }
+
+    /* Hide effects grid on small landscape */
     .deck-effects-grid-performance {
         display: none;
     }
 
     .deck-btn-fx-toggle {
         display: flex;
-    }
-}
-
-/* =================================================
-   RESPONSIVE - General Constraint matching Waveform
-   ================================================= */
-@media screen and (max-width: 1200px) {
-
-    .deck-waveform-placeholder,
-    .deck-waveform-loading {
-        max-width: 180px;
     }
 }
 

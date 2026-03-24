@@ -2,61 +2,17 @@
    SETTINGS MODAL
    ================================================= */
 
-.settings-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 .settings-modal {
-    background: #1e1e1e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
     max-width: 90vw;
     max-height: 85vh;
     width: 400px;
-    overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-}
-
-.settings-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background: #252525;
 }
 
 .settings-title {
     font-size: 16px;
     font-weight: 700;
-    color: #fff;
+    color: var(--color-white);
     margin: 0;
-}
-
-.settings-close-btn {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: #333;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #888;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.settings-close-btn:hover {
-    background: #ff4444;
-    color: #fff;
 }
 
 .settings-content {
@@ -72,7 +28,7 @@
 .settings-section-title {
     font-size: 12px;
     font-weight: 700;
-    color: #888;
+    color: var(--color-text-hint);
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 12px;
@@ -88,21 +44,21 @@
 
 .settings-label {
     font-size: 18px;
-    color: #ccc;
+    color: var(--color-text-light);
 }
 
 .settings-toggle {
     width: 57px;
     height: 31px;
-    background: #333;
-    border-radius: 12px;
+    background: var(--color-bg-control-dark);
+    border-radius: var(--radius-lg);
     position: relative;
     cursor: pointer;
     transition: background 0.2s ease;
 }
 
 .settings-toggle.active {
-    background: #00ff88;
+    background: var(--color-green);
 }
 
 .settings-toggle::after {
@@ -110,8 +66,8 @@
     position: absolute;
     width: 26px;
     height: 26px;
-    background: #fff;
-    border-radius: 50%;
+    background: var(--color-white);
+    border-radius: var(--radius-circle);
     top: 2px;
     left: 2px;
     transition: transform 0.2s ease;
@@ -123,7 +79,7 @@
 
 .settings-hint {
     font-size: 13px;
-    color: #888;
+    color: var(--color-text-hint);
     margin-bottom: 16px;
 }
 
@@ -136,10 +92,10 @@
 .settings-layout-btn {
     flex: 1;
     padding: 10px;
-    background: #333;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    color: #ccc;
+    background: var(--color-bg-control-dark);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    color: var(--color-text-light);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -147,14 +103,14 @@
 
 .settings-layout-btn.active {
     background: var(--deck-a-primary);
-    color: #fff;
+    color: var(--color-white);
     border-color: transparent;
 }
 
 .settings-key-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--gap-md);
     max-height: 300px;
     overflow-y: auto;
     padding-right: 4px;
@@ -170,24 +126,24 @@
 
 .settings-action-label {
     font-size: 13px;
-    color: #aaa;
+    color: var(--text-secondary);
 }
 
 .settings-key-btn {
     min-width: 100px;
     padding: 6px 12px;
-    background: #252525;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    color: #00d4ff;
+    background: var(--color-bg-header);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
+    color: var(--deck-b-primary);
     font-family: monospace;
     font-weight: 700;
     cursor: pointer;
 }
 
 .settings-key-btn.listening {
-    border-color: #ff0080;
-    color: #ff0080;
+    border-color: var(--deck-a-primary);
+    color: var(--deck-a-primary);
     animation: settings-pulse 1s infinite;
 }
 
@@ -206,23 +162,23 @@
 .settings-reset-btn {
     padding: 10px 20px;
     background: transparent;
-    border: 1px solid #444;
-    border-radius: 20px;
-    color: #888;
+    border: 1px solid var(--color-muted);
+    border-radius: var(--radius-xxl);
+    color: var(--color-text-hint);
     font-size: 13px;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .settings-reset-btn:hover {
-    border-color: #666;
-    color: #fff;
+    border-color: var(--color-gray);
+    color: var(--color-white);
 }
 
 .settings-footer {
     margin-top: 20px;
     padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--color-border-light);
     text-align: center;
     color: rgba(255, 255, 255, 0.4);
     font-size: 0.8rem;
@@ -236,10 +192,6 @@
     .settings-modal {
         width: 95vw;
         max-height: 90vh;
-    }
-
-    .settings-header {
-        padding: 12px 16px;
     }
 
     .settings-content {
@@ -268,22 +220,6 @@
         max-width: 380px;
         max-height: 95vh;
         margin: 0 auto;
-    }
-
-    .settings-header {
-        padding: 8px 12px;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-
-    .settings-header h2 {
-        font-size: 14px;
-    }
-
-    .settings-close-btn {
-        width: 26px;
-        height: 26px;
     }
 
     .settings-content {
@@ -353,9 +289,9 @@
     }
 
     .settings-footer {
-        margin-top: 10px !important;
-        padding-top: 8px !important;
-        font-size: 10px !important;
+        margin-top: 10px;
+        padding-top: 8px;
+        font-size: 10px;
     }
 }
 
@@ -366,10 +302,6 @@
 @media screen and (max-height: 400px) {
     .settings-modal {
         max-height: 98vh;
-    }
-
-    .settings-header {
-        padding: 6px 10px;
     }
 
     .settings-content {

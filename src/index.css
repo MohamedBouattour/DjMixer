@@ -41,7 +41,14 @@
   --gap-lg: 12px;
   --gap-xl: 16px;
 
+  --space-xs: 2px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+
   /* Radius */
+  --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -49,6 +56,17 @@
 
   /* Font */
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Modal & Specialized Backgrounds */
+  --color-bg-modal: #1e1e1e;
+  --color-bg-header: #252525;
+  --color-bg-control-dark: #333;
+  --color-border-light: rgba(255, 255, 255, 0.1);
+  --color-text-hint: #888;
+  --color-text-light: #ccc;
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.8);
+  --radius-circle: 50%;
+  --radius-xxl: 50px;
 }
 
 /* Reset & Base */
@@ -58,7 +76,6 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -73,6 +90,18 @@ body,
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+}
+
+/* Accessibility focused alternative to outline: none */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--deck-a-primary);
+  outline-offset: 2px;
 }
 
 button {
@@ -82,21 +111,9 @@ button {
   background: none;
 }
 
-/* Global Selection and Safari Fixes */
 body {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
   cursor: default;
-  /* Safari PWA overflow fixes */
-  width: 100vw;
-  height: 100dvh;
   position: fixed;
-  overflow: hidden;
-  overscroll-behavior: none;
 }
 
 img,
@@ -105,10 +122,6 @@ button,
 [role="button"] {
   -webkit-user-drag: none;
   -webkit-touch-callout: none; /* Essential for Safari long-press */
-}
-
-*:focus {
-  outline: none;
 }
 
 /* =================================================
@@ -121,9 +134,7 @@ button,
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: fixed; /* Extra insurance against scrolling */
-  top: 0;
-  left: 0;
+  position: relative; /* Fixed is redundant with body position: fixed */
   background:
     repeating-linear-gradient(90deg,
       transparent,
@@ -136,8 +147,6 @@ button,
   padding-bottom: env(safe-area-inset-bottom, 5px);
   padding-left: env(safe-area-inset-left, 5px);
   padding-right: env(safe-area-inset-right, 5px);
-  /* Prevent rubber banding in Safari PWA */
-  overscroll-behavior: none;
 }
 
 /* App header */

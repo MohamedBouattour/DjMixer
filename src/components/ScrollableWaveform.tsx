@@ -386,7 +386,7 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         <div
             ref={containerRef}
             className={`scrollable-waveform ${isDragging ? 'dragging' : ''}`}
-            style={{ '--waveform-color': color, height: `${height}px`, touchAction: 'none' } as React.CSSProperties}
+            style={{ '--color-waveform': color, height: `${height}px`, touchAction: 'none' } as React.CSSProperties}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

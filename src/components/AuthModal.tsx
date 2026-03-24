@@ -126,125 +126,106 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     if (!isOpen) return null;
 
     const modalContent = (
-        <div className="auth-modal-overlay">
-            <div ref={modalRef} className="auth-modal">
-                <button className="auth-close-btn" onClick={onClose}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                    </svg>
-                </button>
-
-                <div className="auth-header">
-                    <div className="auth-logo">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="url(#auth-gradient)">
-                            <defs>
-                                <linearGradient id="auth-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor="#00d9ff" />
-                                    <stop offset="100%" stopColor="#ff00aa" />
-                                </linearGradient>
-                            </defs>
-                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+        <div className="modal-overlay-base auth-modal-overlay">
+            <div ref={modalRef} className="modal-base auth-modal">
+                <header className="modal-header-base auth-header">
+                    <div className="auth-logo-section">
+                        <h2 className="auth-title">
+                            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                        </h2>
+                        <p className="auth-subtitle">
+                            {mode === 'login'
+                                ? 'Sign in to access streaming features'
+                                : 'Sign up to start mixing tracks'}
+                        </p>
+                    </div>
+                    <button className="icon-btn-close auth-close-btn" onClick={onClose}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                         </svg>
-                    </div>
-                    <h2 className="auth-title">
-                        {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-                    </h2>
-                    <p className="auth-subtitle">
-                        {mode === 'login'
-                            ? 'Sign in to access streaming features'
-                            : 'Sign up to start mixing tracks'}
-                    </p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="auth-form">
-                    {error && (
-                        <div className="auth-error">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-2h2v2h-2zm0-4V7h2v6h-2z" />
-                            </svg>
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    <div className="auth-field">
-                        <label htmlFor="auth-email">Email</label>
-                        <input
-                            id="auth-email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="your@email.com"
-                            autoComplete="email"
-                            disabled={isSubmitting}
-                        />
-                    </div>
-
-                    {mode === 'register' && (
-                        <div className="auth-field">
-                            <label htmlFor="auth-username">Username</label>
-                            <input
-                                id="auth-username"
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                placeholder="DJ Awesome"
-                                autoComplete="username"
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                    )}
-
-                    <div className="auth-field">
-                        <label htmlFor="auth-password">Password</label>
-                        <input
-                            id="auth-password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
-                            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                            disabled={isSubmitting}
-                        />
-                    </div>
-
-                    {mode === 'register' && (
-                        <div className="auth-field">
-                            <label htmlFor="auth-confirm-password">Confirm Password</label>
-                            <input
-                                id="auth-confirm-password"
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="••••••••"
-                                autoComplete="new-password"
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                    )}
-
-                    <button type="submit" className="auth-submit-btn" disabled={isSubmitting}>
-                        {isSubmitting ? (
-                            <span className="auth-spinner"></span>
-                        ) : (
-                            mode === 'login' ? 'Sign In' : 'Create Account'
-                        )}
                     </button>
-                </form>
+                </header>
 
-                <div className="auth-footer">
-                    <p>
-                        {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
-                        <button
-                            type="button"
-                            className="auth-switch-btn"
-                            onClick={() => {
-                                setMode(mode === 'login' ? 'register' : 'login');
-                                setError('');
-                            }}
-                        >
-                            {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                <div className="auth-content">
+                    <form onSubmit={handleSubmit} className="auth-form">
+                        {error && (
+                            <div className="auth-error">
+                                <span>{error}</span>
+                            </div>
+                        )}
+
+                        <div className="auth-field">
+                            <input
+                                className="auth-input"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="your@email.com"
+                                autoComplete="email"
+                                disabled={isSubmitting}
+                            />
+                        </div>
+
+                        {mode === 'register' && (
+                            <div className="auth-field">
+                                <input
+                                    className="auth-input"
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    placeholder="DJ Awesome"
+                                    autoComplete="username"
+                                    disabled={isSubmitting}
+                                />
+                            </div>
+                        )}
+
+                        <div className="auth-field">
+                            <input
+                                className="auth-input"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Password (min 6 chars)"
+                                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                                disabled={isSubmitting}
+                            />
+                        </div>
+
+                        {mode === 'register' && (
+                            <div className="auth-field">
+                                <input
+                                    className="auth-input"
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Confirm Password"
+                                    autoComplete="new-password"
+                                    disabled={isSubmitting}
+                                />
+                            </div>
+                        )}
+
+                        <button type="submit" className="auth-submit" disabled={isSubmitting}>
+                            {isSubmitting ? '...' : (mode === 'login' ? 'Sign In' : 'Create Account')}
                         </button>
-                    </p>
+                    </form>
+
+                    <div className="auth-toggle">
+                        <p>
+                            {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+                            {' '}
+                            <span
+                                className="auth-toggle-link"
+                                onClick={() => {
+                                    setMode(mode === 'login' ? 'register' : 'login');
+                                    setError('');
+                                }}
+                            >
+                                {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                            </span>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
