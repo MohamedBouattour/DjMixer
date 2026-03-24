@@ -39,21 +39,21 @@
     overflow: visible; /* Allow thumb to overlap */
 }
 
-.track-bg {
+.horizontal-track-bg {
     position: absolute;
     inset: 0;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.05);
 }
 
-.track-fill {
+.horizontal-track-fill {
     position: absolute;
     height: 100%;
     left: 0;
     border-radius: 6px;
 }
 
-.center-line {
+.horizontal-center-line {
     position: absolute;
     left: 50%;
     top: 0;
@@ -63,7 +63,7 @@
     transform: translateX(-50%);
 }
 
-.slider-thumb {
+.horizontal-slider-thumb {
     position: absolute;
     top: 50%;
     height: 130%; /* Slightly taller than track */
@@ -75,6 +75,6 @@
     z-index: 5;
 }
 
-.slider-thumb:active {
+.horizontal-slider-thumb:active {
     cursor: grabbing;
 }

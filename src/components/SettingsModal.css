@@ -121,6 +121,113 @@
     transform: translateX(26px);
 }
 
+.settings-hint {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 16px;
+}
+
+.settings-layout-selector {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.settings-layout-btn {
+    flex: 1;
+    padding: 10px;
+    background: #333;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #ccc;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.settings-layout-btn.active {
+    background: var(--deck-a-primary);
+    color: #fff;
+    border-color: transparent;
+}
+
+.settings-key-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.settings-key-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.settings-action-label {
+    font-size: 13px;
+    color: #aaa;
+}
+
+.settings-key-btn {
+    min-width: 100px;
+    padding: 6px 12px;
+    background: #252525;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #00d4ff;
+    font-family: monospace;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.settings-key-btn.listening {
+    border-color: #ff0080;
+    color: #ff0080;
+    animation: settings-pulse 1s infinite;
+}
+
+@keyframes settings-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.settings-actions {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.settings-reset-btn {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid #444;
+    border-radius: 20px;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.settings-reset-btn:hover {
+    border-color: #666;
+    color: #fff;
+}
+
+.settings-footer {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.8rem;
+}
+
 /* =================================================
    RESPONSIVE - Mobile
    ================================================= */
@@ -148,8 +255,7 @@
 
 @media screen and (max-height: 500px) and (orientation: landscape) {
 
-    .settings-modal-overlay,
-    .settings-overlay {
+    .settings-modal-overlay {
         padding-top: max(8px, env(safe-area-inset-top));
         padding-bottom: max(8px, env(safe-area-inset-bottom));
         padding-left: max(8px, env(safe-area-inset-left));
@@ -175,8 +281,7 @@
         font-size: 14px;
     }
 
-    .settings-close-btn,
-    .close-btn {
+    .settings-close-btn {
         width: 26px;
         height: 26px;
     }
@@ -207,32 +312,32 @@
         margin-bottom: 8px;
     }
 
-    .layout-selector {
+    .settings-layout-selector {
         gap: 8px;
     }
 
-    .layout-btn {
+    .settings-layout-btn {
         padding: 6px 12px;
         font-size: 11px;
     }
 
-    .key-mapping-list {
+    .settings-key-list {
         gap: 4px;
     }
 
-    .key-mapping-item {
+    .settings-key-item {
         padding: 6px 0;
         flex-wrap: wrap;
         gap: 4px;
     }
 
-    .action-label {
+    .settings-action-label {
         font-size: 11px;
         flex: 1;
         min-width: 120px;
     }
 
-    .key-btn {
+    .settings-key-btn {
         padding: 4px 10px;
         font-size: 10px;
         min-width: 70px;
@@ -242,7 +347,7 @@
         margin-top: 10px;
     }
 
-    .reset-btn {
+    .settings-reset-btn {
         padding: 8px 16px;
         font-size: 11px;
     }
@@ -272,15 +377,15 @@
         max-height: calc(98vh - 40px);
     }
 
-    .key-mapping-item {
+    .settings-key-item {
         padding: 4px 0;
     }
 
-    .action-label {
+    .settings-action-label {
         font-size: 10px;
     }
 
-    .key-btn {
+    .settings-key-btn {
         padding: 3px 8px;
         font-size: 9px;
     }

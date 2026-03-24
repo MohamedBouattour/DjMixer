@@ -1,159 +1,108 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import './HorizontalSlider.css';
 
 interface HorizontalSliderProps {
     value: number;
-    min?: number;
-    max?: number;
+    min: number;
+    max: number;
     onChange: (value: number) => void;
     label?: string;
     showValue?: boolean;
-    valueFormatter?: (value: number) => string;
     color?: string;
-    height?: number; // Visual thickness of the track
-    className?: string;
+    height?: number;
     thumbWidth?: number;
+    className?: string;
     showCenterLine?: boolean;
 }
 
 const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
     value,
-    min = 0,
-    max = 100,
+    min,
+    max,
     onChange,
     label,
     showValue = true,
-    valueFormatter = (v) => `${Math.round(v)}%`,
-    color = '#00ff88',
-    height = 31,
+    color = '#ff0080',
+    height = 12,
+    thumbWidth = 44,
     className = '',
-    thumbWidth = 47,
-    showCenterLine = false,
+    showCenterLine = false
 }) => {
     const trackRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
-    const rectRef = useRef<DOMRect | null>(null);
-    const onChangeRef = useRef(onChange);
-    const minRef = useRef(min);
-    const maxRef = useRef(max);
-    const pointerIdRef = useRef<number | null>(null);
 
-    // Keep refs current
-    onChangeRef.current = onChange;
-    minRef.current = min;
-    maxRef.current = max;
+    const updateValue = useCallback((clientX: number) => {
+        if (!trackRef.current) return;
+        const rect = trackRef.current.getBoundingClientRect();
+        const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const newValue = min + percentage * (max - min);
+        onChange(newValue);
+    }, [min, max, onChange]);
 
-    const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
+    const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+        isDragging.current = true;
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        updateValue(clientX);
+    };
 
-    const calculateValue = useCallback((clientX: number) => {
-        if (!rectRef.current) return;
-
-        const rect = rectRef.current;
-        const relativeX = clientX - rect.left;
-        const clampedX = Math.max(0, Math.min(relativeX, rect.width));
-        const newPercentage = clampedX / rect.width;
-        const newValue = minRef.current + (newPercentage * (maxRef.current - minRef.current));
-
-        onChangeRef.current(newValue);
-    }, []);
-
-    // Global pointer move/up handlers for reliable mobile touch tracking
     useEffect(() => {
-        const handleGlobalPointerMove = (e: PointerEvent) => {
-            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
-            e.preventDefault();
-            calculateValue(e.clientX);
+        const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+            if (!isDragging.current) return;
+            const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+            updateValue(clientX);
         };
 
-        const handleGlobalPointerUp = (e: PointerEvent) => {
-            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
+        const handleMouseUp = () => {
             isDragging.current = false;
-            rectRef.current = null;
-            pointerIdRef.current = null;
-            document.body.style.userSelect = '';
-            document.body.style.webkitUserSelect = '';
         };
 
-        document.addEventListener('pointermove', handleGlobalPointerMove, { passive: false });
-        document.addEventListener('pointerup', handleGlobalPointerUp);
-        document.addEventListener('pointercancel', handleGlobalPointerUp);
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        window.addEventListener('touchmove', handleMouseMove);
+        window.addEventListener('touchend', handleMouseUp);
 
         return () => {
-            document.removeEventListener('pointermove', handleGlobalPointerMove);
-            document.removeEventListener('pointerup', handleGlobalPointerUp);
-            document.removeEventListener('pointercancel', handleGlobalPointerUp);
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('touchmove', handleMouseMove);
+            window.removeEventListener('touchend', handleMouseUp);
         };
-    }, [calculateValue]);
+    }, [updateValue]);
 
-    const handlePointerDown = (e: React.PointerEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (!trackRef.current) return;
-
-        // Cache rect at start of drag to avoid layout thrashing
-        rectRef.current = trackRef.current.getBoundingClientRect();
-        isDragging.current = true;
-        pointerIdRef.current = e.pointerId;
-
-        try {
-            (e.target as HTMLElement).setPointerCapture(e.pointerId);
-        } catch {
-            // Some browsers may not support pointer capture
-        }
-
-        calculateValue(e.clientX);
-        document.body.style.userSelect = 'none';
-        document.body.style.webkitUserSelect = 'none';
-    };
+    const percentage = ((value - min) / (max - min)) * 100;
 
     return (
         <div className={`horizontal-slider-container ${className}`}>
-            {label && (
+            {(label || showValue) && (
                 <div className="horizontal-slider-header">
-                    <span className="horizontal-slider-label">{label}</span>
-                    {showValue && (
-                        <span className="horizontal-slider-value" style={{ color }}>
-                            {valueFormatter(value)}
-                        </span>
-                    )}
+                    {label && <span className="horizontal-slider-label">{label}</span>}
+                    {showValue && <span className="horizontal-slider-value">{Math.round(value)}</span>}
                 </div>
             )}
-
-            <div
-                className="horizontal-slider-track"
+            <div 
                 ref={trackRef}
-                style={{
-                    height: `${height}px`,
-                    '--slider-color': color,
-                    touchAction: 'none'
-                } as React.CSSProperties}
-                onPointerDown={handlePointerDown}
+                className="horizontal-slider-track"
+                style={{ height: `${height}px` }}
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleMouseDown}
             >
-                {/* Background Track */}
-                <div className="track-bg" />
-
-                {/* Fill Indicator (Left side) */}
-                <div
-                    className="track-fill"
-                    style={{
+                <div className="horizontal-track-bg"></div>
+                <div 
+                    className="horizontal-track-fill"
+                    style={{ 
                         width: `${percentage}%`,
-                        background: `linear-gradient(to right, ${color}44, ${color}88)`
+                        background: color,
+                        boxShadow: `0 0 10px ${color}`
                     }}
-                />
-
-                {/* Center Line (Optional) */}
-                {showCenterLine && <div className="center-line" />}
-
-                {/* Thumb */}
-                <div
-                    className="slider-thumb"
-                    style={{
-                        left: `${percentage}%`,
-                        width: `${thumbWidth}px`,
-                        marginLeft: `-${thumbWidth / 2}px`
+                ></div>
+                {showCenterLine && <div className="horizontal-center-line"></div>}
+                <div 
+                    className="horizontal-slider-thumb"
+                    style={{ 
+                        left: `calc(${percentage}% - ${thumbWidth / 2}px)`,
+                        width: `${thumbWidth}px`
                     }}
-                />
+                ></div>
             </div>
         </div>
     );

@@ -53,37 +53,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     if (!isOpen) return null;
 
     return (
-        <div className="settings-overlay" onClick={onClose}>
+        <div className="settings-modal-overlay" onClick={onClose}>
             <div className="settings-modal" onClick={e => e.stopPropagation()}>
                 <header className="settings-header">
-                    <h2>Settings</h2>
-                    <button className="close-btn" onClick={onClose}>&times;</button>
+                    <h2 className="settings-title">Settings</h2>
+                    <button className="settings-close-btn" onClick={onClose}>&times;</button>
                 </header>
 
                 <div className="settings-content">
                     <div className="settings-section">
-                        <h3>Keyboard Layout</h3>
-                        <div className="layout-selector">
+                        <h3 className="settings-section-title">Keyboard Layout</h3>
+                        <div className="settings-layout-selector">
                             <button
-                                className={`layout-btn ${layout === 'qwerty' ? 'active' : ''}`}
+                                className={`settings-layout-btn ${layout === 'qwerty' ? 'active' : ''}`}
                                 onClick={() => setLayout('qwerty')}
                             >QWERTY</button>
                             <button
-                                className={`layout-btn ${layout === 'azerty' ? 'active' : ''}`}
+                                className={`settings-layout-btn ${layout === 'azerty' ? 'active' : ''}`}
                                 onClick={() => setLayout('azerty')}
                             >AZERTY</button>
                         </div>
                     </div>
 
-                    <h3>Keyboard Shortcuts</h3>
+                    <h3 className="settings-section-title">Keyboard Shortcuts</h3>
                     <p className="settings-hint">Click a button below and press a key to remap.</p>
 
-                    <div className="key-mapping-list">
+                    <div className="settings-key-list">
                         {Object.entries(ACTION_LABELS).map(([actionId, label]) => (
-                            <div key={actionId} className="key-mapping-item">
-                                <span className="action-label">{label}</span>
+                            <div key={actionId} className="settings-key-item">
+                                <span className="settings-action-label">{label}</span>
                                 <button
-                                    className={`key-btn ${listeningFor === actionId ? 'listening' : ''}`}
+                                    className={`settings-key-btn ${listeningFor === actionId ? 'listening' : ''}`}
                                     onClick={() => setListeningFor(actionId)}
                                 >
                                     {listeningFor === actionId ? 'Press Key...' :
@@ -95,10 +95,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     </div>
 
                     <div className="settings-actions">
-                        <button className="reset-btn" onClick={resetToDefaults}>Reset to Defaults</button>
+                        <button className="settings-reset-btn" onClick={resetToDefaults}>Reset to Defaults</button>
                     </div>
 
-                    <div className="settings-footer" style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
+                    <div className="settings-footer">
                         <span>Version: {localStorage.getItem('app_version') || 'Development Build'}</span>
                     </div>
                 </div>
