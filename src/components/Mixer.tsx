@@ -3,7 +3,6 @@ import type { DeckState } from '../types';
 import VerticalSlider from './VerticalSlider';
 import HorizontalSlider from './HorizontalSlider';
 import { cn } from '../utils/cn';
-import { sharedStyles } from '../utils/sharedStyles';
 
 interface MixerProps {
     crossfaderValue: number;

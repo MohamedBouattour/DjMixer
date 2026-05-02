@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { cn } from '../utils/cn';
 
 // Interface for beforeinstallprompt event
 interface BeforeInstallPromptEvent extends Event {

@@ -69,7 +69,6 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     const lastTimestampRef = useRef(0);
     const lastXRef = useRef(0);
     const momentumFrameRef = useRef<number | null>(null);
-    const friction = 0.95;
 
     // Dragging mechanics
     const draggingRef = useRef({

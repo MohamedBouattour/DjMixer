@@ -36,7 +36,6 @@ export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOp
     const scratchNodeRef = useRef<AudioWorkletNode | null>(null);
     const gainNodeRef = useRef<GainNode | null>(null);
     const effectsRef = useRef<AudioEffects | null>(null);
-    const animationFrameRef = useRef<number | undefined>(undefined);
 
     const isPlayingRef = useRef(false);
     const isScratchingRef = useRef(false);
@@ -53,9 +52,6 @@ export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOp
             }
         }
     }, [state.pitch]);
-
-    // Ref for the update function to avoid circular dependency in useCallback
-    const updateCurrentTimeRef = useRef<() => void>(() => { });
 
     // ✅ Reliable setup when audioContext/destination becomes available
     useEffect(() => {
