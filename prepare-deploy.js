@@ -16,9 +16,8 @@ const execOptions = { stdio: 'inherit', cwd: rootDir, shell: true };
 try {
     console.log('🔹 Starting Preparation for VPS Deployment...');
 
-    // 1. Build Frontend
-    console.log('🔹 Building frontend...');
-    execSync('npm run build', execOptions);
+    // 1. Build Frontend (Skipped for Split Deployment)
+    console.log('🔹 Skipping frontend build (deployed to Render)...');
 
     // 2. Prepare Backend Public Directory
     console.log('🔹 Preparing backend public directory...');
@@ -27,15 +26,8 @@ try {
     }
     fs.mkdirSync(backendPublicDir, { recursive: true });
 
-    // 3. Copy build artifacts to backend/public
-    console.log('🔹 Copying build artifacts to backend/public...');
-    if (fs.existsSync(distDir)) {
-        fs.cpSync(distDir, backendPublicDir, { recursive: true });
-        console.log('✅ Build artifacts copied successfully!');
-    } else {
-        console.error('❌ Error: dist directory not found after build!');
-        process.exit(1);
-    }
+    // 3. Copy build artifacts (Skipped)
+    console.log('🔹 Skipping frontend artifacts copy...');
 
     // 4. Bundle Backend (Single JS file)
     console.log('🔹 Bundling backend into bundle.js...');

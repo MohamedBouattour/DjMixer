@@ -25,6 +25,13 @@ class ScratchProcessor extends AudioWorkletProcessor {
                 name: 'scratchVelocity', // The hand-controlled velocity
                 defaultValue: 0,
                 automationRate: 'a-rate' // Per-sample for smooth scratching
+            },
+            {
+                name: 'motorStrength', // How fast it snaps to target rate
+                defaultValue: 0.1, // 0.1 = snappy, 0.01 = slow turntable
+                minValue: 0,
+                maxValue: 1.0,
+                automationRate: 'k-rate'
             }
         ];
     }
@@ -37,13 +44,12 @@ class ScratchProcessor extends AudioWorkletProcessor {
 
         // Motor simulation (for realistic vinyl spin-up/down)
         this.currentVelocity = 0;
-        this.motorStrength = 0.05; // How fast the motor pulls toward target speed
 
         // Listen for messages from main thread
         this.port.onmessage = (event) => {
             if (event.data.type === 'load-buffer') {
                 this.buffer = event.data.buffer; // Float32Array[]
-                this.position = 0;
+                this.position = event.data.position || 0;
                 this.currentVelocity = 0;
             } else if (event.data.type === 'seek') {
                 this.position = event.data.position;
@@ -59,10 +65,17 @@ class ScratchProcessor extends AudioWorkletProcessor {
             return true;
         }
 
-        // Read parameter values (k-rate = single value per block)
+        // Read parameter values
         const isScratching = parameters.isScratching[0] >= 0.5;
         const targetRate = parameters.playbackRate[0];
         const scratchVelocityArray = parameters.scratchVelocity;
+        const motorStrength = parameters.motorStrength[0];
+
+        // ✅ Immediate sync when releasing (prevent parasite delay)
+        if (this.wasScratching && !isScratching) {
+            this.currentVelocity = targetRate;
+        }
+        this.wasScratching = isScratching;
 
         const bufferLength = this.buffer[0].length;
 
@@ -80,11 +93,10 @@ class ScratchProcessor extends AudioWorkletProcessor {
                 this.currentVelocity = rate;
             } else {
                 // Motor simulation: smoothly interpolate toward target rate
-                // This creates the realistic "spin-up" and "spin-down" effect
                 const diff = targetRate - this.currentVelocity;
-                this.currentVelocity += diff * this.motorStrength;
+                this.currentVelocity += diff * motorStrength;
 
-                // Snap to target if very close (avoid endless tiny movements)
+                // Snap to target if very close
                 if (Math.abs(diff) < 0.001) {
                     this.currentVelocity = targetRate;
                 }

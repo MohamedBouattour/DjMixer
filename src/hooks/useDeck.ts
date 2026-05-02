@@ -7,9 +7,10 @@ interface UseDeckOptions {
     audioContext: AudioContext;
     destination: AudioNode;
     deckId: 'A' | 'B';
+    isWorkletReady: boolean;
 }
 
-export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
+export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOptions) => {
     const [state, setState] = useState<DeckState>({
         track: null,
         isPlaying: false,
@@ -32,8 +33,7 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         }
     });
 
-    const audioElementRef = useRef<HTMLAudioElement | null>(null);
-    const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+    const scratchNodeRef = useRef<AudioWorkletNode | null>(null);
     const gainNodeRef = useRef<GainNode | null>(null);
     const effectsRef = useRef<AudioEffects | null>(null);
     const animationFrameRef = useRef<number | undefined>(undefined);
@@ -42,22 +42,29 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
     const isScratchingRef = useRef(false);
     const activeLoopRef = useRef<{ start: number; end: number; active: boolean } | null>(null);
     
-    // ✅ Bug B Fix: Stabilize endScratch with pitchRef
+    // Maintain pitch ref for stable Worklet parameter updates
     const pitchRef = useRef(state.pitch);
     useEffect(() => {
         pitchRef.current = state.pitch;
+        if (scratchNodeRef.current && !isScratchingRef.current) {
+            const playbackRateParam = scratchNodeRef.current.parameters.get('playbackRate');
+            if (playbackRateParam) {
+                playbackRateParam.value = isPlayingRef.current ? (1 + state.pitch / 100) : 0;
+            }
+        }
     }, [state.pitch]);
 
     // Ref for the update function to avoid circular dependency in useCallback
     const updateCurrentTimeRef = useRef<() => void>(() => { });
 
-    // ✅ Bug A Fix: Reliable setup when audioContext/destination becomes available
+    // ✅ Reliable setup when audioContext/destination becomes available
     useEffect(() => {
-        if (!audioContext || !destination) return;
+        if (!audioContext || !destination || !isWorkletReady) return;
 
         // Cleanup previous if exists
         if (gainNodeRef.current) gainNodeRef.current.disconnect();
         if (effectsRef.current) effectsRef.current.disconnect();
+        if (scratchNodeRef.current) scratchNodeRef.current.disconnect();
 
         // Create gain node
         gainNodeRef.current = audioContext.createGain();
@@ -68,152 +75,135 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         effectsRef.current.connectToDestination(gainNodeRef.current);
         gainNodeRef.current.connect(destination);
 
-        // If we already have an audio element, reconnect it
-        if (audioElementRef.current && !sourceNodeRef.current) {
-            sourceNodeRef.current = audioContext.createMediaElementSource(audioElementRef.current);
-            effectsRef.current.connect(sourceNodeRef.current);
-        } else if (audioElementRef.current && sourceNodeRef.current) {
-            // Reconnect existing source to new effects chain
-            effectsRef.current.connect(sourceNodeRef.current);
+        // Initialize Scratch Processor Node
+        try {
+            const scratchNode = new AudioWorkletNode(audioContext, 'scratch-processor');
+            scratchNodeRef.current = scratchNode;
+            
+            // Connect scratch node to effects chain
+            effectsRef.current.connect(scratchNode);
+
+            // Listen for position sync from worklet
+            scratchNode.port.onmessage = (event) => {
+                if (event.data.type === 'position') {
+                    const ct = event.data.position / audioContext.sampleRate;
+                    
+                    // Handle Loop
+                    if (activeLoopRef.current && activeLoopRef.current.active) {
+                        if (ct >= activeLoopRef.current.end) {
+                            scratchNode.port.postMessage({ 
+                                type: 'seek', 
+                                position: activeLoopRef.current.start * audioContext.sampleRate 
+                            });
+                        }
+                    }
+
+                    // Throttle state updates for UI performance
+                    setState(prev => {
+                        // If difference is small, don't update state to avoid unnecessary re-renders
+                        if (Math.abs(prev.currentTime - ct) < 0.05) return prev;
+                        return { ...prev, currentTime: ct };
+                    });
+                }
+            };
+        } catch (e) {
+            console.error('[useDeck] Failed to create AudioWorkletNode:', e);
         }
 
         return () => {
             if (gainNodeRef.current) gainNodeRef.current.disconnect();
             if (effectsRef.current) effectsRef.current.disconnect();
+            if (scratchNodeRef.current) scratchNodeRef.current.disconnect();
         };
-    }, [audioContext, destination]);
-
-    // ✅ Bug D Fix: updateCurrentTime continues while paused
-    const updateCurrentTime = useCallback(() => {
-        if (audioElementRef.current) {
-            const ct = audioElementRef.current.currentTime;
-
-            // Handle Loop
-            if (activeLoopRef.current && activeLoopRef.current.active) {
-                if (ct >= activeLoopRef.current.end) {
-                    audioElementRef.current.currentTime = activeLoopRef.current.start;
-                }
-            }
-
-            // Only update state if time actually changed significantly to avoid React spam
-            setState(prev => prev.currentTime !== ct ? { ...prev, currentTime: ct } : prev);
-        }
-        
-        // Always reschedule to keep seeking visual working while paused
-        animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
-    }, []);
-
-    // Keep ref updated
-    updateCurrentTimeRef.current = updateCurrentTime;
+    }, [audioContext, destination, isWorkletReady]);
 
     const loadTrack = useCallback(async (track: Track) => {
+        if (!audioContext || !scratchNodeRef.current) return;
+        
         setState(prev => ({ ...prev, isLoading: true }));
 
-        // ✅ Bug E Fix: Revoke previous blob URL
-        if (audioElementRef.current) {
-            audioElementRef.current.pause();
-            if (audioElementRef.current.src.startsWith('blob:')) {
-                URL.revokeObjectURL(audioElementRef.current.src);
-            }
-            if (sourceNodeRef.current) {
-                sourceNodeRef.current.disconnect();
-                sourceNodeRef.current = null;
-            }
-        }
-
-        // Reset state
+        // Stop current playback
         isPlayingRef.current = false;
-        if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-        }
+        scratchNodeRef.current.parameters.get('playbackRate')!.value = 0;
 
-        // Create new audio element
-        const audio = new Audio(track.url);
-        audio.crossOrigin = 'anonymous';
-        audioElementRef.current = audio;
-
-        // Listen for track end
-        audio.addEventListener('ended', () => {
-            isPlayingRef.current = false;
-            setState(prev => ({ ...prev, isPlaying: false, currentTime: 0 }));
-        });
-
-        // Create source node and connect if context is available
-        if (audioContext && destination && effectsRef.current) {
-            sourceNodeRef.current = audioContext.createMediaElementSource(audio);
-            effectsRef.current.connect(sourceNodeRef.current);
-        }
-
-        // Process audio buffer for BPM
-        let bpm = track.bpm;
-
-        if (!bpm) {
-            try {
-                let arrayBuffer: ArrayBuffer;
-                if (track.file) {
-                    arrayBuffer = await track.file.arrayBuffer();
-                } else {
-                    const response = await fetch(track.url);
-                    arrayBuffer = await response.arrayBuffer();
-                }
-                const decodedBuffer = await (audioContext || new (window.AudioContext || (window as any).webkitAudioContext)()).decodeAudioData(arrayBuffer);
-                bpm = await detectBPM(decodedBuffer);
-            } catch (error) {
-                console.error('BPM detection failed:', error);
-                if (!bpm) bpm = 120;
+        try {
+            // Load and decode audio data
+            let arrayBuffer: ArrayBuffer;
+            if (track.file) {
+                arrayBuffer = await track.file.arrayBuffer();
+            } else {
+                const response = await fetch(track.url);
+                arrayBuffer = await response.arrayBuffer();
             }
-        }
+            
+            const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            
+            // Send buffer to worklet
+            const channelData = [];
+            for (let i = 0; i < decodedBuffer.numberOfChannels; i++) {
+                channelData.push(decodedBuffer.getChannelData(i));
+            }
 
-        setState(prev => ({
-            ...prev,
-            track: { ...track, bpm },
-            currentTime: 0,
-            isPlaying: false,
-            isLoading: false,
-            activeLoop: null,
-            cuePoints: []
-        }));
-        activeLoopRef.current = null;
-        
-        // Start time update loop even if paused
-        if (!animationFrameRef.current) {
-            animationFrameRef.current = requestAnimationFrame(updateCurrentTimeRef.current);
+            scratchNodeRef.current.port.postMessage({
+                type: 'load-buffer',
+                buffer: channelData
+            });
+
+            // Process BPM
+            let bpm = track.bpm || await detectBPM(decodedBuffer);
+
+            setState(prev => ({
+                ...prev,
+                track: { ...track, bpm },
+                currentTime: 0,
+                isPlaying: false,
+                isLoading: false,
+                activeLoop: null,
+                cuePoints: []
+            }));
+            activeLoopRef.current = null;
+        } catch (error) {
+            console.error('[useDeck] Load failed:', error);
+            setState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [audioContext, destination]);
+    }, [audioContext]);
 
     const play = useCallback(async () => {
-        if (audioElementRef.current) {
+        if (scratchNodeRef.current) {
             if (audioContext.state === 'suspended') {
                 await audioContext.resume();
             }
-            audioElementRef.current.play();
+            const rate = 1 + (pitchRef.current / 100);
+            scratchNodeRef.current.parameters.get('playbackRate')!.setTargetAtTime(rate, audioContext.currentTime, 0.01);
             isPlayingRef.current = true;
             setState(prev => ({ ...prev, isPlaying: true }));
         }
     }, [audioContext]);
 
     const pause = useCallback(() => {
-        if (audioElementRef.current) {
-            audioElementRef.current.pause();
+        if (scratchNodeRef.current) {
+            scratchNodeRef.current.parameters.get('playbackRate')!.setTargetAtTime(0, audioContext.currentTime, 0.01);
             isPlayingRef.current = false;
             setState(prev => ({ ...prev, isPlaying: false }));
         }
-    }, []);
+    }, [audioContext]);
 
     const seek = useCallback((time: number) => {
-        if (audioElementRef.current) {
-            audioElementRef.current.currentTime = time;
-            // ✅ Bug D: Immediate state update for visual playhead
+        if (scratchNodeRef.current) {
+            scratchNodeRef.current.port.postMessage({
+                type: 'seek',
+                position: time * audioContext.sampleRate
+            });
             setState(prev => ({ ...prev, currentTime: time }));
         }
-    }, []);
+    }, [audioContext]);
 
     const setPitch = useCallback((update: number | ((prev: number) => number)) => {
         setState(prev => {
             const newPitch = typeof update === 'function' ? update(prev.pitch) : update;
-            if (audioElementRef.current && !isScratchingRef.current) {
-                const playbackRate = 1 + (newPitch / 100);
-                audioElementRef.current.playbackRate = playbackRate;
+            if (scratchNodeRef.current && isPlayingRef.current && !isScratchingRef.current) {
+                const rate = 1 + (newPitch / 100);
+                scratchNodeRef.current.parameters.get('playbackRate')!.value = rate;
             }
             return { ...prev, pitch: newPitch };
         });
@@ -221,22 +211,27 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
 
     const startScratch = useCallback(() => {
         isScratchingRef.current = true;
-        if (audioElementRef.current) {
-            audioElementRef.current.playbackRate = 0;
+        if (scratchNodeRef.current) {
+            scratchNodeRef.current.parameters.get('isScratching')!.value = 1;
+            scratchNodeRef.current.parameters.get('scratchVelocity')!.value = 0;
         }
     }, []);
 
-    // ✅ Bug B Fix: stable endScratch using pitchRef
     const endScratch = useCallback(() => {
         isScratchingRef.current = false;
-        if (audioElementRef.current) {
-            audioElementRef.current.playbackRate = 1 + (pitchRef.current / 100);
+        if (scratchNodeRef.current) {
+            scratchNodeRef.current.parameters.get('isScratching')!.value = 0;
+            // Snappy resume logic
+            const targetRate = isPlayingRef.current ? (1 + pitchRef.current / 100) : 0;
+            scratchNodeRef.current.parameters.get('playbackRate')!.value = targetRate;
         }
     }, []);
 
     const setScratchRate = useCallback((rate: number) => {
-        if (audioElementRef.current && isScratchingRef.current) {
-            audioElementRef.current.playbackRate = Math.abs(rate);
+        if (scratchNodeRef.current && isScratchingRef.current) {
+            // Realistic mapping of velocity to rate
+            // 1.0 = normal speed. Negative = reverse.
+            scratchNodeRef.current.parameters.get('scratchVelocity')!.value = rate;
         }
     }, []);
 
@@ -308,18 +303,19 @@ export const useDeck = ({ audioContext, destination }: UseDeckOptions) => {
         setState(prev => {
             const newCuePoints = [...prev.cuePoints];
             if (newCuePoints[index] !== undefined) {
-                if (audioElementRef.current) {
-                    audioElementRef.current.currentTime = newCuePoints[index]!;
+                if (scratchNodeRef.current) {
+                    scratchNodeRef.current.port.postMessage({
+                        type: 'seek',
+                        position: newCuePoints[index]! * audioContext.sampleRate
+                    });
                 }
                 return prev;
             } else {
-                if (audioElementRef.current) {
-                    newCuePoints[index] = audioElementRef.current.currentTime;
-                }
+                newCuePoints[index] = prev.currentTime;
                 return { ...prev, cuePoints: newCuePoints };
             }
         });
-    }, []);
+    }, [audioContext]);
 
     const deleteCue = useCallback((index: number) => {
         setState(prev => {

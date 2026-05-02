@@ -16,6 +16,20 @@ import { cn } from "./utils/cn";
 const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
 const globalAudioContext = new AudioContextClass();
 
+// ✅ Register AudioWorklets once
+let workletLoaded = false;
+const loadWorklets = async () => {
+  if (workletLoaded) return;
+  try {
+    // Note: The path must be relative to the public root
+    await globalAudioContext.audioWorklet.addModule('/worklets/scratch-processor.js');
+    console.log('[AudioWorklet] scratch-processor loaded');
+    workletLoaded = true;
+  } catch (e) {
+    console.error('[AudioWorklet] failed to load:', e);
+  }
+};
+
 // Initialize shared nodes outside component for stability
 const masterGain = globalAudioContext.createGain();
 masterGain.connect(globalAudioContext.destination);
@@ -31,6 +45,7 @@ function App() {
   const [crossfader, setCrossfader] = useState(50);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTrackSelectorOpen, setIsTrackSelectorOpen] = useState(false);
+  const [isWorkletReady, setIsWorkletReady] = useState(false);
 
   const { keyMap, layout } = useSettings();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -68,6 +83,7 @@ function App() {
     };
 
     checkVersion();
+    loadWorklets().then(() => setIsWorkletReady(true));
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") checkVersion();
     };
@@ -163,12 +179,14 @@ function App() {
     audioContext: globalAudioContext,
     destination: deckAGain,
     deckId: "A",
+    isWorkletReady
   });
 
   const { state: deckBState, controls: deckB } = useDeck({
     audioContext: globalAudioContext,
     destination: deckBGain,
     deckId: "B",
+    isWorkletReady
   });
 
   // Screen Wake Lock

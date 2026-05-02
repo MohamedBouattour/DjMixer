@@ -122,7 +122,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
 
         const now = performance.now();
         const dt = (now - lastTouchTimeRef.current) / 1000;
-        if (dt < 0.01) return;
+        if (dt < 0.005) return; // Higher precision
 
         const angle = getAngle(e.clientX, e.clientY);
         let deltaAngle = angle - lastAngleRef.current;
@@ -134,12 +134,15 @@ const WaveformComponent: React.FC<WaveformProps> = ({
             discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
         }
 
-        const angularVelocity = deltaAngle / dt;
-        lastAngularVelocityRef.current = angularVelocity;
-        onScratch?.(angularVelocity / 200);
+        const instantaneousAngularVelocity = deltaAngle / dt;
+        // Smoother velocity tracking
+        lastAngularVelocityRef.current = lastAngularVelocityRef.current * 0.2 + instantaneousAngularVelocity * 0.8;
+        
+        // Map to playback rate: 360 degrees in 1.8s (33 1/3 RPM) = 200 deg/s
+        onScratch?.(lastAngularVelocityRef.current / 200);
 
         if (onSeek && duration > 0) {
-            const secondsPerDegree = (1 / (33.33 / 60)) / 360;
+            const secondsPerDegree = 1 / 200;
             const seekDelta = deltaAngle * secondsPerDegree;
             onSeek(Math.max(0, Math.min(duration, currentTime + seekDelta)));
         }
@@ -148,7 +151,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         lastTouchTimeRef.current = now;
     }, [getAngle, onScratch, onSeek, duration, currentTime]);
 
-    // ✅ Phase 5: Implement scratch inertia / deceleration
+    // ✅ Implement snappy release for professional feel
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         if (!isTouchingRef.current) return;
         isTouchingRef.current = false;
@@ -156,40 +159,18 @@ const WaveformComponent: React.FC<WaveformProps> = ({
 
         try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
 
-        const VINYL_DECELERATION = 0.92;
-        let scratchVelocity = lastAngularVelocityRef.current;
-        let lastMomentumTime = performance.now();
-
-        const decelerate = (now: number) => {
-            const dt = (now - lastMomentumTime) / 1000;
-            lastMomentumTime = now;
-            
-            scratchVelocity *= VINYL_DECELERATION;
-            rotationRef.current += scratchVelocity * dt;
-            
-            if (discRef.current) {
-                discRef.current.style.transform = `rotate(${rotationRef.current}deg)`;
-            }
-
-            // Map velocity back to playback rate during deceleration
-            onScratch?.(scratchVelocity / 200);
-
-            if (Math.abs(scratchVelocity) > 5) {
-                momentumRef.current = requestAnimationFrame(decelerate);
-            } else {
-                momentumRef.current = null;
-                onScratchEnd?.();
-                onReleaseScratch?.();
-            }
-        };
-
-        if (Math.abs(scratchVelocity) > 10) {
-            momentumRef.current = requestAnimationFrame(decelerate);
-        } else {
-            onScratchEnd?.();
-            onReleaseScratch?.();
+        // Clear any momentum animation
+        if (momentumRef.current) {
+            cancelAnimationFrame(momentumRef.current);
+            momentumRef.current = null;
         }
-    }, [onScratch, onScratchEnd, onReleaseScratch]);
+
+        // Professional DJ controllers resume instantly on release
+        onScratchEnd?.();
+        onReleaseScratch?.();
+        lastAngularVelocityRef.current = 0;
+
+    }, [onScratchEnd, onReleaseScratch]);
 
     const progress = duration > 0 ? (currentTime / duration) * 360 : 0;
 

@@ -36,14 +36,27 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      // For local development - use localhost:3002
-      '/search': 'http://localhost:3002',
-      '/stream': 'http://localhost:3002',
-      '/auth': 'http://localhost:3002'
-      // For production testing against Render:
-      // '/search': 'https://djmixer.onrender.com',
-      // '/stream': 'https://djmixer.onrender.com',
-      // '/auth': 'https://djmixer.onrender.com'
+      // Proxy all API requests to the VPS (VM)
+      '/api': {
+        target: 'https://79.137.14.75',
+        changeOrigin: true,
+        secure: false
+      },
+      '/search': {
+        target: 'https://79.137.14.75',
+        changeOrigin: true,
+        secure: false
+      },
+      '/stream': {
+        target: 'https://79.137.14.75',
+        changeOrigin: true,
+        secure: false
+      },
+      '/auth': {
+        target: 'https://79.137.14.75',
+        changeOrigin: true,
+        secure: false
+      }
     }
   }
 })

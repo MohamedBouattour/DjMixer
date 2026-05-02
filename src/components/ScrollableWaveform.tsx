@@ -328,8 +328,10 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
 
         const dx = e.clientX - lastXRef.current;
         const timeDiff = -(dx / pixelsPerSecondRef.current);
+        
+        // Velocity smoothing for more realistic feel
         const instantaneousVelocity = timeDiff / (dt_ms / 1000);
-        velocityRef.current = velocityRef.current * 0.4 + instantaneousVelocity * 0.6;
+        velocityRef.current = velocityRef.current * 0.3 + instantaneousVelocity * 0.7;
 
         lastTimestampRef.current = now;
         lastXRef.current = e.clientX;
@@ -346,41 +348,21 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
         if (dragTimeRef.current !== null) {
             onSeek(dragTimeRef.current);
         }
-        onScratchEnd?.();
+        
+        // Immediate release - no "parasite" momentum for realistic DJ feel
+        if (onScratchEnd) onScratchEnd();
+        if (onReleaseScratch) onReleaseScratch();
+        
+        velocityRef.current = 0;
+        dragTimeRef.current = null;
 
         try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { }
 
-        if (Math.abs(velocityRef.current) > 0.05) {
-            const animate = (now: number) => {
-                const dt = (now - lastTimestampRef.current) / 1000;
-                lastTimestampRef.current = now;
-                velocityRef.current *= friction;
-                
-                if (dragTimeRef.current !== null) {
-                    let nextTime = dragTimeRef.current + velocityRef.current * dt;
-                    if (nextTime <= 0) { nextTime = 0; velocityRef.current = 0; }
-                    else if (nextTime >= duration) { nextTime = duration; velocityRef.current = 0; }
-                    
-                    dragTimeRef.current = nextTime;
-                    onSeek(nextTime); 
-                    if (onScratch) onScratch(velocityRef.current);
-                }
-
-                if (Math.abs(velocityRef.current) > 0.01) {
-                    momentumFrameRef.current = requestAnimationFrame(animate);
-                } else {
-                    momentumFrameRef.current = null;
-                    dragTimeRef.current = null;
-                    if (onReleaseScratch) onReleaseScratch();
-                }
-            };
-            lastTimestampRef.current = performance.now();
-            momentumFrameRef.current = requestAnimationFrame(animate);
-        } else {
-            dragTimeRef.current = null;
-            if (onReleaseScratch) onReleaseScratch();
+        if (momentumFrameRef.current) {
+            cancelAnimationFrame(momentumFrameRef.current);
+            momentumFrameRef.current = null;
         }
-    }, [duration, onSeek, onScratch, onReleaseScratch, onScratchEnd]);
+    }, [duration, onSeek, onScratchEnd, onReleaseScratch]);
 
     return (
         <div
