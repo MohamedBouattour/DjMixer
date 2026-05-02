@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
-import './AuthModal.css';
+import { cn } from '../utils/cn';
+import { sharedStyles } from '../utils/sharedStyles';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -126,37 +127,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     if (!isOpen) return null;
 
     const modalContent = (
-        <div className="modal-overlay-base auth-modal-overlay">
-            <div ref={modalRef} className="modal-base auth-modal">
-                <header className="modal-header-base auth-header">
-                    <div className="auth-logo-section">
-                        <h2 className="auth-title">
+        <div className={sharedStyles.modalOverlay}>
+            <div ref={modalRef} className={cn(sharedStyles.modalBase, "max-w-[90vw] w-[380px] max-md:w-[95vw]")}>
+                <header className={cn(sharedStyles.modalHeader, "text-left max-md:p-4")}>
+                    <div className="flex flex-col">
+                        <h2 className="text-[18px] font-bold text-white m-0 mb-1">
                             {mode === 'login' ? 'Welcome Back' : 'Create Account'}
                         </h2>
-                        <p className="auth-subtitle">
+                        <p className="text-[13px] text-text-hint m-0">
                             {mode === 'login'
                                 ? 'Sign in to access streaming features'
                                 : 'Sign up to start mixing tracks'}
                         </p>
                     </div>
-                    <button className="icon-btn-close auth-close-btn" onClick={onClose}>
+                    <button className={sharedStyles.iconBtnClose} onClick={onClose}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                         </svg>
                     </button>
                 </header>
 
-                <div className="auth-content">
-                    <form onSubmit={handleSubmit} className="auth-form">
+                <div className="p-6 max-md:p-4">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         {error && (
-                            <div className="auth-error">
+                            <div className="bg-accent-red/10 border border-accent-red rounded-md p-3.5 text-[13px] text-[#ff6666] mb-3">
                                 <span>{error}</span>
                             </div>
                         )}
 
-                        <div className="auth-field">
+                        <div>
                             <input
-                                className="auth-input"
+                                className="w-full h-11 bg-bg-header border border-white/10 rounded-lg px-3.5 text-sm text-white transition-all duration-150 focus:border-deck-a focus:outline-none placeholder:text-text-muted disabled:opacity-50"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -167,9 +168,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                         </div>
 
                         {mode === 'register' && (
-                            <div className="auth-field">
+                            <div>
                                 <input
-                                    className="auth-input"
+                                    className="w-full h-11 bg-bg-header border border-white/10 rounded-lg px-3.5 text-sm text-white transition-all duration-150 focus:border-deck-a focus:outline-none placeholder:text-text-muted disabled:opacity-50"
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -180,9 +181,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                             </div>
                         )}
 
-                        <div className="auth-field">
+                        <div>
                             <input
-                                className="auth-input"
+                                className="w-full h-11 bg-bg-header border border-white/10 rounded-lg px-3.5 text-sm text-white transition-all duration-150 focus:border-deck-a focus:outline-none placeholder:text-text-muted disabled:opacity-50"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -193,9 +194,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                         </div>
 
                         {mode === 'register' && (
-                            <div className="auth-field">
+                            <div>
                                 <input
-                                    className="auth-input"
+                                    className="w-full h-11 bg-bg-header border border-white/10 rounded-lg px-3.5 text-sm text-white transition-all duration-150 focus:border-deck-a focus:outline-none placeholder:text-text-muted disabled:opacity-50"
                                     type="password"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -206,17 +207,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                             </div>
                         )}
 
-                        <button type="submit" className="auth-submit" disabled={isSubmitting}>
+                        <button 
+                            type="submit" 
+                            className="w-full h-11 bg-gradient-to-br from-deck-a to-deck-b border-none rounded-lg text-sm font-bold text-white cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(255,0,128,0.5)] disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none" 
+                            disabled={isSubmitting}
+                        >
                             {isSubmitting ? '...' : (mode === 'login' ? 'Sign In' : 'Create Account')}
                         </button>
                     </form>
 
-                    <div className="auth-toggle">
+                    <div className="mt-4 text-center text-[13px] text-text-hint">
                         <p>
                             {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
                             {' '}
                             <span
-                                className="auth-toggle-link"
+                                className="text-deck-b cursor-pointer font-semibold hover:underline"
                                 onClick={() => {
                                     setMode(mode === 'login' ? 'register' : 'login');
                                     setError('');

@@ -10,6 +10,7 @@ import { getAllTracksFromDB, saveTrackToDB } from "./utils/storage";
 import { useSettings } from "./contexts/SettingsContext";
 import { getKeyLabel } from "./utils/keyHelpers";
 import { API_ENDPOINTS } from "./config";
+import { cn } from "./utils/cn";
 
 // ✅ Bug A Fix: Global persistent AudioContext initialized eagerly
 const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -299,40 +300,40 @@ function App() {
   }, [keyMap, deckA, deckB, deckAState.isPlaying, deckBState.isPlaying, isSettingsOpen, isTrackSelectorOpen]);
 
   return (
-    <div className="app">
+    <div className="w-full h-dvh flex flex-col overflow-hidden relative pt-[env(safe-area-inset-top,5px)] pb-[env(safe-area-inset-bottom,5px)] pl-[env(safe-area-inset-left,5px)] pr-[env(safe-area-inset-right,5px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_1px,rgba(255,255,255,0.01)_1px,rgba(255,255,255,0.01)_2px)] bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d]">
       {/* Custom Orientation Warning UI */}
-      <div className="orientation-warning">
-        <div className="orientation-icon">
+      <div className="hidden portrait-mobile:flex fixed inset-0 bg-bg-darkest z-[9999] flex-col items-center justify-center text-center p-8 text-white">
+        <div className="w-16 h-16 mb-5 animate-[rotate-phone_2s_infinite_ease-in-out]">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z" />
           </svg>
         </div>
-        <h2>Please Rotate Your Device</h2>
-        <p>This DJ interface is optimized for landscape mode.</p>
+        <h2 className="text-xl font-bold mb-2">Please Rotate Your Device</h2>
+        <p className="text-text-secondary">This DJ interface is optimized for landscape mode.</p>
       </div>
 
-      <header className="app-header">
-        <div className="app-logo">
-          <div className="logo-icon">
+      <header className="flex items-center justify-between px-5 py-2.5 bg-black/80 backdrop-blur-lg border-b border-white/10 z-[1000] h-15">
+        <div className="flex items-center gap-3">
+          <div className="text-deck-a flex items-center">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
             </svg>
           </div>
-          <h1 className="app-title">DJ PRO MASTER</h1>
+          <h1 className="text-[1.2rem] font-bold tracking-widest text-white m-0 uppercase">DJ PRO MASTER</h1>
         </div>
 
-        <div className="settings-btn-container">
+        <div className="flex items-center gap-[15px]">
           {updateAvailable && (
-            <button className="update-notification-btn" onClick={handleUpdate} title="Update Available">
+            <button className="bg-accent-green text-bg-darkest px-3 py-1 rounded font-bold text-xs animate-pulse" onClick={handleUpdate} title="Update Available">
               Update
             </button>
           )}
-          <button className="settings-btn" onClick={() => setIsTrackSelectorOpen(true)} title="Open Library">
+          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30 hover:-translate-y-0.5" onClick={() => setIsTrackSelectorOpen(true)} title="Open Library">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
             </svg>
           </button>
-          <button className="settings-btn" onClick={() => setIsSettingsOpen(true)} title="Settings">
+          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-deck-a hover:border-deck-a/40 hover:-translate-y-0.5" onClick={() => setIsSettingsOpen(true)} title="Settings">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -343,26 +344,26 @@ function App() {
 
       {/* Audio Unlock Overlay */}
       {audioContextState !== "running" && (
-        <div className="audio-unlock-overlay" onClick={unlockAudio}>
-          <div className="unlock-content">
-            <div className="unlock-icon">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[5000] flex items-center justify-center cursor-pointer" onClick={unlockAudio}>
+          <div className="bg-bg-panel border border-white/10 p-10 rounded-2xl max-w-sm w-full text-center shadow-2xl scale-100 active:scale-95 transition-transform">
+            <div className="text-deck-a flex justify-center mb-6 drop-shadow-[0_0_15px_rgba(255,0,128,0.5)]">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
               </svg>
             </div>
-            <h2>
+            <h2 className="text-2xl font-bold mb-3 tracking-tight">
               {audioContextState === "uninitialized"
                 ? "Ready to Mix?"
                 : `Audio is currently ${audioContextState}. Tap to retry.`}
             </h2>
-            <p>Tap anywhere to start your DJ session.</p>
-            <button className="unlock-button">
+            <p className="text-text-secondary mb-8 text-sm">Tap anywhere to start your DJ session.</p>
+            <button className="w-full py-4 bg-deck-a text-white font-bold rounded-xl shadow-[0_4px_15px_rgba(255,0,128,0.4)] hover:brightness-110 active:scale-98 transition-all">
               {audioContextState === "uninitialized"
                 ? "START SESSION"
                 : "RESUME AUDIO"}
             </button>
             {audioContextState !== "uninitialized" && (
-              <div className="audio-status-pill">
+              <div className="mt-4 text-[10px] text-text-muted uppercase tracking-widest">
                 Status: {audioContextState}
               </div>
             )}
@@ -371,30 +372,30 @@ function App() {
       )}
 
       {/* Floating Action Buttons (Mobile Overlay) */}
-      <div className="floating-actions">
+      <div className="fixed top-[max(8px,env(safe-area-inset-top))] right-[87%] flex flex-row gap-[10px] z-[2000] landscape:top-[max(10px,env(safe-area-inset-top))] landscape:right-1/2 landscape:translate-x-1/2 landscape:gap-3 landscape-sm:top-[5px] landscape-sm:gap-2">
         <button
-          className="settings-floating-btn"
+          className="w-[98px] h-[98px] rounded-full bg-[rgba(30,30,30,0.95)] border-[3px] border-white/20 text-[#aaa] flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-xl shadow-[0_2px_10px_rgba(0,0,0,0.5)] hover:bg-[rgba(50,50,50,0.98)] hover:text-white hover:border-white/40 hover:scale-105 border-deck-b/50 text-deck-b hover:border-deck-b hover:shadow-[0_2px_15px_rgba(0,212,255,0.4)] landscape:w-[85px] landscape:h-[85px] landscape-sm:w-[78px] landscape-sm:h-[78px]"
           onClick={() => setIsTrackSelectorOpen(true)}
           title="Open Library"
         >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="landscape:w-[42px] landscape:h-[42px] landscape-sm:w-[36px] landscape-sm:h-[36px]">
             <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
           </svg>
         </button>
         <button
-          className="settings-floating-btn"
+          className="w-[98px] h-[98px] rounded-full bg-[rgba(30,30,30,0.95)] border-[3px] border-white/20 text-[#aaa] flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-xl shadow-[0_2px_10px_rgba(0,0,0,0.5)] hover:bg-[rgba(50,50,50,0.98)] hover:text-white hover:border-white/40 hover:scale-105 border-deck-a/40 hover:border-deck-a hover:shadow-[0_2px_15px_rgba(255,0,128,0.4)] landscape:w-[85px] landscape:h-[85px] landscape-sm:w-[78px] landscape-sm:h-[78px]"
           onClick={() => setIsSettingsOpen(true)}
           title="Open Settings"
         >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="landscape:w-[42px] landscape:h-[42px] landscape-sm:w-[36px] landscape-sm:h-[36px]">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
       </div>
 
-      <main className="app-main">
-        <div className="decks-section">
+      <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(35px,env(safe-area-inset-left))] landscape:pr-[max(35px,env(safe-area-inset-right))]">
+        <div className="flex-1 flex gap-0 min-h-0 w-full max-md:flex-col">
           <Deck
             deckId="A"
             state={deckAState}
@@ -411,7 +412,7 @@ function App() {
             }
           />
 
-          <section className="center-section">
+          <section className="w-[16%] flex flex-col gap-0 overflow-hidden shrink-0 min-w-[100px] max-md:w-full md:max-w-none md:min-w-0 md:w-auto">
             <Mixer
               crossfaderValue={crossfader}
               onCrossfaderChange={handleCrossfaderChange}

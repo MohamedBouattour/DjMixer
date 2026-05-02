@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { cn } from '../utils/cn';
 
 // Interface for beforeinstallprompt event
 interface BeforeInstallPromptEvent extends Event {
@@ -50,7 +51,7 @@ export const InstallPWA: React.FC = () => {
             }
         } else if (isIOS) {
             setShowIOSHint(true);
-            // Auto-hide hint after 5 seconds
+            // Auto-hide hint after 8 seconds
             setTimeout(() => setShowIOSHint(false), 8000);
         }
     };
@@ -61,29 +62,9 @@ export const InstallPWA: React.FC = () => {
     return (
         <>
             <button
-                className="install-pwa-btn"
+                className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[9000] bg-gradient-to-br from-[#00d4ff] to-[#0056b3] text-white border-none px-5 py-2.5 rounded-[24px] text-[0.9rem] font-bold shadow-[0_4px_15px_rgba(0,212,255,0.4)] cursor-pointer flex items-center gap-2 animate-[fadeIn_0.5s_ease-out]"
                 onClick={handleInstallClick}
                 title="Install App"
-                style={{
-                    position: 'fixed',
-                    bottom: '20px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    zIndex: 9000,
-                    background: 'linear-gradient(135deg, #00d4ff 0%, #0056b3 100%)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '24px',
-                    fontSize: '0.9rem',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 15px rgba(0, 212, 255, 0.4)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    animation: 'fadeIn 0.5s ease-out'
-                }}
             >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -94,39 +75,13 @@ export const InstallPWA: React.FC = () => {
             </button>
 
             {showIOSHint && (
-                <div style={{
-                    position: 'fixed',
-                    bottom: '80px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(20, 20, 20, 0.95)',
-                    border: '1px solid #333',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    zIndex: 9001,
-                    width: '90%',
-                    maxWidth: '300px',
-                    textAlign: 'center',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                    backdropFilter: 'blur(10px)'
-                }}>
-                    <div style={{ marginBottom: '10px', fontSize: '1rem', fontWeight: 'bold' }}>Install on iOS</div>
-                    <div style={{ color: '#ccc', fontSize: '0.9rem', lineHeight: '1.4' }}>
-                        Tap the <strong style={{ color: '#00d4ff' }}>Share</strong> button <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle' }}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
-                        <br />and select <strong style={{ color: '#fff' }}>"Add to Home Screen"</strong>
+                <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[rgba(20,20,20,0.95)] border border-[#333] rounded-xl p-4 z-[9001] w-[90%] max-w-[300px] text-center shadow-[0_10px_25px_rgba(0,0,0,0.5)] backdrop-blur-md">
+                    <div className="mb-2.5 text-base font-bold text-white">Install on iOS</div>
+                    <div className="text-[#ccc] text-[0.9rem] leading-[1.4]">
+                        Tap the <strong className="text-[#00d4ff]">Share</strong> button <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline-block align-middle"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
+                        <br />and select <strong className="text-white">"Add to Home Screen"</strong>
                     </div>
-                    <div style={{
-                        marginTop: '10px',
-                        width: '0',
-                        height: '0',
-                        borderLeft: '10px solid transparent',
-                        borderRight: '10px solid transparent',
-                        borderTop: '10px solid rgba(20, 20, 20, 0.95)',
-                        position: 'absolute',
-                        bottom: '-10px',
-                        left: '50%',
-                        transform: 'translateX(-50%)'
-                    }} />
+                    <div className="mt-2.5 w-0 h-0 border-x-[10px] border-x-transparent border-t-[10px] border-t-[rgba(20,20,20,0.95)] absolute -bottom-2.5 left-1/2 -translate-x-1/2" />
                 </div>
             )}
         </>

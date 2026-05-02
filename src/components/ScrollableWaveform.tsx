@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import './ScrollableWaveform.css';
+import { cn } from '../utils/cn';
 
 interface ScrollableWaveformProps {
     audioUrl: string | null;
@@ -385,16 +385,24 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     return (
         <div
             ref={containerRef}
-            className={`scrollable-waveform ${isDragging ? 'dragging' : ''}`}
-            style={{ '--color-waveform': color, height: `${height}px`, touchAction: 'none' } as React.CSSProperties}
+            className={cn(
+                "relative w-full overflow-hidden cursor-grab select-none touch-none min-h-[44px] border border-white/5 transition-colors duration-200",
+                "bg-[linear-gradient(to_bottom,#0d0d0d_0%,#151515_50%,#0d0d0d_100%)]",
+                "h-[60px] md:h-[50px] landscape:h-[40px] max-md:h-[48px] max-md:rounded-md",
+                isDragging && "cursor-grabbing border-opacity-100 shadow-[0_0_8px_rgba(255,255,255,0.05)]"
+            )}
+            style={{ 
+                height: `${height}px`,
+                borderColor: isDragging ? color : 'rgba(255, 255, 255, 0.06)'
+            }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerUp}
         >
-            <canvas ref={canvasRef} />
+            <canvas ref={canvasRef} className="block w-full h-full" />
             {(isLoading || (!waveformData && audioUrl)) && (
-                <div className="waveform-loading-overlay" style={{ touchAction: 'none' }}>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-[#888] text-[11px] font-medium backdrop-blur-sm pointer-events-none max-xl:text-[10px] max-md:text-[10px]" style={{ touchAction: 'none' }}>
                     <span>{isLoading ? 'Loading Track...' : 'Analyzing...'}</span>
                 </div>
             )}

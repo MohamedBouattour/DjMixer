@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import './HorizontalSlider.css';
+import { cn } from '../utils/cn';
 
 interface HorizontalSliderProps {
     value: number;
@@ -72,32 +72,32 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
     const percentage = ((value - min) / (max - min)) * 100;
 
     return (
-        <div className={`horizontal-slider-container ${className}`}>
+        <div className={cn("flex flex-col gap-2 w-full", className)}>
             {(label || showValue) && (
-                <div className="horizontal-slider-header">
-                    {label && <span className="horizontal-slider-label">{label}</span>}
-                    {showValue && <span className="horizontal-slider-value">{Math.round(value)}</span>}
+                <div className="flex justify-between items-center mb-1">
+                    {label && <span className="text-sm font-bold text-text-hint uppercase tracking-widest">{label}</span>}
+                    {showValue && <span className="text-sm font-bold">{Math.round(value)}</span>}
                 </div>
             )}
             <div 
                 ref={trackRef}
-                className="horizontal-slider-track"
+                className="relative w-full bg-bg-darkest rounded-md cursor-pointer shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)] overflow-visible"
                 style={{ height: `${height}px` }}
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleMouseDown}
             >
-                <div className="horizontal-track-bg"></div>
+                <div className="absolute inset-0 rounded-md bg-white/5"></div>
                 <div 
-                    className="horizontal-track-fill"
+                    className="absolute h-full left-0 rounded-md transition-all duration-75"
                     style={{ 
                         width: `${percentage}%`,
                         background: color,
                         boxShadow: `0 0 10px ${color}`
                     }}
                 ></div>
-                {showCenterLine && <div className="horizontal-center-line"></div>}
+                {showCenterLine && <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-white/20 -translate-x-1/2"></div>}
                 <div 
-                    className="horizontal-slider-thumb"
+                    className="absolute top-1/2 h-[130%] -translate-y-1/2 bg-gradient-to-b from-white via-[#e0e0e0] to-[#c8c8c8] rounded-sm shadow-[0_2px_8px_rgba(0,0,0,0.5)] cursor-grab active:cursor-grabbing z-[5]"
                     style={{ 
                         left: `calc(${percentage}% - ${thumbWidth / 2}px)`,
                         width: `${thumbWidth}px`

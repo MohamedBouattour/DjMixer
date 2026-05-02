@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
+import { cn } from '../utils/cn';
 
 interface WaveformBarProps {
     audioUrl: string | null;
@@ -8,6 +9,7 @@ interface WaveformBarProps {
     onSeek: (time: number) => void;
     color: string;
     height?: number;
+    className?: string;
 }
 
 const WaveformBarComponent: React.FC<WaveformBarProps> = ({
@@ -16,7 +18,8 @@ const WaveformBarComponent: React.FC<WaveformBarProps> = ({
     duration,
     onSeek,
     color,
-    height = 50
+    height = 50,
+    className
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -89,15 +92,8 @@ const WaveformBarComponent: React.FC<WaveformBarProps> = ({
     return (
         <div
             ref={containerRef}
-            className="waveform-bar"
-            style={{
-                width: '100%',
-                height: `${height}px`,
-                background: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '8px',
-                marginBottom: '8px',
-                overflow: 'hidden'
-            }}
+            className={cn("w-full bg-black/20 rounded-lg mb-2 overflow-hidden", className)}
+            style={{ height: `${height}px` }}
         />
     );
 };

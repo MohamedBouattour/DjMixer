@@ -3,8 +3,8 @@ import ReactDOM from 'react-dom';
 import type { Track } from '../types';
 import { API_ENDPOINTS } from '../config';
 import { loadAudioFile } from '../utils/audioUtils';
-
-import './UnifiedTrackSelector.css';
+import { cn } from '../utils/cn';
+import { sharedStyles } from '../utils/sharedStyles';
 
 interface UnifiedTrackSelectorProps {
     isOpen: boolean;
@@ -104,88 +104,96 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
     const renderTrackItem = (track: Track) => (
         <div 
             key={track.id} 
-            className="unified-track-item"
+            className="flex items-center gap-3 p-2 bg-bg-header border border-white/5 rounded-lg cursor-pointer transition-all duration-150 hover:bg-[#333] hover:border-white/10"
             onClick={() => setSelectedTrack(track)}
         >
-            <div className="unified-track-thumb">
-                <svg viewBox="0 0 24 24" fill="currentColor" opacity="0.5">
+            <div className="w-[62px] h-[62px] bg-[#333] rounded overflow-hidden shrink-0 max-md:w-[52px] max-md:h-[52px]">
+                <svg viewBox="0 0 24 24" fill="currentColor" opacity="0.5" className="w-full h-full p-2">
                     <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                 </svg>
             </div>
-            <div className="unified-track-info">
-                <div className="unified-track-title">{track.name}</div>
-                <div className="unified-track-artist">
+            <div className="flex-1 min-w-0">
+                <div className="text-[18px] font-semibold text-white truncate">{track.name}</div>
+                <div className="text-[16px] text-text-hint truncate mt-0.5">
                     {track.file ? 'Local File' : 'YouTube Stream'}
                 </div>
             </div>
-            <div className="unified-track-duration">
+            <div className="text-sm font-mono text-text-hint tabular-nums">
                 {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
             </div>
         </div>
     );
 
     return ReactDOM.createPortal(
-        <div className="unified-modal-overlay" onClick={onClose}>
-            <div className="unified-modal" onClick={e => e.stopPropagation()}>
-                <header className="unified-modal-header">
-                    <div className="unified-tabs">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[10000] flex items-center justify-center" onClick={onClose}>
+            <div className={cn(sharedStyles.modalBase, "max-w-[95vw] max-h-[85vh] w-[600px] flex flex-col max-md:w-screen max-md:h-screen max-md:rounded-none max-md:max-h-none")} onClick={e => e.stopPropagation()}>
+                <header className={cn(sharedStyles.modalHeader, "max-md:p-3")}>
+                    <div className="flex gap-2">
                         <button 
-                            className={`unified-tab-btn ${activeTab === 'library' ? 'active' : ''}`}
+                            className={cn(
+                                "h-[42px] px-5 bg-bg-header border border-white/10 rounded-2xl text-[#888] text-[17px] font-semibold cursor-pointer transition-all duration-150",
+                                activeTab === 'library' && "bg-gradient-to-br from-deck-a to-deck-b border-transparent text-white"
+                            )}
                             onClick={() => setActiveTab('library')}
                         >Library</button>
                         <button 
-                            className={`unified-tab-btn ${activeTab === 'search' ? 'active' : ''}`}
+                            className={cn(
+                                "h-[42px] px-5 bg-bg-header border border-white/10 rounded-2xl text-[#888] text-[17px] font-semibold cursor-pointer transition-all duration-150",
+                                activeTab === 'search' && "bg-gradient-to-br from-deck-a to-deck-b border-transparent text-white"
+                            )}
                             onClick={() => setActiveTab('search')}
                         >Search</button>
                     </div>
-                    <button className="unified-close-btn" onClick={onClose}>&times;</button>
+                    <button className={cn(sharedStyles.iconBtnClose, "w-[42px] h-[42px]")} onClick={onClose}>&times;</button>
                 </header>
 
-                <div className="unified-content-area">
+                <div className="flex-1 overflow-y-auto p-4 max-md:p-3">
                     {activeTab === 'search' ? (
-                        <div className="search-view">
-                            <form className="search-input-container" onSubmit={handleSearch}>
+                        <div className="flex flex-col">
+                            <form className="flex gap-2 mb-4" onSubmit={handleSearch}>
                                 <input 
                                     type="text" 
-                                    className="main-search-input"
+                                    className="flex-1 h-[57px] bg-bg-header border border-white/10 rounded-lg px-3.5 text-[18px] text-white focus:border-deck-b focus:outline-none"
                                     placeholder="Search YouTube..."
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     autoFocus
                                 />
-                                <button type="submit" className="search-btn" disabled={isSearching}>
+                                <button type="submit" className="h-[57px] bg-deck-b border-none rounded-lg text-white flex items-center justify-center cursor-pointer px-4 font-semibold disabled:opacity-50" disabled={isSearching}>
                                     {isSearching ? '...' : 'Search'}
                                 </button>
                             </form>
-                            <div className="unified-track-list">
+                            <div className="flex flex-col gap-2">
                                 {searchResults.map(renderTrackItem)}
                             </div>
                         </div>
                     ) : (
                         <div 
-                            className={`library-view ${isDragActive ? 'drag-active' : ''}`}
+                            className={cn(
+                                "flex flex-col",
+                                isDragActive && "border-2 border-dashed border-deck-b bg-deck-b/5"
+                            )}
                             onDragOver={e => { e.preventDefault(); setIsDragActive(true); }}
                             onDragLeave={() => setIsDragActive(false)}
                             onDrop={handleDrop}
                         >
-                            <div className="search-input-container">
+                            <div className="flex gap-2 mb-4">
                                 <button 
-                                    className="action-btn file-input-label" 
+                                    className="w-full h-[57px] bg-[#333] border border-white/10 text-[#ccc] rounded-lg flex items-center justify-center cursor-pointer px-4 font-semibold hover:bg-[#444] hover:text-white" 
                                     onClick={() => fileInputRef.current?.click()}
-                                    style={{ width: '100%' }}
                                 >
                                     Add Music Files
                                 </button>
                                 <input 
                                     type="file" 
                                     ref={fileInputRef}
-                                    style={{ display: 'none' }}
+                                    className="hidden"
                                     accept="audio/*"
                                     multiple
                                     onChange={e => handleFileUpload(e.target.files)}
                                 />
                             </div>
-                            <div className="unified-track-list">
+                            <div className="flex flex-col gap-2">
                                 {tracks.map(renderTrackItem)}
                             </div>
                         </div>
@@ -193,13 +201,13 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                 </div>
 
                 {selectedTrack && (
-                    <div className="selector-overlay" onClick={() => setSelectedTrack(null)}>
-                        <div className="selector-card" onClick={e => e.stopPropagation()}>
-                            <h3 className="unified-track-title">{selectedTrack.name}</h3>
-                            <p style={{ color: '#888', marginBottom: '20px' }}>Load to which deck?</p>
-                            <div className="selector-deck-buttons">
+                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center backdrop-blur-sm z-50" onClick={() => setSelectedTrack(null)}>
+                        <div className="bg-[#222] p-6 rounded-xl text-center border border-white/10 w-[90%] max-w-[300px]" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-[18px] font-semibold text-white truncate mb-1">{selectedTrack.name}</h3>
+                            <p className="text-text-hint mb-5">Load to which deck?</p>
+                            <div className="flex gap-3 mb-5">
                                 <button 
-                                    className={`selector-deck-btn deck-a ${isPlayingA ? 'active' : ''}`}
+                                    className="flex-1 h-[104px] rounded-lg border-none font-extrabold text-[31px] text-white cursor-pointer flex flex-col items-center justify-center gap-1 transition-transform active:scale-95 bg-deck-a"
                                     onClick={() => {
                                         onLoadTrack(selectedTrack, 'A');
                                         setSelectedTrack(null);
@@ -207,10 +215,10 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                                     }}
                                 >
                                     A
-                                    <span>{isPlayingA ? 'Currently Playing' : 'Idle'}</span>
+                                    <span className="text-[10px] font-semibold opacity-80">{isPlayingA ? 'Currently Playing' : 'Idle'}</span>
                                 </button>
                                 <button 
-                                    className={`selector-deck-btn deck-b ${isPlayingB ? 'active' : ''}`}
+                                    className="flex-1 h-[104px] rounded-lg border-none font-extrabold text-[31px] text-white cursor-pointer flex flex-col items-center justify-center gap-1 transition-transform active:scale-95 bg-deck-b"
                                     onClick={() => {
                                         onLoadTrack(selectedTrack, 'B');
                                         setSelectedTrack(null);
@@ -218,11 +226,11 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                                     }}
                                 >
                                     B
-                                    <span>{isPlayingB ? 'Currently Playing' : 'Idle'}</span>
+                                    <span className="text-[10px] font-semibold opacity-80">{isPlayingB ? 'Currently Playing' : 'Idle'}</span>
                                 </button>
                             </div>
                             <button 
-                                className="selector-cancel-btn"
+                                className="bg-transparent border border-[#444] text-[#888] py-2 px-4 rounded-[20px] cursor-pointer hover:border-[#666] hover:text-white"
                                 onClick={() => setSelectedTrack(null)}
                             >Cancel</button>
                         </div>

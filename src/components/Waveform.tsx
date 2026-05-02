@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import './Waveform.css';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { cn } from '../utils/cn';
 
 interface WaveformProps {
     currentTime: number;
@@ -35,6 +35,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     // Refs for animation loop to avoid dependency re-runs
     const isPlayingRef = useRef(isPlaying);
     const isTouchingRef = useRef(false);
+    const [isScratching, setIsScratching] = useState(false);
     const lastAngularVelocityRef = useRef(0);
 
     useEffect(() => {
@@ -109,8 +110,8 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         lastAngleRef.current = angle;
         lastTouchTimeRef.current = performance.now();
         isTouchingRef.current = true;
+        setIsScratching(true);
 
-        containerRef.current.classList.add('scratching');
         onScratchStart?.();
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
         onScratch?.(0);
@@ -151,7 +152,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         if (!isTouchingRef.current) return;
         isTouchingRef.current = false;
-        containerRef.current?.classList.remove('scratching');
+        setIsScratching(false);
 
         try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
 
@@ -194,7 +195,14 @@ const WaveformComponent: React.FC<WaveformProps> = ({
 
     return (
         <div
-            className={`waveform-vinyl-container ${isPlaying ? 'is-playing' : ''}`}
+            className={cn(
+                "relative w-full aspect-square max-w-[320px] max-h-[320px] mx-auto cursor-grab select-none touch-none",
+                "active:cursor-grabbing",
+                isScratching && "cursor-grabbing",
+                "max-xl:max-w-[180px] max-xl:max-h-[180px] max-xl:w-[180px] max-xl:h-[180px]",
+                "before:content-[''] before:absolute before:inset-[4%] before:rounded-full before:border-[3px] before:border-[var(--deck-color)] before:pointer-events-none before:opacity-30 before:transition-all before:duration-500",
+                isPlaying && "before:shadow-[0_0_30px_var(--deck-color),inset_0_0_15px_rgba(0,0,0,0.5)] before:opacity-100"
+            )}
             ref={containerRef}
             style={{ '--deck-color': color, touchAction: 'none' } as React.CSSProperties}
             onPointerDown={handlePointerDown}
@@ -203,34 +211,40 @@ const WaveformComponent: React.FC<WaveformProps> = ({
             onPointerCancel={handlePointerUp}
             onPointerLeave={handlePointerUp}
         >
-            <div className="waveform-vinyl-disc" ref={discRef}>
+            <div 
+                className="absolute inset-[8%] rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.8),inset_0_0_50px_rgba(0,0,0,0.9)] will-change-transform" 
+                ref={discRef}
+                style={{
+                    background: 'radial-gradient(circle at center, #0a0a0a 0%, #1a1a1a 20%, #0f0f0f 40%, #1a1a1a 60%, #0d0d0d 87%, #151515 100%)'
+                }}
+            >
                 <canvas 
                     ref={groovesCanvasRef} 
-                    className="waveform-vinyl-grooves-canvas"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                    className="absolute inset-0 w-full h-full pointer-events-none opacity-80"
                 />
-                <div className="waveform-vinyl-position-marker"></div>
-                <div className="waveform-vinyl-label" style={{ background: color }}>
-                    <div className="waveform-vinyl-label-text">DJ PRO</div>
-                    <div className="waveform-label-spindle"></div>
+                <div 
+                    className="absolute top-[10%] left-1/2 w-1 h-[12%] rounded-[2px] -translate-x-1/2 shadow-[0_0_8px_var(--deck-color)] pointer-events-none opacity-90"
+                    style={{ background: color }}
+                ></div>
+                <div 
+                    className="absolute inset-[38%] rounded-full flex flex-col items-center justify-center text-white font-bold text-xs text-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.4),0_2px_10px_rgba(0,0,0,0.3)] pointer-events-none"
+                    style={{ background: color }}
+                >
+                    <div className="leading-tight">DJ PRO</div>
+                    <div className="absolute w-[12%] h-[12%] rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_2px_rgba(255,255,255,0.1)]" style={{ background: 'radial-gradient(circle, #3a3a3a 0%, #1a1a1a 60%, #0a0a0a 100%)' }}></div>
                 </div>
-                <div className="waveform-vinyl-reflection"></div>
+                <div className="absolute inset-0 rounded-full bg-[linear-gradient(120deg,transparent_35%,rgba(255,255,255,0.04)_45%,rgba(255,255,255,0.07)_50%,rgba(255,255,255,0.04)_55%,transparent_65%)] pointer-events-none"></div>
             </div>
-            <svg className="waveform-progress-ring" viewBox="0 0 100 100">
-                <circle className="waveform-progress-ring-bg" cx="50" cy="50" r="48" />
+            <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 100 100">
+                <circle className="fill-none stroke-white/8 stroke-[4]" cx="50" cy="50" r="48" />
                 <circle
-                    className="waveform-progress-ring-fill"
+                    className="fill-none stroke-[5] stroke-linecap-round"
                     cx="50"
                     cy="50"
                     r="48"
                     style={{ stroke: color, strokeDasharray: `${(progress / 360) * 301.59} 301.59` }}
                 />
             </svg>
-            <div className={`waveform-tonearm ${isPlaying ? 'is-playing' : ''}`}>
-                <div className="waveform-tonearm-base"></div>
-                <div className="waveform-tonearm-arm"></div>
-                <div className="waveform-tonearm-head"></div>
-            </div>
         </div>
     );
 };

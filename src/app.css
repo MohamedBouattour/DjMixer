@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@theme {
+  /* Core backgrounds */
+  --color-bg-dark: #1a1a1a;
+  --color-bg-darker: #121212;
+  --color-bg-darkest: #0a0a0a;
+  --color-bg-panel: #1e1e1e;
+  --color-bg-control: #252525;
+  --color-bg-header: #252525;
+  --color-bg-control-dark: #333333;
+
+  /* Deck colors */
+  --color-deck-a: #ff0080;
+  --color-deck-b: #00d4ff;
+
+  /* Accent colors */
+  --color-accent-green: #00ff88;
+  --color-accent-yellow: #ffcc00;
+  --color-accent-red: #ff4444;
+
+  /* Text */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #aaaaaa;
+  --color-text-muted: #666666;
+  --color-text-hint: #888888;
+
+  /* Borders */
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-medium: rgba(255, 255, 255, 0.15);
+  --color-border-light: rgba(255, 255, 255, 0.1);
+
+  /* Font */
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Radius */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Custom breakpoints */
+  --breakpoint-xs: 480px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-landscape: (orientation: landscape) and (max-height: 500px);
+  --breakpoint-landscape-sm: (orientation: landscape) and (max-height: 400px);
+  --breakpoint-portrait-mobile: (orientation: portrait) and (max-width: 1024px);
+}
+
+/* Base layer: reset + body styles */
+@layer base {
+  *, *::before, *::after {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-main);
+    background: var(--color-bg-darkest);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+    overscroll-behavior: none;
+  }
+
+  body {
+    cursor: default;
+    position: fixed;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--color-deck-a);
+    outline-offset: 2px;
+  }
+
+  img, a, button, [role="button"] {
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+  }
+}
+
+/* Keyframes needed globally */
+@keyframes rotate-phone {
+  0%, 75%, 100% { transform: rotate(0deg); }
+  25%, 50% { transform: rotate(90deg); }
+}
+
+@keyframes deck-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes popup-fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes settings-pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}

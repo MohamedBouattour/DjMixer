@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import type { DeckState } from '../types';
 import VerticalSlider from './VerticalSlider';
 import HorizontalSlider from './HorizontalSlider';
-import './Mixer.css';
+import { cn } from '../utils/cn';
+import { sharedStyles } from '../utils/sharedStyles';
 
 interface MixerProps {
     crossfaderValue: number;
@@ -31,9 +32,9 @@ export const Mixer: React.FC<MixerProps> = ({
     const renderEQControls = (deckId: 'A' | 'B', state: DeckState, color: string) => {
         const { eq } = state;
         return (
-            <div className="eq-controls-popup-deck" style={{ '--deck-color': color } as React.CSSProperties}>
-                <div className="effects-deck-label" style={{ background: color }}>DECK {deckId}</div>
-                <div className="eq-controls-row">
+            <div className="bg-black/30 rounded-xl p-5 border border-white/5" style={{ '--deck-color': color } as React.CSSProperties}>
+                <div className="text-[10px] font-extrabold text-white py-1 px-2 rounded-full text-center mb-4 shadow-[0_4px_10px_rgba(0,0,0,0.3)] tracking-widest" style={{ background: color }}>DECK {deckId}</div>
+                <div className="flex gap-2 justify-center">
                     {(['high', 'mid', 'low'] as const).map((band) => (
                         <VerticalSlider
                             key={band}
@@ -45,7 +46,7 @@ export const Mixer: React.FC<MixerProps> = ({
                             showValue={false}
                             color={color}
                             height={130}
-                            className="eq-slider-vertical compact"
+                            className="h-[140px] w-9 py-2 [&_.track]:w-1.5 [&_.track]:bg-black/50 [&_.track]:border-white/10 [&_.track]:px-0 [&_.track]:shadow-none [&_.thumb]:w-7 [&_.thumb]:h-3.5 [&_.thumb]:before:left-1 [&_.thumb]:before:right-1 [&_.thumb]:after:left-1 [&_.thumb]:after:right-1 [&_.vertical-slider-label]:mb-2 [&_.vertical-slider-label]:text-[9px] [&_.vertical-slider-label]:opacity-70"
                         />
                     ))}
                 </div>
@@ -64,18 +65,18 @@ export const Mixer: React.FC<MixerProps> = ({
 
     return (
         <>
-            <div className="mixer glass-panel">
-                {/* Top row: VOL labels with settings gear in center and library on right */}
-                <div className="mixer-header-row">
-                    <span className="mixer-vol-label deck-a">VOL</span>
-                    <span className="mixer-vol-label deck-b">VOL</span>
+            <div className="flex flex-col items-center p-2 gap-2 h-full w-full bg-gradient-to-b from-bg-dark via-bg-darker to-bg-darkest border-x border-white/15 max-xl:p-1 max-xl:gap-1 landscape:p-1 landscape:gap-1">
+                {/* Top row: VOL labels */}
+                <div className="flex items-center justify-between px-1 w-full shrink-0 min-h-[24px] landscape:min-h-[20px]">
+                    <span className="text-[13px] font-bold tracking-widest text-deck-a max-xl:text-[11px] landscape:text-[9px] landscape:tracking-tight">VOL</span>
+                    <span className="text-[13px] font-bold tracking-widest text-deck-b max-xl:text-[11px] landscape:text-[9px] landscape:tracking-tight">VOL</span>
                 </div>
 
-                {/* Main faders section - Side by side volume sliders with VU meters */}
-                <div className="mixer-faders-section">
+                {/* Main faders section */}
+                <div className="flex-1 flex items-stretch justify-center gap-2 p-2 bg-black/40 rounded-lg min-h-0 w-full max-xl:p-1 max-xl:gap-1 landscape:p-1 landscape:gap-[3px]">
                     {/* Deck A: Slider + VU */}
-                    <div className="mixer-fader-column">
-                        <div className="mixer-volume-slider-container">
+                    <div className="flex flex-row items-stretch gap-2 flex-1 landscape:gap-[3px]">
+                        <div className="flex-1 w-full min-w-[60px] max-w-[68px] bg-gradient-to-b from-[#3a3a3a] via-bg-dark via-bg-darker via-bg-dark to-[#3a3a3a] rounded-md relative shadow-[inset_0_2px_10px_rgba(0,0,0,0.6),inset_0_0_20px_rgba(0,0,0,0.4)] flex items-center justify-center border border-white/10 overflow-hidden max-xl:min-w-[52px] max-xl:max-w-[58px] landscape:min-w-[44px] landscape:max-w-[50px]">
                             <VerticalSlider
                                 value={deckAState.volume}
                                 min={0}
@@ -84,49 +85,67 @@ export const Mixer: React.FC<MixerProps> = ({
                                 label=""
                                 showValue={false}
                                 color="#ff0080"
-                                className="mixer-volume-slider-vertical"
+                                className="w-full h-full flex flex-col items-center py-2"
                             />
                         </div>
-                        <div className="mixer-vu-meter">
+                        <div className="flex flex-col-reverse gap-0.5 w-7 min-w-[28px] shrink-0 p-1 bg-gradient-to-b from-bg-darkest to-[#050505] rounded-sm border border-white/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] max-xl:w-6 max-xl:min-w-[24px] landscape:w-[18px] landscape:min-w-[18px] landscape:p-0.5 landscape:gap-[1px]">
                             {Array.from({ length: 12 }).map((_, i) => {
                                 const segmentIndex = i;
                                 const isActive = segmentIndex < vuLevelA;
                                 const isPeak = segmentIndex >= 10;
                                 const isHigh = segmentIndex >= 8;
                                 return (
-                                    <div key={i} className={`mixer-vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
+                                    <div 
+                                        key={i} 
+                                        className={cn(
+                                            "flex-1 min-h-[6px] bg-bg-dark rounded-[1px] transition-all duration-75 border border-black/30",
+                                            isActive && !isHigh && !isPeak && "bg-gradient-to-r from-[#00cc66] via-accent-green to-[#00cc66] shadow-[0_0_6px_var(--color-accent-green)] border-transparent",
+                                            isActive && isHigh && !isPeak && "bg-gradient-to-r from-[#cc9900] via-accent-yellow to-[#cc9900] shadow-[0_0_6px_var(--color-accent-yellow)] border-transparent",
+                                            isActive && isPeak && "bg-gradient-to-r from-[#cc3333] via-accent-red to-[#cc3333] shadow-[0_0_8px_var(--color-accent-red)] border-transparent",
+                                            "landscape:min-h-[4px]"
+                                        )} 
+                                    />
                                 );
                             })}
                         </div>
                     </div>
 
                     {/* Center: MIX label and volume percentages */}
-                    <div className="mixer-center">
-                        <span className="mixer-volume-percent deck-a-percent">{Math.round(deckAState.volume)}%</span>
+                    <div className="flex flex-col items-center justify-center gap-2 px-1 min-w-[50px] max-xl:gap-2 max-xl:min-w-[44px] landscape:min-w-[36px] landscape:gap-[2px] landscape:p-[1px]">
+                        <span className="text-[12px] font-bold text-deck-a whitespace-nowrap max-xl:text-[11px] landscape:text-[9px]">{Math.round(deckAState.volume)}%</span>
                         <button
-                            className="mix-label-btn"
+                            className="text-[25px] font-extrabold text-white bg-gradient-to-br from-deck-a to-deck-b border-none px-[31px] py-[18px] rounded-lg tracking-widest cursor-pointer transition-all duration-200 shadow-[0_2px_8px_rgba(255,0,128,0.3),0_2px_8px_rgba(0,212,255,0.3)] hover:scale-105 hover:shadow-[0_4px_12px_rgba(255,0,128,0.5),0_4px_12px_rgba(0,212,255,0.5)] active:scale-95 max-xl:text-[18px] max-xl:px-[21px] max-xl:py-[13px] landscape:text-[14px] landscape:px-4 landscape:py-2.5 max-md:text-[11px] max-md:px-3.5 max-md:py-2 max-md:rounded-md"
                             onClick={() => setIsEQPopupOpen(true)}
                             title="Open Mixer & EQ Settings"
                         >
                             MIX
                         </button>
-                        <span className="mixer-volume-percent deck-b-percent">{Math.round(deckBState.volume)}%</span>
+                        <span className="text-[12px] font-bold text-deck-b whitespace-nowrap max-xl:text-[11px] landscape:text-[9px]">{Math.round(deckBState.volume)}%</span>
                     </div>
 
                     {/* Deck B: VU + Slider */}
-                    <div className="mixer-fader-column">
-                        <div className="mixer-vu-meter">
+                    <div className="flex flex-row items-stretch gap-2 flex-1 landscape:gap-[3px]">
+                        <div className="flex flex-col-reverse gap-0.5 w-7 min-w-[28px] shrink-0 p-1 bg-gradient-to-b from-bg-darkest to-[#050505] rounded-sm border border-white/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] max-xl:w-6 max-xl:min-w-[24px] landscape:w-[18px] landscape:min-w-[18px] landscape:p-0.5 landscape:gap-[1px]">
                             {Array.from({ length: 12 }).map((_, i) => {
                                 const segmentIndex = i;
                                 const isActive = segmentIndex < vuLevelB;
                                 const isPeak = segmentIndex >= 10;
                                 const isHigh = segmentIndex >= 8;
                                 return (
-                                    <div key={i} className={`mixer-vu-segment ${isActive ? 'active' : ''} ${isPeak ? 'peak' : isHigh ? 'high' : ''}`} />
+                                    <div 
+                                        key={i} 
+                                        className={cn(
+                                            "flex-1 min-h-[6px] bg-bg-dark rounded-[1px] transition-all duration-75 border border-black/30",
+                                            isActive && !isHigh && !isPeak && "bg-gradient-to-r from-[#00cc66] via-accent-green to-[#00cc66] shadow-[0_0_6px_var(--color-accent-green)] border-transparent",
+                                            isActive && isHigh && !isPeak && "bg-gradient-to-r from-[#cc9900] via-accent-yellow to-[#cc9900] shadow-[0_0_6px_var(--color-accent-yellow)] border-transparent",
+                                            isActive && isPeak && "bg-gradient-to-r from-[#cc3333] via-accent-red to-[#cc3333] shadow-[0_0_8px_var(--color-accent-red)] border-transparent",
+                                            "landscape:min-h-[4px]"
+                                        )} 
+                                    />
                                 );
                             })}
                         </div>
-                        <div className="mixer-volume-slider-container">
+                        <div className="flex-1 w-full min-w-[60px] max-w-[68px] bg-gradient-to-b from-[#3a3a3a] via-bg-dark via-bg-darker via-bg-dark to-[#3a3a3a] rounded-md relative shadow-[inset_0_2px_10px_rgba(0,0,0,0.6),inset_0_0_20px_rgba(0,0,0,0.4)] flex items-center justify-center border border-white/10 overflow-hidden max-xl:min-w-[52px] max-xl:max-w-[58px] landscape:min-w-[44px] landscape:max-w-[50px]">
                             <VerticalSlider
                                 value={deckBState.volume}
                                 min={0}
@@ -135,14 +154,14 @@ export const Mixer: React.FC<MixerProps> = ({
                                 label=""
                                 showValue={false}
                                 color="#00d4ff"
-                                className="mixer-volume-slider-vertical"
+                                className="w-full h-full flex flex-col items-center py-2"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Crossfader section */}
-                <div className="mixer-crossfader-section">
+                <div className="w-full flex flex-col gap-2 px-4 py-2.5 bg-black/30 rounded-lg shrink-0 max-xl:px-2 max-xl:py-2">
                     <HorizontalSlider
                         value={crossfaderValue}
                         min={0}
@@ -152,7 +171,7 @@ export const Mixer: React.FC<MixerProps> = ({
                         height={42}
                         thumbWidth={62}
                         showValue={false}
-                        className="mixer-crossfader"
+                        className="w-full"
                         showCenterLine={true}
                     />
                 </div>
@@ -160,14 +179,17 @@ export const Mixer: React.FC<MixerProps> = ({
 
             {/* Mixer & EQ Popup Modal */}
             <div
-                className={`advanced-controls-popup ${isEQPopupOpen ? 'open' : ''}`}
+                className={cn(
+                    "fixed inset-0 bg-black/60 backdrop-blur-md z-[9500] hidden items-center justify-center p-5",
+                    isEQPopupOpen && "flex animate-[popup-fade-in_0.2s_ease-out_forwards]"
+                )}
                 onClick={(e) => e.target === e.currentTarget && setIsEQPopupOpen(false)}
             >
-                <div className="advanced-controls-content large-popup">
-                    <div className="advanced-controls-header">
-                        <h4 className="advanced-controls-title">Mixer & EQ</h4>
+                <div className="bg-gradient-to-br from-bg-control to-bg-darkest border border-white/15 border-t-white/25 rounded-2xl w-full max-w-[480px] max-h-[85vh] overflow-hidden shadow-[0_25px_50px_rgba(0,0,0,0.8),0_0_0_1px_rgba(0,0,0,0.5)] flex flex-col">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5">
+                        <h4 className="text-base font-bold text-white m-0 tracking-tight uppercase">Mixer & EQ</h4>
                         <button
-                            className="advanced-controls-close"
+                            className="w-8 h-8 rounded-full bg-white/10 border-none text-[#ccc] flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-accent-red hover:text-white hover:rotate-90"
                             onClick={() => setIsEQPopupOpen(false)}
                         >
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -176,9 +198,9 @@ export const Mixer: React.FC<MixerProps> = ({
                         </button>
                     </div>
 
-                    <div className="popup-main-content">
+                    <div className="p-2.5 overflow-y-auto flex flex-col gap-6">
                         {/* EQ Grid */}
-                        <div className="eq-popup-grid">
+                        <div className="grid grid-cols-2 gap-4">
                             {renderEQControls('A', deckAState, '#ff0080')}
                             {renderEQControls('B', deckBState, '#00d4ff')}
                         </div>

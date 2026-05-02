@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatTime } from '../utils/helpers';
-import './TimeDisplay.css';
+import { cn } from '../utils/cn';
 
 interface TimeDisplayProps {
     currentTime: number;
@@ -19,26 +19,34 @@ export const TimeDisplay: React.FC<TimeDisplayProps> = ({
 }) => {
     // Format: MM:SS
     const mainTime = formatTime(currentTime);
-    // Format: .ms (approximate, since formatTotalSeconds usually gives (MM:SS), let's extract ms part or assume we want clean MM:SS)
-    // Actually the user used formatTotalSeconds(currentTime) which returns (123s) in the previous code? 
-    // Let's look at previous code: 
-    // formatTime(currentTime) -> "02:30"
-    // formatTotalSeconds(currentTime) -> "(150s)" or simple seconds. 
-    // The previous CSS had .text-xs opacity-50 for parens.
-
-    // Let's make it look pro: 02:30.15 where 15 is ms/frames
     const milliseconds = Math.floor((currentTime % 1) * 100).toString().padStart(2, '0');
 
     return (
         <div
-            className={`time-display-component ${compact ? 'compact' : ''} ${className}`}
-            style={color ? { '--deck-color': color } as React.CSSProperties : undefined}
+            className={cn(
+                "flex flex-col items-end tabular-nums leading-none min-w-[80px]",
+                className
+            )}
         >
-            <div className="time-display-main">
+            <div className={cn(
+                "font-bold text-white tracking-[0.5px] flex items-baseline justify-end",
+                compact ? "text-sm" : "text-[18px] max-xl:text-[15px] landscape:text-xs"
+            )}>
                 {mainTime}
-                <span className="time-milliseconds">.{milliseconds}</span>
+                <span className={cn(
+                    "text-[#888] font-medium ml-[2px]",
+                    compact ? "text-[10px]" : "text-xs landscape:text-[9px]"
+                )}>
+                    .{milliseconds}
+                </span>
             </div>
-            <div className="time-display-total">
+            <div 
+                className={cn(
+                    "font-semibold mt-[2px] opacity-80",
+                    compact ? "text-[9px]" : "text-[11px] landscape:text-[8px]"
+                )}
+                style={{ color: color || '#888' }}
+            >
                 {formatTime(totalTime)}
             </div>
         </div>
