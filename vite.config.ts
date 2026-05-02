@@ -38,22 +38,22 @@ export default defineConfig({
     proxy: {
       // Proxy all API requests to the VPS (VM)
       '/api': {
-        target: 'https://79.137.14.75',
+        target: 'http://79.137.14.75:3002',
         changeOrigin: true,
         secure: false
       },
       '/search': {
-        target: 'https://79.137.14.75',
+        target: 'http://79.137.14.75:3002',
         changeOrigin: true,
         secure: false
       },
       '/stream': {
-        target: 'https://79.137.14.75',
+        target: 'http://79.137.14.75:3002',
         changeOrigin: true,
         secure: false
       },
       '/auth': {
-        target: 'https://79.137.14.75',
+        target: 'http://79.137.14.75:3002',
         changeOrigin: true,
         secure: false
       }
