@@ -510,32 +510,11 @@ app.get('*', (req, res) => {
     res.status(404).send('App not ready (index.html not found). Please run build.');
 });
 
-const https = require('https');
-
-const sslCertPath = process.env.SSL_CERT_PATH || '/etc/ssl/certs/nginx-selfsigned.crt';
-const sslKeyPath = process.env.SSL_KEY_PATH || '/etc/ssl/private/nginx-selfsigned.key';
-
-if (fs.existsSync(sslCertPath) && fs.existsSync(sslKeyPath)) {
-    console.log(`[SERVER] Found SSL certificates at ${sslCertPath}. Starting HTTPS server...`);
-    const options = {
-        key: fs.readFileSync(sslKeyPath),
-        cert: fs.readFileSync(sslCertPath)
-    };
-    https.createServer(options, app).listen(PORT, () => {
-        console.log(`\n============================================`);
-        console.log(`   🚀 SKYSOUND PROXY v5 - HYBRID MODE`);
-        console.log(`   Mode: ${IS_PRODUCTION ? 'PRODUCTION (RapidAPI)' : 'DEVELOPMENT (Local DL)'}`);
-        console.log(`   Serving static from: ${staticDir || 'NONE'}`);
-        console.log(`   HTTPS Server running on port ${PORT}`);
-        console.log(`============================================\n`);
-    });
-} else {
-    app.listen(PORT, () => {
-        console.log(`\n============================================`);
-        console.log(`   🚀 SKYSOUND PROXY v5 - HYBRID MODE`);
-        console.log(`   Mode: ${IS_PRODUCTION ? 'PRODUCTION (RapidAPI)' : 'DEVELOPMENT (Local DL)'}`);
-        console.log(`   Serving static from: ${staticDir || 'NONE'}`);
-        console.log(`   HTTP Server running on port ${PORT}`);
-        console.log(`============================================\n`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`\n============================================`);
+    console.log(`   🚀 SKYSOUND PROXY v5 - HYBRID MODE`);
+    console.log(`   Mode: ${IS_PRODUCTION ? 'PRODUCTION (RapidAPI)' : 'DEVELOPMENT (Local DL)'}`);
+    console.log(`   Serving static from: ${staticDir || 'NONE'}`);
+    console.log(`   Server running on port ${PORT}`);
+    console.log(`============================================\n`);
+});
