@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { GoogleLogin } from '@react-oauth/google';
 import { getKeyLabel } from '../utils/keyHelpers';
 import { cn } from '../utils/cn';
 import { sharedStyles } from '../utils/sharedStyles';
@@ -28,7 +27,7 @@ const ACTION_LABELS: Record<string, string> = {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     const { keyMap, updateKeyMapping, resetToDefaults, layout, setLayout } = useSettings();
-    const { user, isAuthenticated, googleLogin, logout } = useAuth();
+    const { user, isAuthenticated, logout } = useAuth();
     const [listeningFor, setListeningFor] = useState<string | null>(null);
 
     useEffect(() => {
@@ -75,11 +74,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 <button onClick={logout} className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-sm hover:bg-red-500/30 transition">Logout</button>
                             </div>
                         ) : (
-                            <div className="flex justify-center p-2 bg-bg-control-dark border border-white/10 rounded-md">
-                                <GoogleLogin 
-                                    onSuccess={res => { if(res.credential) googleLogin(res.credential) }}
-                                    onError={() => console.error('Google Login Failed')}
-                                />
+                            <div className="text-[13px] text-text-hint p-2 bg-bg-control-dark border border-white/10 rounded-md">
+                                You are not signed in.
                             </div>
                         )}
                     </div>
