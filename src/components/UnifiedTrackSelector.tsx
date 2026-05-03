@@ -125,7 +125,7 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
             </div>
             {activeTab === 'library' && onDeleteTrack && (
                 <button 
-                    className="absolute right-2 p-2 text-text-hint opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-white/5 rounded-full transition-all"
+                    className="absolute right-2 w-[44px] h-[44px] flex items-center justify-center text-white/40 hover:text-accent-red hover:bg-accent-red/10 active:bg-accent-red/20 rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 z-10"
                     onClick={(e) => {
                         e.stopPropagation();
                         if(window.confirm('Remove this track from your library?')) {
@@ -134,7 +134,7 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                     }}
                     title="Delete track"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                 </button>
