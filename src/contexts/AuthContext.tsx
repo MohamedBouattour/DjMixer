@@ -113,8 +113,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
             let body: any = {};
             
-            // Check if token is a JWT (ID Token) by looking for dots
-            if (token.includes('.')) {
+            // Check if token is a JWT (ID Token): exactly 3 dot-separated parts
+            // Access tokens (ya29.*) also contain dots but are NOT JWTs
+            const parts = token.split('.');
+            if (parts.length === 3 && !token.startsWith('ya29.')) {
                 body = { credential: token };
             } else {
                 // It's an access token from the hook flow
