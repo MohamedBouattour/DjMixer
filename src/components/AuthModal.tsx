@@ -22,8 +22,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
     // Removed useGoogleLogin hook as we will use the standard button component
     // which is more reliable for PWA environments.
 
@@ -232,7 +230,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                             <GoogleLogin
                                 onSuccess={async (credentialResponse) => {
                                     if (credentialResponse.credential) {
-                                        setIsGoogleLoading(true);
                                         const result = await googleLogin(credentialResponse.credential);
                                         if (result.success) {
                                             onSuccess?.();
@@ -240,7 +237,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                                         } else {
                                             setError(result.error || 'Google sign-in failed');
                                         }
-                                        setIsGoogleLoading(false);
                                     }
                                 }}
                                 onError={() => setError('Google sign-in failed')}

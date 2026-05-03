@@ -54,9 +54,6 @@ function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // Update Logic
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [newVersion, setNewVersion] = useState<string | null>(null);
-
   useEffect(() => {
     const checkVersion = async () => {
       try {
@@ -95,12 +92,6 @@ function App() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  const handleUpdate = () => {
-    if (newVersion) {
-      localStorage.setItem("app_version", newVersion);
-      window.location.reload();
-    }
-  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -401,11 +392,7 @@ function App() {
         </div>
 
         <div className="flex items-center gap-[15px]">
-          {updateAvailable && (
-            <button className="bg-accent-green text-bg-darkest px-3 py-1 rounded font-bold text-xs animate-pulse" onClick={handleUpdate} title="Update Available">
-              Update
-            </button>
-          )}
+
           {/* Auth Button / User Avatar */}
           {isAuthenticated && user ? (
             <div className="flex items-center gap-2 group relative">
