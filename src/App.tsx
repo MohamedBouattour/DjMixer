@@ -552,7 +552,6 @@ function App() {
         <AuthModal
           isOpen={isAuthOpen}
           onClose={() => setIsAuthOpen(false)}
-          onSuccess={() => setIsAuthOpen(false)}
         />
 
         <InstallPWA />

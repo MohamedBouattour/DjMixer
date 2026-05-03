@@ -27,16 +27,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Restore session from localStorage
+    // Restore session from localStorage or handle OAuth redirect hash
     useEffect(() => {
-        try {
-            const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
-            if (savedAuth) setUser(JSON.parse(savedAuth));
-        } catch {
-            localStorage.removeItem(AUTH_STORAGE_KEY);
-        } finally {
-            setIsLoading(false);
-        }
+        const handleSession = async () => {
+            // Check for OAuth redirect hash first
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token=')) {
+                // Parse hash as URL params (replace # with ? for URLSearchParams)
+                const params = new URLSearchParams(hash.substring(1));
+                const accessToken = params.get('access_token');
+                
+                if (accessToken) {
+                    // Clear the hash from URL without triggering reload
+                    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                    
+                    try {
+                        const result = await googleLogin(accessToken);
+                        if (result.success) {
+                            setIsLoading(false);
+                            return; // Successfully logged in via redirect
+                        }
+                    } catch (e) {
+                        console.error('Failed to handle Google redirect', e);
+                    }
+                }
+            }
+
+            // Fallback to localStorage session
+            try {
+                const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+                if (savedAuth) setUser(JSON.parse(savedAuth));
+            } catch {
+                localStorage.removeItem(AUTH_STORAGE_KEY);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        handleSession();
     }, []);
 
     const persistUser = (userData: User) => {

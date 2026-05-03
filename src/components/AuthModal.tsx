@@ -1,18 +1,14 @@
 import React, { useRef, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { useGoogleLogin } from '@react-oauth/google';
-import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../utils/cn';
 import { sharedStyles } from '../utils/sharedStyles';
 
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess?: () => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
-    const { googleLogin } = useAuth();
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     const modalRef = useRef<HTMLDivElement>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -45,43 +41,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         return () => document.removeEventListener('keydown', handleEscape);
     }, [isOpen, onClose]);
 
-    // useGoogleLogin with implicit flow + popup — works on iOS Safari
-    const signInWithGoogle = useGoogleLogin({
-        flow: 'implicit',
-        onSuccess: async (tokenResponse) => {
-            setIsLoading(true);
-            setError('');
-            try {
-                const result = await googleLogin(tokenResponse.access_token);
-                if (result.success) {
-                    onSuccess?.();
-                    onClose();
-                } else {
-                    setError(result.error || 'Google sign-in failed. Please try again.');
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        },
-        onError: () => {
-            setError('Google sign-in was cancelled or failed. Please try again.');
-            setIsLoading(false);
-        },
-        onNonOAuthError: (err) => {
-            // Popup was blocked or closed
-            if (err.type === 'popup_closed') {
-                setError('');
-            } else {
-                setError('Could not open sign-in window. Please allow popups and try again.');
-            }
-            setIsLoading(false);
-        },
-    });
-
     const handleGoogleSignIn = () => {
         setError('');
         setIsLoading(true);
-        signInWithGoogle();
+        
+        // Manual OAuth Redirect flow (bypasses popups that get blocked on iOS Chrome)
+        const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '323412866282-j1jfdrt869l73r73agldin32ud2ictn0.apps.googleusercontent.com';
+        const redirectUri = window.location.origin;
+        const scope = 'email profile';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scope)}`;
+        
+        window.location.href = authUrl;
     };
 
     if (!isOpen) return null;
