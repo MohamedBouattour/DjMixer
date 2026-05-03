@@ -32,8 +32,8 @@ try {
     // 4. Bundle Backend (Single JS file)
     console.log('🔹 Bundling backend into bundle.js...');
     // We bundle with esbuild to create a single deployment file.
-    // marking youtube-dl-exec as external because it uses native binaries.
-    execSync('npx esbuild backend/proxy.js --bundle --platform=node --target=node20 --outfile=backend/bundle.js --external:youtube-dl-exec --external:express --external:cors --external:yt-search --external:dotenv', execOptions);
+    // Native deps (better-sqlite3) and auth libs must be installed on VPS.
+    execSync('npx esbuild backend/proxy.js --bundle --platform=node --target=node20 --outfile=backend/bundle.js --external:youtube-dl-exec --external:express --external:cors --external:yt-search --external:dotenv --external:better-sqlite3 --external:bcryptjs --external:jsonwebtoken --external:google-auth-library', execOptions);
     console.log('✅ Backend bundled successfully!');
 
     console.log('✅ Deployment preparation complete!');

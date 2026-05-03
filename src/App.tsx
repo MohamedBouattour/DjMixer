@@ -3,6 +3,7 @@ import { Deck } from "./components/Deck";
 import { Mixer } from "./components/Mixer";
 import { UnifiedTrackSelector } from "./components/UnifiedTrackSelector";
 import { SettingsModal } from "./components/SettingsModal";
+import { AuthModal } from "./components/AuthModal";
 import { InstallPWA } from "./components/InstallPWA";
 import { useDeck } from "./hooks/useDeck";
 import type { Track } from "./types";
@@ -48,8 +49,9 @@ function App() {
   const [isWorkletReady, setIsWorkletReady] = useState(false);
 
   const { keyMap, layout } = useSettings();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // Update Logic
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -398,6 +400,34 @@ function App() {
               Update
             </button>
           )}
+          {/* Auth Button / User Avatar */}
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-2 group relative">
+              <button
+                title={`${user.username} — click to sign out`}
+                onClick={logout}
+                className="w-9 h-9 rounded-full border-2 border-deck-a/60 overflow-hidden flex items-center justify-center bg-bg-header hover:border-deck-a transition-all duration-200"
+              >
+                {user.picture ? (
+                  <img src={user.picture} alt={user.username} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[13px] font-bold text-deck-a uppercase">
+                    {user.username.slice(0, 2)}
+                  </span>
+                )}
+              </button>
+            </div>
+          ) : (
+            <button
+              className="bg-[rgba(40,40,40,0.6)] border border-deck-a/30 text-deck-a w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-deck-a/10 hover:border-deck-a hover:-translate-y-0.5 text-xs font-bold"
+              onClick={() => setIsAuthOpen(true)}
+              title="Sign In"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            </button>
+          )}
           <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30 hover:-translate-y-0.5" onClick={() => setIsTrackSelectorOpen(true)} title="Open Library">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
@@ -523,6 +553,12 @@ function App() {
         <SettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
+        />
+
+        <AuthModal
+          isOpen={isAuthOpen}
+          onClose={() => setIsAuthOpen(false)}
+          onSuccess={() => setIsAuthOpen(false)}
         />
 
         <InstallPWA />

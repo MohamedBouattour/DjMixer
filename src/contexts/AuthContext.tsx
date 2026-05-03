@@ -5,6 +5,8 @@ interface User {
     id: string;
     email: string;
     username: string;
+    picture?: string;
+    token?: string;
 }
 
 interface AuthContextType {
@@ -13,7 +15,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     register: (email: string, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    googleLogin: (credential: string) => Promise<{ success: boolean; error?: string }>;
+    googleLogin: (accessToken: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
 }
 
@@ -25,92 +27,81 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load user from localStorage on mount
+    // Restore session from localStorage
     useEffect(() => {
-        const loadUser = () => {
-            try {
-                const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
-                if (savedAuth) {
-                    const userData = JSON.parse(savedAuth);
-                    setUser(userData);
-                }
-            } catch (error) {
-                console.error('Failed to load auth state:', error);
-                localStorage.removeItem(AUTH_STORAGE_KEY);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadUser();
+        try {
+            const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+            if (savedAuth) setUser(JSON.parse(savedAuth));
+        } catch {
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    const persistUser = (userData: User) => {
+        setUser(userData);
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+    };
 
     const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            // Call backend for authentication
-            const response = await fetch(`${API_ENDPOINTS.AUTH}/login`, {
+            const res = await fetch(`${API_ENDPOINTS.AUTH}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                return { success: false, error: errorData.error || 'Login failed' };
+            if (!res.ok) {
+                const e = await res.json();
+                return { success: false, error: e.error || 'Login failed' };
             }
-
-            const userData = await response.json();
-            setUser(userData);
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+            persistUser(await res.json());
             return { success: true };
-        } catch (error) {
-            console.error('Login error:', error);
+        } catch {
             return { success: false, error: 'Connection failed. Please try again.' };
         }
     };
 
     const register = async (email: string, username: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            // Call backend for registration
-            const response = await fetch(`${API_ENDPOINTS.AUTH}/register`, {
+            const res = await fetch(`${API_ENDPOINTS.AUTH}/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, username, password })
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                return { success: false, error: errorData.error || 'Registration failed' };
+            if (!res.ok) {
+                const e = await res.json();
+                return { success: false, error: e.error || 'Registration failed' };
             }
-
-            const userData = await response.json();
-            setUser(userData);
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+            persistUser(await res.json());
             return { success: true };
-        } catch (error) {
-            console.error('Registration error:', error);
+        } catch {
             return { success: false, error: 'Connection failed. Please try again.' };
         }
     };
 
-    const googleLogin = async (credential: string): Promise<{ success: boolean; error?: string }> => {
+    // Accepts a Google OAuth access_token (implicit/popup flow).
+    // Fetches userinfo from Google, then posts to backend to upsert user in SQLite.
+    const googleLogin = async (accessToken: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            const response = await fetch(`${API_ENDPOINTS.AUTH}/google`, {
+            const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            if (!infoRes.ok) return { success: false, error: 'Failed to fetch Google profile' };
+            const info = await infoRes.json();
+
+            const res = await fetch(`${API_ENDPOINTS.AUTH}/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ credential })
+                body: JSON.stringify({ sub: info.sub, email: info.email, name: info.name, picture: info.picture })
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                return { success: false, error: errorData.error || 'Google Login failed' };
+            if (!res.ok) {
+                const e = await res.json();
+                return { success: false, error: e.error || 'Google Login failed' };
             }
-
-            const userData = await response.json();
-            setUser(userData);
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+            persistUser(await res.json());
             return { success: true };
-        } catch (error) {
-            console.error('Google login error:', error);
+        } catch {
             return { success: false, error: 'Connection failed. Please try again.' };
         }
     };
@@ -129,8 +120,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
+    if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
     return context;
 };

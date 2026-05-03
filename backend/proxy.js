@@ -1,13 +1,12 @@
 const fs = require('fs');
 const dotenv = require('dotenv');
 
-// Check for secrets in VPS mount path (e.g. Render)
+// Check for secrets in VPS mount path
 const secretPath = '/etc/secrets/.env';
 if (fs.existsSync(secretPath)) {
     console.log('[CONFIG] Loading secrets from /etc/secrets/.env');
     dotenv.config({ path: secretPath });
 } else {
-    // Fallback to local .env
     dotenv.config();
 }
 const express = require('express');
@@ -17,9 +16,13 @@ const path = require('path');
 const yts = require('yt-search');
 const youtubedl = require('youtube-dl-exec');
 const { OAuth2Client } = require('google-auth-library');
+const Database = require('better-sqlite3');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID || '323412866282-j1jfdrt869l73r73agldin32ud2ictn0.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+const JWT_SECRET = process.env.JWT_SECRET || 'djmixer-secret-change-in-prod';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -37,15 +40,66 @@ const cacheDir = path.join(__dirname, 'cache');
 const dataDir = path.join(__dirname, 'data');
 let staticDir = null;
 
-if (!fs.existsSync(cacheDir)) {
-    fs.mkdirSync(cacheDir, { recursive: true });
-}
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-}
+if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// User Tracks Storage helper
-const getUserTracksPath = (uid) => path.join(dataDir, `${uid}_tracks.json`);
+// ─── SQLite Database Setup ────────────────────────────────────────────────────
+const db = new Database(path.join(dataDir, 'djmixer.db'));
+db.pragma('journal_mode = WAL'); // better concurrency
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        id          TEXT PRIMARY KEY,
+        email       TEXT UNIQUE NOT NULL,
+        username    TEXT NOT NULL,
+        password    TEXT,
+        picture     TEXT,
+        provider    TEXT NOT NULL DEFAULT 'email',
+        created_at  INTEGER DEFAULT (unixepoch())
+    );
+    CREATE TABLE IF NOT EXISTS user_tracks (
+        user_id     TEXT NOT NULL,
+        track_id    TEXT NOT NULL,
+        track_data  TEXT NOT NULL,
+        updated_at  INTEGER DEFAULT (unixepoch()),
+        PRIMARY KEY (user_id, track_id)
+    );
+`);
+
+// Migrate old JSON flat-files into SQLite (one-time, non-destructive)
+try {
+    if (fs.existsSync(dataDir)) {
+        fs.readdirSync(dataDir)
+          .filter(f => f.endsWith('_tracks.json'))
+          .forEach(f => {
+              const uid = f.replace('_tracks.json', '');
+              const tracks = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf8'));
+              if (Array.isArray(tracks)) {
+                  const insert = db.prepare(`INSERT OR IGNORE INTO user_tracks (user_id,track_id,track_data) VALUES (?,?,?)`);
+                  const run = db.transaction((rows) => rows.forEach(t => insert.run(uid, t.id, JSON.stringify(t))));
+                  run(tracks.filter(t => t.id));
+                  console.log(`[MIGRATE] Imported ${tracks.length} tracks for ${uid}`);
+              }
+          });
+    }
+} catch(e) { console.warn('[MIGRATE] Migration error:', e.message); }
+
+// ─── DB Helper Fns ────────────────────────────────────────────────────────────
+const generateId = () => require('crypto').randomUUID();
+
+const getUser = db.prepare('SELECT * FROM users WHERE id = ?');
+const getUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
+const insertUser = db.prepare(`INSERT INTO users (id,email,username,password,picture,provider) VALUES (?,?,?,?,?,?)`);
+const upsertGoogleUser = db.prepare(`
+    INSERT INTO users (id,email,username,picture,provider) VALUES (?,?,?,?,'google')
+    ON CONFLICT(email) DO UPDATE SET username=excluded.username, picture=excluded.picture
+    RETURNING *
+`);
+const getUserTracksStmt = db.prepare('SELECT track_data FROM user_tracks WHERE user_id = ? ORDER BY updated_at DESC');
+const upsertTrack = db.prepare(`INSERT INTO user_tracks (user_id,track_id,track_data,updated_at) VALUES (?,?,?,unixepoch()) ON CONFLICT(user_id,track_id) DO UPDATE SET track_data=excluded.track_data, updated_at=excluded.updated_at`);
+const saveAllTracks = db.transaction((uid, tracks) => {
+    tracks.forEach(t => upsertTrack.run(uid, t.id, JSON.stringify(t)));
+});
 
 if (fs.existsSync(publicPath)) {
     console.log(`[SERVER] Serving static files from ${publicPath}`);
@@ -107,72 +161,106 @@ async function fetchRapidAPI(videoId) {
     throw new Error('RapidAPI timeout');
 }
 
-// Google Auth Endpoint
+// ─── Auth: Email Register ──────────────────────────────────────────────────
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, username, password } = req.body;
+        if (!email || !username || !password) return res.status(400).json({ error: 'All fields required' });
+        if (getUserByEmail.get(email)) return res.status(409).json({ error: 'Email already registered' });
+
+        const hashed = await bcrypt.hash(password, 10);
+        const id = generateId();
+        insertUser.run(id, email, username, hashed, null, 'email');
+
+        const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '90d' });
+        console.log(`[AUTH] Registered: ${email}`);
+        res.json({ id, email, username, picture: null, token });
+    } catch (error) {
+        console.error('[AUTH] Register Error:', error);
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
+// ─── Auth: Email Login ─────────────────────────────────────────────────────
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+        const row = getUserByEmail.get(email);
+        if (!row) return res.status(401).json({ error: 'Invalid email or password' });
+        if (!row.password) return res.status(401).json({ error: 'Please sign in with Google' });
+
+        const valid = await bcrypt.compare(password, row.password);
+        if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+
+        const token = jwt.sign({ id: row.id, email: row.email }, JWT_SECRET, { expiresIn: '90d' });
+        console.log(`[AUTH] Login: ${email}`);
+        res.json({ id: row.id, email: row.email, username: row.username, picture: row.picture, token });
+    } catch (error) {
+        console.error('[AUTH] Login Error:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+// ─── Auth: Google Login ────────────────────────────────────────────────────
 app.post('/api/auth/google', async (req, res) => {
     try {
-        const { credential } = req.body;
-        if (!credential) return res.status(400).json({ error: 'Credential required' });
+        const { credential, sub, email: emailField, name, picture } = req.body;
 
-        // In a real app we'd verify the token. 
-        // For development/mocking without a real client ID, we can decode the JWT part.
-        let payload;
-        try {
-            const ticket = await googleClient.verifyIdToken({
-                idToken: credential,
-                audience: GOOGLE_CLIENT_ID,
-            });
-            payload = ticket.getPayload();
-        } catch (verifyError) {
-            console.warn('[AUTH] Token verification failed, falling back to manual decode for dev purposes:', verifyError.message);
-            // Fallback for mocked client IDs: manually parse JWT payload
-            const base64Url = credential.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            payload = JSON.parse(jsonPayload);
+        let payload = { sub, email: emailField, name, picture };
+
+        // Only parse credential JWT if we didn't get direct userinfo fields
+        if (credential && !sub) {
+            try {
+                const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+                const p = ticket.getPayload();
+                payload = { sub: p.sub, email: p.email, name: p.name, picture: p.picture };
+            } catch (verifyError) {
+                console.warn('[AUTH] Token verify fallback:', verifyError.message);
+                const base64Url = credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const p = JSON.parse(decodeURIComponent(atob(base64).split('').map(c =>
+                    '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+                ).join('')));
+                payload = { sub: p.sub, email: p.email, name: p.name, picture: p.picture };
+            }
         }
 
-        const user = {
-            id: payload.sub,
-            email: payload.email,
-            username: payload.name || payload.email.split('@')[0],
-            picture: payload.picture
-        };
+        if (!payload.sub || !payload.email) return res.status(400).json({ error: 'Missing user info from Google' });
 
-        console.log(`[AUTH] User logged in: ${user.email}`);
-        res.json(user);
+        // Upsert into DB — same Google user across devices stays consistent
+        const row = upsertGoogleUser.get(payload.sub, payload.email,
+            payload.name || payload.email.split('@')[0], payload.picture || null);
+
+        const token = jwt.sign({ id: row.id, email: row.email }, JWT_SECRET, { expiresIn: '90d' });
+        console.log(`[AUTH] Google login: ${row.email}`);
+        res.json({ id: row.id, email: row.email, username: row.username, picture: row.picture, token });
     } catch (error) {
         console.error('[AUTH] Google Auth Error:', error);
         res.status(500).json({ error: 'Authentication failed' });
     }
 });
 
-// User Tracks Endpoints
+// ─── User Tracks: GET (merged unique tracks from DB) ──────────────────────
 app.get('/api/users/:uid/tracks', (req, res) => {
     try {
-        const uid = req.params.uid;
-        const tracksPath = getUserTracksPath(uid);
-        if (fs.existsSync(tracksPath)) {
-            const tracks = JSON.parse(fs.readFileSync(tracksPath, 'utf8'));
-            res.json(tracks);
-        } else {
-            res.json([]);
-        }
+        const rows = getUserTracksStmt.all(req.params.uid);
+        const tracks = rows.map(r => { try { return JSON.parse(r.track_data); } catch { return null; } }).filter(Boolean);
+        res.json(tracks);
     } catch (error) {
         console.error('[USER_TRACKS] Error reading tracks:', error);
         res.status(500).json({ error: 'Failed to read user tracks' });
     }
 });
 
+// ─── User Tracks: POST (upsert unique by track id) ─────────────────────────
 app.post('/api/users/:uid/tracks', (req, res) => {
     try {
         const uid = req.params.uid;
         const { tracks } = req.body;
         if (!tracks || !Array.isArray(tracks)) return res.status(400).json({ error: 'Invalid tracks data' });
-
-        const tracksPath = getUserTracksPath(uid);
-        fs.writeFileSync(tracksPath, JSON.stringify(tracks, null, 2));
+        saveAllTracks(uid, tracks.filter(t => t.id));
         console.log(`[USER_TRACKS] Saved ${tracks.length} tracks for user ${uid}`);
         res.json({ success: true });
     } catch (error) {
