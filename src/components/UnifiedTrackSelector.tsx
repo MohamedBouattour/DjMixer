@@ -123,22 +123,6 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
             <div className="text-sm font-mono text-text-hint tabular-nums">
                 {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
             </div>
-            {activeTab === 'library' && onDeleteTrack && (
-                <button 
-                    className="absolute right-2 w-[44px] h-[44px] flex items-center justify-center text-white/40 hover:text-accent-red hover:bg-accent-red/10 active:bg-accent-red/20 rounded-full transition-all md:opacity-0 md:group-hover:opacity-100 z-10"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if(window.confirm('Remove this track from your library?')) {
-                            onDeleteTrack(track);
-                        }
-                    }}
-                    title="Delete track"
-                >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            )}
         </div>
     );
 
@@ -247,10 +231,30 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                                     <span className="text-[10px] font-semibold opacity-80">{isPlayingB ? 'Currently Playing' : 'Idle'}</span>
                                 </button>
                             </div>
-                            <button 
-                                className="bg-transparent border border-[#444] text-[#888] py-2 px-4 rounded-[20px] cursor-pointer hover:border-[#666] hover:text-white"
-                                onClick={() => setSelectedTrack(null)}
-                            >Cancel</button>
+                            <div className="flex flex-col gap-2">
+                                {activeTab === 'library' && onDeleteTrack && (
+                                    <button 
+                                        className="w-full py-3 bg-accent-red/10 border border-accent-red/20 text-accent-red rounded-lg font-semibold flex items-center justify-center gap-2 transition-transform active:scale-95"
+                                        onClick={() => {
+                                            if(window.confirm('Remove this track from your library?')) {
+                                                onDeleteTrack(selectedTrack);
+                                                setSelectedTrack(null);
+                                            }
+                                        }}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        Delete Track
+                                    </button>
+                                )}
+                                <button 
+                                    className="w-full py-3 bg-transparent border border-[#444] text-[#888] rounded-lg cursor-pointer transition-colors active:bg-[#333] font-medium"
+                                    onClick={() => setSelectedTrack(null)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
