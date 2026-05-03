@@ -80,21 +80,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    // Accepts a Google OAuth access_token (implicit/popup flow).
-    // Fetches userinfo from Google, then posts to backend to upsert user in SQLite.
-    const googleLogin = async (accessToken: string): Promise<{ success: boolean; error?: string }> => {
+    // Accepts either a Google JWT credential or an access_token.
+    const googleLogin = async (token: string): Promise<{ success: boolean; error?: string }> => {
         try {
-            const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            if (!infoRes.ok) return { success: false, error: 'Failed to fetch Google profile' };
-            const info = await infoRes.json();
+            let body: any = {};
+            
+            // Check if token is a JWT (ID Token) by looking for dots
+            if (token.includes('.')) {
+                body = { credential: token };
+            } else {
+                // It's an access token from the hook flow
+                const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!infoRes.ok) return { success: false, error: 'Failed to fetch Google profile' };
+                const info = await infoRes.json();
+                body = { sub: info.sub, email: info.email, name: info.name, picture: info.picture };
+            }
 
             const res = await fetch(`${API_ENDPOINTS.AUTH}/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sub: info.sub, email: info.email, name: info.name, picture: info.picture })
+                body: JSON.stringify(body)
             });
+            
             if (!res.ok) {
                 const e = await res.json();
                 return { success: false, error: e.error || 'Google Login failed' };

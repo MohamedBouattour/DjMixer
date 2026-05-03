@@ -76,8 +76,9 @@ function App() {
           if (!localVersion) {
             localStorage.setItem("app_version", remoteVersion);
           } else if (localVersion !== remoteVersion) {
-            setNewVersion(remoteVersion);
-            setUpdateAvailable(true);
+            // Auto update without prompting
+            localStorage.setItem("app_version", remoteVersion);
+            window.location.reload();
           }
         }
       } catch (e) {
@@ -228,16 +229,11 @@ function App() {
 
   const downloadingTracksRef = useRef<Set<string>>(new Set());
 
-  // Load tracks from DB and Cache
+  // Load tracks from DB and User Sync
   useEffect(() => {
     const loadTracks = async () => {
       try {
         const storedTracks = await getAllTracksFromDB();
-        let cachedTracks: any[] = [];
-        try {
-          const res = await fetch(`${API_ENDPOINTS.CACHE_LIST}`);
-          if (res.ok) cachedTracks = await res.json();
-        } catch (e) { console.warn("Failed to fetch cache list", e); }
 
         let userTracks: any[] = [];
         if (isAuthenticated && user?.id) {
@@ -248,17 +244,6 @@ function App() {
         }
 
         const combined = [...storedTracks];
-        
-        // Add cache tracks
-        cachedTracks.forEach(ct => {
-          if (!combined.find(t => t.id === ct.id)) {
-            combined.push({
-              ...ct,
-              name: ct.title || ct.name || "Unknown Track",
-              url: `${API_ENDPOINTS.STREAM}?videoId=${ct.id}`
-            } as Track);
-          }
-        });
 
         // Add user tracks from other devices
         userTracks.forEach(ut => {
@@ -494,7 +479,7 @@ function App() {
         </button>
       </div>
 
-      <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(35px,env(safe-area-inset-left))] landscape:pr-[max(35px,env(safe-area-inset-right))]">
+      <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))]">
         <div className="flex-1 flex gap-0 min-h-0 w-full max-md:flex-col">
           <Deck
             deckId="A"

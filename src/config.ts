@@ -6,10 +6,7 @@ export const API_ENDPOINTS = {
   SEARCH: `${API_BASE_URL}/search`,
   STREAM: `${API_BASE_URL}/stream`,
   AUTH: `${API_BASE_URL}/auth`,
-  CACHE: `${API_BASE_URL}/cache`,
-  CACHE_LIST: `${API_BASE_URL}/cache`, // Added for consistency
   DOWNLOAD: `${API_BASE_URL}/stream`, // Changed from /download to /stream
-  SYNC: `${API_BASE_URL}/cache/sync`,
   VERSION: `${API_BASE_URL}/version`,
   USER_TRACKS: (uid: string) => `${API_BASE_URL}/users/${uid}/tracks`,
 };
