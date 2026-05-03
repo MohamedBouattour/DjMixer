@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 import { getKeyLabel } from '../utils/keyHelpers';
 import { cn } from '../utils/cn';
 import { sharedStyles } from '../utils/sharedStyles';
@@ -26,6 +28,7 @@ const ACTION_LABELS: Record<string, string> = {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     const { keyMap, updateKeyMapping, resetToDefaults, layout, setLayout } = useSettings();
+    const { user, isAuthenticated, googleLogin, logout } = useAuth();
     const [listeningFor, setListeningFor] = useState<string | null>(null);
 
     useEffect(() => {
@@ -64,6 +67,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </header>
 
                 <div className="p-5 overflow-y-auto max-h-[calc(85vh-60px)] max-md:p-4 max-md:max-h-[calc(90vh-60px)] landscape:p-2.5 landscape:max-h-[calc(95vh-50px)] landscape-sm:p-2 landscape-sm:max-h-[calc(98vh-40px)]">
+                    <div className="mb-5 landscape:mb-3">
+                        <h3 className="text-[12px] font-bold text-text-hint uppercase tracking-widest mb-3 landscape:text-[10px] landscape:mb-2">Account</h3>
+                        {isAuthenticated && user ? (
+                            <div className="flex flex-col gap-2 p-3 bg-bg-control-dark border border-white/10 rounded-md">
+                                <span className="text-sm text-white">Logged in as {user.email}</span>
+                                <button onClick={logout} className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-sm hover:bg-red-500/30 transition">Logout</button>
+                            </div>
+                        ) : (
+                            <div className="flex justify-center p-2 bg-bg-control-dark border border-white/10 rounded-md">
+                                <GoogleLogin 
+                                    onSuccess={res => { if(res.credential) googleLogin(res.credential) }}
+                                    onError={() => console.error('Google Login Failed')}
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <div className="mb-5 landscape:mb-3">
                         <h3 className="text-[12px] font-bold text-text-hint uppercase tracking-widest mb-3 landscape:text-[10px] landscape:mb-2">Keyboard Layout</h3>
                         <div className="flex gap-3 landscape:gap-2 mt-2">

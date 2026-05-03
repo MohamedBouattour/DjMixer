@@ -11,4 +11,5 @@ export const API_ENDPOINTS = {
   DOWNLOAD: `${API_BASE_URL}/stream`, // Changed from /download to /stream
   SYNC: `${API_BASE_URL}/cache/sync`,
   VERSION: `${API_BASE_URL}/version`,
+  USER_TRACKS: (uid: string) => `${API_BASE_URL}/users/${uid}/tracks`,
 };

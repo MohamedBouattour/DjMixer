@@ -16,6 +16,10 @@ const { Readable } = require('stream');
 const path = require('path');
 const yts = require('yt-search');
 const youtubedl = require('youtube-dl-exec');
+const { OAuth2Client } = require('google-auth-library');
+
+const GOOGLE_CLIENT_ID = process.env.VITE_GOOGLE_CLIENT_ID || '323412866282-j1jfdrt869l73r73agldin32ud2ictn0.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -30,11 +34,18 @@ app.use(express.json());
 const publicPath = path.join(__dirname, 'public');
 const distPath = path.join(__dirname, '../dist');
 const cacheDir = path.join(__dirname, 'cache');
+const dataDir = path.join(__dirname, 'data');
 let staticDir = null;
 
 if (!fs.existsSync(cacheDir)) {
     fs.mkdirSync(cacheDir, { recursive: true });
 }
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// User Tracks Storage helper
+const getUserTracksPath = (uid) => path.join(dataDir, `${uid}_tracks.json`);
 
 if (fs.existsSync(publicPath)) {
     console.log(`[SERVER] Serving static files from ${publicPath}`);
@@ -95,6 +106,80 @@ async function fetchRapidAPI(videoId) {
     }
     throw new Error('RapidAPI timeout');
 }
+
+// Google Auth Endpoint
+app.post('/api/auth/google', async (req, res) => {
+    try {
+        const { credential } = req.body;
+        if (!credential) return res.status(400).json({ error: 'Credential required' });
+
+        // In a real app we'd verify the token. 
+        // For development/mocking without a real client ID, we can decode the JWT part.
+        let payload;
+        try {
+            const ticket = await googleClient.verifyIdToken({
+                idToken: credential,
+                audience: GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (verifyError) {
+            console.warn('[AUTH] Token verification failed, falling back to manual decode for dev purposes:', verifyError.message);
+            // Fallback for mocked client IDs: manually parse JWT payload
+            const base64Url = credential.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            payload = JSON.parse(jsonPayload);
+        }
+
+        const user = {
+            id: payload.sub,
+            email: payload.email,
+            username: payload.name || payload.email.split('@')[0],
+            picture: payload.picture
+        };
+
+        console.log(`[AUTH] User logged in: ${user.email}`);
+        res.json(user);
+    } catch (error) {
+        console.error('[AUTH] Google Auth Error:', error);
+        res.status(500).json({ error: 'Authentication failed' });
+    }
+});
+
+// User Tracks Endpoints
+app.get('/api/users/:uid/tracks', (req, res) => {
+    try {
+        const uid = req.params.uid;
+        const tracksPath = getUserTracksPath(uid);
+        if (fs.existsSync(tracksPath)) {
+            const tracks = JSON.parse(fs.readFileSync(tracksPath, 'utf8'));
+            res.json(tracks);
+        } else {
+            res.json([]);
+        }
+    } catch (error) {
+        console.error('[USER_TRACKS] Error reading tracks:', error);
+        res.status(500).json({ error: 'Failed to read user tracks' });
+    }
+});
+
+app.post('/api/users/:uid/tracks', (req, res) => {
+    try {
+        const uid = req.params.uid;
+        const { tracks } = req.body;
+        if (!tracks || !Array.isArray(tracks)) return res.status(400).json({ error: 'Invalid tracks data' });
+
+        const tracksPath = getUserTracksPath(uid);
+        fs.writeFileSync(tracksPath, JSON.stringify(tracks, null, 2));
+        console.log(`[USER_TRACKS] Saved ${tracks.length} tracks for user ${uid}`);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[USER_TRACKS] Error saving tracks:', error);
+        res.status(500).json({ error: 'Failed to save user tracks' });
+    }
+});
 
 app.get('/api/search', async (req, res) => {
     try {

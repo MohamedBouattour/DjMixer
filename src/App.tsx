@@ -8,6 +8,7 @@ import { useDeck } from "./hooks/useDeck";
 import type { Track } from "./types";
 import { getAllTracksFromDB, saveTrackToDB } from "./utils/storage";
 import { useSettings } from "./contexts/SettingsContext";
+import { useAuth } from "./contexts/AuthContext";
 import { getKeyLabel } from "./utils/keyHelpers";
 import { API_ENDPOINTS } from "./config";
 
@@ -47,6 +48,7 @@ function App() {
   const [isWorkletReady, setIsWorkletReady] = useState(false);
 
   const { keyMap, layout } = useSettings();
+  const { user, isAuthenticated } = useAuth();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
 
   // Update Logic
@@ -235,7 +237,17 @@ function App() {
           if (res.ok) cachedTracks = await res.json();
         } catch (e) { console.warn("Failed to fetch cache list", e); }
 
+        let userTracks: any[] = [];
+        if (isAuthenticated && user?.id) {
+          try {
+            const res = await fetch(API_ENDPOINTS.USER_TRACKS(user.id));
+            if (res.ok) userTracks = await res.json();
+          } catch (e) { console.warn("Failed to fetch user tracks", e); }
+        }
+
         const combined = [...storedTracks];
+        
+        // Add cache tracks
         cachedTracks.forEach(ct => {
           if (!combined.find(t => t.id === ct.id)) {
             combined.push({
@@ -245,11 +257,42 @@ function App() {
             } as Track);
           }
         });
+
+        // Add user tracks from other devices
+        userTracks.forEach(ut => {
+          if (!combined.find(t => t.id === ut.id)) {
+            combined.push({
+              ...ut,
+              url: `${API_ENDPOINTS.STREAM}?videoId=${ut.id}`
+            } as Track);
+          }
+        });
+
         setTracks(combined);
       } catch (err) { console.error("Failed to load tracks", err); }
     };
     loadTracks();
-  }, []);
+  }, [isAuthenticated, user?.id]);
+
+  const syncTracksToBackend = async (updatedTracks: Track[]) => {
+    if (!isAuthenticated || !user?.id) return;
+    try {
+      // Don't send File objects to backend
+      const serializableTracks = updatedTracks.map(({ file, ...track }) => track);
+      await fetch(API_ENDPOINTS.USER_TRACKS(user.id), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tracks: serializableTracks })
+      });
+    } catch (e) {
+      console.warn("Failed to sync tracks to backend", e);
+    }
+  };
+
+  const handleTracksChange = (newTracks: Track[]) => {
+    setTracks(newTracks);
+    syncTracksToBackend(newTracks);
+  };
 
   const handleImportTrack = async (track: Track, deckId: 'A' | 'B') => {
     const deck = deckId === 'A' ? deckA : deckB;
@@ -257,7 +300,9 @@ function App() {
       await deck.loadTrack(track);
       if (!tracks.find(t => t.id === track.id)) {
         await saveTrackToDB(track);
-        setTracks(prev => [track, ...prev]);
+        const newTracks = [track, ...tracks];
+        setTracks(newTracks);
+        syncTracksToBackend(newTracks);
       }
     } else {
       if (downloadingTracksRef.current.has(track.id)) return;
@@ -271,7 +316,9 @@ function App() {
         const localTrack = { ...track, file, url: URL.createObjectURL(file) };
         await deck.loadTrack(localTrack);
         await saveTrackToDB(localTrack);
-        setTracks(prev => [localTrack, ...prev.filter(t => t.id !== track.id)]);
+        const newTracks = [localTrack, ...tracks.filter(t => t.id !== track.id)];
+        setTracks(newTracks);
+        syncTracksToBackend(newTracks);
       } catch (err) {
         console.error("Track download failed", err);
         alert("Failed to download track for mixing.");
@@ -467,7 +514,7 @@ function App() {
           isOpen={isTrackSelectorOpen}
           onClose={() => setIsTrackSelectorOpen(false)}
           tracks={tracks}
-          onTracksChange={setTracks}
+          onTracksChange={handleTracksChange}
           onLoadTrack={handleImportTrack}
           isPlayingA={deckAState.isPlaying}
           isPlayingB={deckBState.isPlaying}

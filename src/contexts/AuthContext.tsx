@@ -13,6 +13,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     register: (email: string, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    googleLogin: (credential: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
 }
 
@@ -91,13 +92,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const googleLogin = async (credential: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            const response = await fetch(`${API_ENDPOINTS.AUTH}/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                return { success: false, error: errorData.error || 'Google Login failed' };
+            }
+
+            const userData = await response.json();
+            setUser(userData);
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+            return { success: true };
+        } catch (error) {
+            console.error('Google login error:', error);
+            return { success: false, error: 'Connection failed. Please try again.' };
+        }
+    };
+
     const logout = () => {
         setUser(null);
         localStorage.removeItem(AUTH_STORAGE_KEY);
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, googleLogin, logout }}>
             {children}
         </AuthContext.Provider>
     );
