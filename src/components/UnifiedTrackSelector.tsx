@@ -12,6 +12,7 @@ interface UnifiedTrackSelectorProps {
     tracks: Track[];
     onTracksChange: (tracks: Track[]) => void;
     onLoadTrack: (track: Track, deckId: 'A' | 'B') => void;
+    onDeleteTrack?: (track: Track) => void;
     isPlayingA: boolean;
     isPlayingB: boolean;
 }
@@ -22,6 +23,7 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
     tracks,
     onTracksChange,
     onLoadTrack,
+    onDeleteTrack,
     isPlayingA,
     isPlayingB
 }) => {
@@ -104,7 +106,7 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
     const renderTrackItem = (track: Track) => (
         <div 
             key={track.id} 
-            className="flex items-center gap-3 p-2 bg-bg-header border border-white/5 rounded-lg cursor-pointer transition-all duration-150 hover:bg-[#333] hover:border-white/10"
+            className="group flex items-center gap-3 p-2 bg-bg-header border border-white/5 rounded-lg cursor-pointer transition-all duration-150 hover:bg-[#333] hover:border-white/10 relative"
             onClick={() => setSelectedTrack(track)}
         >
             <div className="w-[62px] h-[62px] bg-[#333] rounded overflow-hidden shrink-0 max-md:w-[52px] max-md:h-[52px]">
@@ -112,7 +114,7 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                     <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                 </svg>
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 pr-10">
                 <div className="text-[18px] font-semibold text-white truncate">{track.name}</div>
                 <div className="text-[16px] text-text-hint truncate mt-0.5">
                     {track.file ? 'Local File' : 'YouTube Stream'}
@@ -121,6 +123,22 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
             <div className="text-sm font-mono text-text-hint tabular-nums">
                 {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
             </div>
+            {activeTab === 'library' && onDeleteTrack && (
+                <button 
+                    className="absolute right-2 p-2 text-text-hint opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-white/5 rounded-full transition-all"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if(window.confirm('Remove this track from your library?')) {
+                            onDeleteTrack(track);
+                        }
+                    }}
+                    title="Delete track"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            )}
         </div>
     );
 

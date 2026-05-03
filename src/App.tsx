@@ -7,7 +7,7 @@ import { AuthModal } from "./components/AuthModal";
 import { InstallPWA } from "./components/InstallPWA";
 import { useDeck } from "./hooks/useDeck";
 import type { Track } from "./types";
-import { getAllTracksFromDB, saveTrackToDB } from "./utils/storage";
+import { getAllTracksFromDB, saveTrackToDB, deleteTrackFromDB } from "./utils/storage";
 import { useSettings } from "./contexts/SettingsContext";
 import { useAuth } from "./contexts/AuthContext";
 import { getKeyLabel } from "./utils/keyHelpers";
@@ -276,6 +276,27 @@ function App() {
     }
   };
 
+  const handleDeleteTrack = async (track: Track) => {
+    // Delete locally
+    try {
+      await deleteTrackFromDB(track.id);
+    } catch (e) {
+      console.warn("Failed to delete track from local DB", e);
+    }
+
+    // Delete remotely
+    if (isAuthenticated && user?.id) {
+      try {
+        await fetch(`${API_ENDPOINTS.USER_TRACKS(user.id)}/${track.id}`, { method: 'DELETE' });
+      } catch (e) {
+        console.warn("Failed to delete track from backend", e);
+      }
+    }
+
+    const newTracks = tracks.filter(t => t.id !== track.id);
+    setTracks(newTracks);
+  };
+
   const handleTracksChange = (newTracks: Track[]) => {
     setTracks(newTracks);
     syncTracksToBackend(newTracks);
@@ -531,6 +552,7 @@ function App() {
           tracks={tracks}
           onTracksChange={handleTracksChange}
           onLoadTrack={handleImportTrack}
+          onDeleteTrack={handleDeleteTrack}
           isPlayingA={deckAState.isPlaying}
           isPlayingB={deckBState.isPlaying}
         />
