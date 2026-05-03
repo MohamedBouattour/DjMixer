@@ -8,7 +8,7 @@ export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/auth`,
   CACHE: `${API_BASE_URL}/cache`,
   CACHE_LIST: `${API_BASE_URL}/cache`, // Added for consistency
-  DOWNLOAD: `${API_BASE_URL}/download`, // Added for consistency
+  DOWNLOAD: `${API_BASE_URL}/stream`, // Changed from /download to /stream
   SYNC: `${API_BASE_URL}/cache/sync`,
   VERSION: `${API_BASE_URL}/version`,
 };

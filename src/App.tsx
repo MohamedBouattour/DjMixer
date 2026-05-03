@@ -229,7 +229,7 @@ function App() {
     const loadTracks = async () => {
       try {
         const storedTracks = await getAllTracksFromDB();
-        let cachedTracks: Track[] = [];
+        let cachedTracks: any[] = [];
         try {
           const res = await fetch(`${API_ENDPOINTS.CACHE_LIST}`);
           if (res.ok) cachedTracks = await res.json();
@@ -237,7 +237,13 @@ function App() {
 
         const combined = [...storedTracks];
         cachedTracks.forEach(ct => {
-          if (!combined.find(t => t.id === ct.id)) combined.push(ct);
+          if (!combined.find(t => t.id === ct.id)) {
+            combined.push({
+              ...ct,
+              name: ct.title || ct.name || "Unknown Track",
+              url: `${API_ENDPOINTS.STREAM}?videoId=${ct.id}`
+            } as Track);
+          }
         });
         setTracks(combined);
       } catch (err) { console.error("Failed to load tracks", err); }
