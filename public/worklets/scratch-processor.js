@@ -109,11 +109,13 @@ class ScratchProcessor extends AudioWorkletProcessor {
 
             // Boundary handling
             if (this.position >= bufferLength) {
-                this.position = bufferLength - 1;
-                this.currentVelocity = 0; // Stop at end
+                this.position = 0;
+                this.currentVelocity = 0;
+                this.port.postMessage({ type: 'ended' });
+                break;
             } else if (this.position < 0) {
                 this.position = 0;
-                this.currentVelocity = 0; // Stop at beginning
+                this.currentVelocity = 0;
             }
 
             // Hermite (Cubic) Interpolation for high-quality playback

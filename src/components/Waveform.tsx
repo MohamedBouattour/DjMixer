@@ -141,15 +141,9 @@ const WaveformComponent: React.FC<WaveformProps> = ({
         // Map to playback rate: 360 degrees in 1.8s (33 1/3 RPM) = 200 deg/s
         onScratch?.(lastAngularVelocityRef.current / 200);
 
-        if (onSeek && duration > 0) {
-            const secondsPerDegree = 1 / 200;
-            const seekDelta = deltaAngle * secondsPerDegree;
-            onSeek(Math.max(0, Math.min(duration, currentTime + seekDelta)));
-        }
-
         lastAngleRef.current = angle;
         lastTouchTimeRef.current = now;
-    }, [getAngle, onScratch, onSeek, duration, currentTime]);
+    }, [getAngle, onScratch]);
 
     // ✅ Implement snappy release for professional feel
     const handlePointerUp = useCallback((e: React.PointerEvent) => {

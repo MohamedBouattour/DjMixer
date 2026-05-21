@@ -81,7 +81,15 @@ export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOp
 
             // Listen for position sync from worklet
             scratchNode.port.onmessage = (event) => {
-                if (event.data.type === 'position') {
+                if (event.data.type === 'ended') {
+                    isPlayingRef.current = false;
+                    scratchNode.parameters.get('playbackRate')!.value = 0;
+                    setState(prev => ({
+                        ...prev,
+                        isPlaying: false,
+                        currentTime: 0
+                    }));
+                } else if (event.data.type === 'position') {
                     const ct = event.data.position / audioContext.sampleRate;
                     
                     // Handle Loop
