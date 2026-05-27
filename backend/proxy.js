@@ -390,7 +390,7 @@ app.get('/api/suggest', async (req, res) => {
 
         const genres = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop', 'remix'];
         const genre = genres[Math.floor(Math.random() * genres.length)];
-        const query = `${genre} ${bpm} bpm`;
+        const query = `${genre} radio edit`;
 
         console.log(`[SUGGEST] Searching: "${query}" (target BPM: ${bpm})`);
 

@@ -34,3 +34,4 @@ backend/.env
 GEMINI.md
 deploy.js
 *tar.gz
+backend/data/

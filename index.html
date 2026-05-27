@@ -9,7 +9,19 @@
   <meta name="theme-color" content="#0a0a0a" />
   <meta name="description" content="Professional DJ controller web app" />
   <link rel="apple-touch-icon" href="/app-icon.jpg" />
-  <link rel="manifest" href="/manifest.webmanifest" />
+  <script>
+    // Automatically unregister all service workers to clear cached app assets
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister().then(function() {
+            console.log('Service worker unregistered');
+            window.location.reload();
+          });
+        }
+      });
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
