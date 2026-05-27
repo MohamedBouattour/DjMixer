@@ -33,8 +33,6 @@ interface UseAutoMixOptions {
 
 // How many seconds before end of current track to start transition
 const TRANSITION_TRIGGER_SECONDS = 30;
-// How many seconds before end of current track to exit loop and start fading in/out
-const FADE_TRIGGER_SECONDS = 8;
 // Duration of volume fade in seconds
 const FADE_DURATION_MS = 8000;
 // Volume for the looped next track (0-150 scale, 40% of max)
@@ -210,24 +208,24 @@ export const useAutoMix = ({
 
         if (!isActiveRef.current) return;
 
-        // === READY phase ===
+        // === LOOPING phase ===
         // Wait a moment for the track to fully load into the deck
         setTimeout(() => {
             if (!isActiveRef.current) return;
 
-            setPhase('READY');
-            setStatusText('Next track ready');
+            setPhase('LOOPING');
+            setStatusText('Next track ready — looping...');
             transitionStartedRef.current = false;
 
             const idleControls = getIdleControls();
             const bpm = nextTrack.bpm || currentBpm;
             const { start, end } = getLoopBounds(bpm);
 
-            // Prepare idle deck (paused, volume at 100% so they can preview it, and set loop bounds)
-            idleControls.setVolume(100);
+            // Set loop, volume to 40%, and start playing immediately
+            idleControls.setVolume(LOOP_VOLUME);
             idleControls.seek(start);
             idleControls.setLoop(start, end);
-            idleControls.pause();
+            idleControls.play();
         }, 1000);
     }, [deckAState, deckBState, findSimilarTrack, getIdleDeckId, getIdleControls, getLoopBounds, onImportTrack]);
 
@@ -240,26 +238,8 @@ export const useAutoMix = ({
 
         const timeRemaining = activeState.track.duration - activeState.currentTime;
 
-        // 1. Enter LOOPING phase (start looping next track at 40% volume 30s before end)
-        if (phase === 'READY' && timeRemaining <= TRANSITION_TRIGGER_SECONDS) {
-            setPhase('LOOPING');
-            setStatusText('Looping next track...');
-
-            const idleControls = getIdleControls();
-            const idleState = activeDeckRef.current === 'A' ? deckBState : deckAState;
-            const bpm = idleState.track?.bpm || activeState.track?.bpm || 120;
-            const { start, end } = getLoopBounds(bpm);
-
-            // Set volume to 40%, seek to loop start, set loop bounds, and play
-            idleControls.setVolume(LOOP_VOLUME);
-            idleControls.seek(start);
-            idleControls.setLoop(start, end);
-            idleControls.play();
-            return;
-        }
-
-        // 2. Enter TRANSITIONING phase (exit loop, fade in next track, fade out current track 8s before end)
-        if (phase === 'LOOPING' && timeRemaining <= FADE_TRIGGER_SECONDS && !transitionStartedRef.current) {
+        // Enter TRANSITIONING phase (exit loop, fade in next track, fade out current track 30s before end / rhythm down)
+        if (phase === 'LOOPING' && timeRemaining <= TRANSITION_TRIGGER_SECONDS && !transitionStartedRef.current) {
             transitionStartedRef.current = true;
             setPhase('TRANSITIONING');
             setStatusText('Transitioning...');
