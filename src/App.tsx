@@ -6,6 +6,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { AuthModal } from "./components/AuthModal";
 import { InstallPWA } from "./components/InstallPWA";
 import { useDeck } from "./hooks/useDeck";
+import { useAutoMix } from "./hooks/useAutoMix";
 import type { Track } from "./types";
 import { getAllTracksFromDB, saveTrackToDB, deleteTrackFromDB } from "./utils/storage";
 import { useSettings } from "./contexts/SettingsContext";
@@ -293,7 +294,7 @@ function App() {
     syncTracksToBackend(newTracks);
   };
 
-  const handleImportTrack = async (track: Track, deckId: 'A' | 'B') => {
+  const handleImportTrack = async (track: Track, deckId: 'A' | 'B', silent = false) => {
     const deck = deckId === 'A' ? deckA : deckB;
     if (track.file) {
       await deck.loadTrack(track);
@@ -320,13 +321,28 @@ function App() {
         syncTracksToBackend(newTracks);
       } catch (err) {
         console.error("Track download failed", err);
-        alert("Failed to download track for mixing.");
+        if (!silent) {
+          alert("Failed to download track for mixing.");
+        }
+        if (silent) {
+          throw err;
+        }
       } finally {
         downloadingTracksRef.current.delete(track.id);
         deck.setIsLoading(false);
       }
     }
   };
+
+  // Auto Mix
+  const autoMix = useAutoMix({
+    deckAState,
+    deckBState,
+    deckAControls: deckA,
+    deckBControls: deckB,
+    tracks,
+    onImportTrack: handleImportTrack,
+  });
 
   const handleCrossfaderChange = (val: number) => setCrossfader(val);
   const handleVolumeChange = (deckId: 'A' | 'B', val: number) => {
@@ -421,6 +437,28 @@ function App() {
               </svg>
             </button>
           )}
+
+          {/* Auto Mix Toggle */}
+          <button
+            className={`relative flex items-center gap-1.5 h-10 px-3 rounded-lg font-bold text-[11px] tracking-wider uppercase transition-all duration-300 ${
+              autoMix.isActive
+                ? 'bg-gradient-to-r from-deck-a to-deck-b text-white border border-white/20 shadow-[0_0_20px_rgba(255,0,128,0.4),0_0_20px_rgba(0,212,255,0.4)] animate-[auto-mix-pulse_2s_ease-in-out_infinite]'
+                : 'bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30 hover:-translate-y-0.5'
+            }`}
+            onClick={autoMix.toggle}
+            title={autoMix.isActive ? 'Stop Auto Mix' : 'Start Auto Mix'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.6 6.62c-1.44 0-2.8.56-3.77 1.53L7.8 14.39c-.64.64-1.49.99-2.4.99-1.87 0-3.39-1.51-3.39-3.38S3.53 8.62 5.4 8.62c.91 0 1.76.35 2.44 1.03l1.13 1 1.51-1.34L9.22 8.2C8.2 7.18 6.84 6.62 5.4 6.62 2.42 6.62 0 9.04 0 12s2.42 5.38 5.4 5.38c1.44 0 2.8-.56 3.77-1.53l7.03-6.24c.64-.64 1.49-.99 2.4-.99 1.87 0 3.39 1.51 3.39 3.38s-1.52 3.38-3.39 3.38c-.9 0-1.76-.35-2.44-1.03l-1.14-1.01-1.51 1.34 1.27 1.12c1.02 1.01 2.37 1.57 3.82 1.57 2.98 0 5.4-2.41 5.4-5.38s-2.42-5.37-5.4-5.37z" />
+            </svg>
+            <span>AUTO</span>
+            {autoMix.isActive && autoMix.statusText && (
+              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[8px] text-white/70 whitespace-nowrap font-normal tracking-normal normal-case">
+                {autoMix.statusText}
+              </span>
+            )}
+          </button>
+
           <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30 hover:-translate-y-0.5" onClick={() => setIsTrackSelectorOpen(true)} title="Open Library">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
@@ -513,6 +551,7 @@ function App() {
               deckBState={deckBState}
               onVolumeChange={handleVolumeChange}
               onEQChange={handleEQChange}
+              isAutoMixActive={autoMix.isActive}
             />
           </section>
 

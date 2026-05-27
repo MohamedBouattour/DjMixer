@@ -111,3 +111,14 @@
   50% { opacity: 0.5; }
   100% { opacity: 1; }
 }
+
+@keyframes auto-mix-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 15px rgba(255, 0, 128, 0.3), 0 0 15px rgba(0, 212, 255, 0.3);
+    filter: brightness(1);
+  }
+  50% { 
+    box-shadow: 0 0 25px rgba(255, 0, 128, 0.6), 0 0 25px rgba(0, 212, 255, 0.6);
+    filter: brightness(1.15);
+  }
+}

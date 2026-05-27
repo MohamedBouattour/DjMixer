@@ -22,7 +22,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     onReleaseScratch,
     onScratchStart,
     onScratchEnd,
-    onSeek
+    onSeek: _onSeek
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const discRef = useRef<HTMLDivElement>(null);

@@ -381,6 +381,44 @@ app.get('/api/search', async (req, res) => {
     }
 });
 
+// ─── Auto Mix: BPM-based track suggestion ──────────────────────────────────
+app.get('/api/suggest', async (req, res) => {
+    try {
+        const bpm = parseInt(req.query.bpm);
+        const exclude = req.query.exclude || ''; // comma-separated IDs to skip
+        if (!bpm || isNaN(bpm)) return res.status(400).json({ error: 'bpm required' });
+
+        const genres = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop', 'remix'];
+        const genre = genres[Math.floor(Math.random() * genres.length)];
+        const query = `${genre} ${bpm} bpm`;
+
+        console.log(`[SUGGEST] Searching: "${query}" (target BPM: ${bpm})`);
+
+        const r = await yts(query);
+        const excludeSet = new Set(exclude.split(',').filter(Boolean));
+        const videos = r.videos
+            .filter(v => !excludeSet.has(v.videoId) && v.seconds > 60 && v.seconds < 600)
+            .slice(0, 5)
+            .map(v => ({
+                id: v.videoId,
+                title: v.title,
+                name: v.title,
+                artist: v.author.name,
+                author: v.author.name,
+                duration: v.seconds,
+                timestamp: v.timestamp,
+                thumbnail: v.thumbnail,
+                source: 'youtube'
+            }));
+
+        console.log(`[SUGGEST] Found ${videos.length} suggestions for ${bpm} BPM`);
+        res.json(videos);
+    } catch (error) {
+        console.error('[SUGGEST] Error:', error);
+        res.status(500).json({ error: 'Suggestion failed' });
+    }
+});
+
 app.get('/api/stream', async (req, res) => {
     try {
         let videoId = req.query.videoId;

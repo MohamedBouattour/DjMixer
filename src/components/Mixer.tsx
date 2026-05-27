@@ -11,6 +11,7 @@ interface MixerProps {
     deckBState: DeckState;
     onVolumeChange: (deck: 'A' | 'B', value: number) => void;
     onEQChange: (deck: 'A' | 'B', band: 'low' | 'mid' | 'high', value: number) => void;
+    isAutoMixActive?: boolean;
     shortcuts?: {
         volumeA?: { up: string; down: string };
         volumeB?: { up: string; down: string };
@@ -24,7 +25,8 @@ export const Mixer: React.FC<MixerProps> = ({
     deckAState,
     deckBState,
     onVolumeChange,
-    onEQChange
+    onEQChange,
+    isAutoMixActive
 }) => {
     const [isEQPopupOpen, setIsEQPopupOpen] = useState(false);
 
@@ -112,6 +114,11 @@ export const Mixer: React.FC<MixerProps> = ({
                     {/* Center: MIX label and volume percentages */}
                     <div className="flex flex-col items-center justify-center gap-2 px-1 min-w-[50px] max-xl:gap-2 max-xl:min-w-[44px] landscape:min-w-[36px] landscape:gap-[2px] landscape:p-[1px]">
                         <span className="text-[12px] font-bold text-deck-a whitespace-nowrap max-xl:text-[11px] landscape:text-[9px]">{Math.round(deckAState.volume)}%</span>
+                        {isAutoMixActive && (
+                            <div className="text-[9px] font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-deck-a to-deck-b animate-[auto-mix-pulse_2s_ease-in-out_infinite] mb-1">
+                                AUTO
+                            </div>
+                        )}
                         <button
                             className="text-[25px] font-extrabold text-white bg-gradient-to-br from-deck-a to-deck-b border-none px-[31px] py-[18px] rounded-lg tracking-widest cursor-pointer transition-all duration-200 shadow-[0_2px_8px_rgba(255,0,128,0.3),0_2px_8px_rgba(0,212,255,0.3)] hover:scale-105 hover:shadow-[0_4px_12px_rgba(255,0,128,0.5),0_4px_12px_rgba(0,212,255,0.5)] active:scale-95 max-xl:text-[18px] max-xl:px-[21px] max-xl:py-[13px] landscape:text-[14px] landscape:px-4 landscape:py-2.5 max-md:text-[11px] max-md:px-3.5 max-md:py-2 max-md:rounded-md"
                             onClick={() => setIsEQPopupOpen(true)}

@@ -9,4 +9,5 @@ export const API_ENDPOINTS = {
   DOWNLOAD: `${API_BASE_URL}/stream`, // Changed from /download to /stream
   VERSION: `${API_BASE_URL}/version`,
   USER_TRACKS: (uid: string) => `${API_BASE_URL}/users/${uid}/tracks`,
+  SUGGEST: `${API_BASE_URL}/suggest`,
 };
