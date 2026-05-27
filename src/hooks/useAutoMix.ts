@@ -6,6 +6,7 @@ export type AutoMixPhase =
     | 'IDLE'
     | 'FINDING'
     | 'LOADING'
+    | 'READY'
     | 'LOOPING'
     | 'TRANSITIONING'
     | 'COOLDOWN';
@@ -32,6 +33,8 @@ interface UseAutoMixOptions {
 
 // How many seconds before end of current track to start transition
 const TRANSITION_TRIGGER_SECONDS = 30;
+// How many seconds before end of current track to exit loop and start fading in/out
+const FADE_TRIGGER_SECONDS = 8;
 // Duration of volume fade in seconds
 const FADE_DURATION_MS = 8000;
 // Volume for the looped next track (0-150 scale, 40% of max)
@@ -207,41 +210,57 @@ export const useAutoMix = ({
 
         if (!isActiveRef.current) return;
 
-        // === LOOPING phase ===
+        // === READY phase ===
         // Wait a moment for the track to fully load into the deck
         setTimeout(() => {
             if (!isActiveRef.current) return;
 
-            setPhase('LOOPING');
-            setStatusText('Next track ready — waiting...');
+            setPhase('READY');
+            setStatusText('Next track ready');
             transitionStartedRef.current = false;
 
             const idleControls = getIdleControls();
             const bpm = nextTrack.bpm || currentBpm;
             const { start, end } = getLoopBounds(bpm);
 
-            // Set loop, volume to 40%, and start playing
-            idleControls.setVolume(LOOP_VOLUME);
+            // Prepare idle deck (paused, volume at 100% so they can preview it, and set loop bounds)
+            idleControls.setVolume(100);
             idleControls.seek(start);
             idleControls.setLoop(start, end);
-            idleControls.play();
-        }, 2000);
+            idleControls.pause();
+        }, 1000);
     }, [deckAState, deckBState, findSimilarTrack, getIdleDeckId, getIdleControls, getLoopBounds, onImportTrack]);
 
     // === Monitor active deck for transition trigger ===
     useEffect(() => {
-        if (!isActive || phase !== 'LOOPING') return;
+        if (!isActive) return;
 
         const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
         if (!activeState.track || !activeState.isPlaying) return;
 
         const timeRemaining = activeState.track.duration - activeState.currentTime;
 
-        if (timeRemaining <= TRANSITION_TRIGGER_SECONDS && !transitionStartedRef.current) {
-            transitionStartedRef.current = true;
-            console.log(`[AutoMix] Transition triggered! ${timeRemaining.toFixed(1)}s remaining`);
+        // 1. Enter LOOPING phase (start looping next track at 40% volume 30s before end)
+        if (phase === 'READY' && timeRemaining <= TRANSITION_TRIGGER_SECONDS) {
+            setPhase('LOOPING');
+            setStatusText('Looping next track...');
 
-            // === TRANSITIONING phase ===
+            const idleControls = getIdleControls();
+            const idleState = activeDeckRef.current === 'A' ? deckBState : deckAState;
+            const bpm = idleState.track?.bpm || activeState.track?.bpm || 120;
+            const { start, end } = getLoopBounds(bpm);
+
+            // Set volume to 40%, seek to loop start, set loop bounds, and play
+            idleControls.setVolume(LOOP_VOLUME);
+            idleControls.seek(start);
+            idleControls.setLoop(start, end);
+            idleControls.play();
+            return;
+        }
+
+        // 2. Enter TRANSITIONING phase (exit loop, fade in next track, fade out current track 8s before end)
+        if (phase === 'LOOPING' && timeRemaining <= FADE_TRIGGER_SECONDS && !transitionStartedRef.current) {
+            transitionStartedRef.current = true;
             setPhase('TRANSITIONING');
             setStatusText('Transitioning...');
 
@@ -278,7 +297,7 @@ export const useAutoMix = ({
                 }, COOLDOWN_MS);
             });
         }
-    }, [isActive, phase, deckAState, deckBState, getIdleControls, getActiveControls, getIdleDeckId, fadeVolume, startFinding]);
+    }, [isActive, phase, deckAState, deckBState, getIdleControls, getActiveControls, getIdleDeckId, getLoopBounds, fadeVolume, startFinding]);
 
     // === Toggle Auto Mix ===
     const toggle = useCallback(() => {

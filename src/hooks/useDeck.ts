@@ -158,7 +158,7 @@ export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOp
 
             setState(prev => ({
                 ...prev,
-                track: { ...track, bpm },
+                track: { ...track, bpm, duration: decodedBuffer.duration },
                 currentTime: 0,
                 isPlaying: false,
                 isLoading: false,
