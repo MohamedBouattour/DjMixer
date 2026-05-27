@@ -54,7 +54,6 @@ export const SmartMixPanel = ({
     currentTrackName,
     currentTrackArtist,
     currentTrackBpm,
-    onToggle,
     onSelectSuggestion,
     onQueueAll,
     onAddToQueue,

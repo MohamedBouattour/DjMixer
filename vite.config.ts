@@ -8,6 +8,9 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  define: {
+    '__BUILD_DATE__': JSON.stringify(new Date().toISOString())
+  },
   server: {
     proxy: {
       // Proxy all API requests to the VPS (VM)

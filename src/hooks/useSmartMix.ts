@@ -26,7 +26,6 @@ const TRANSITION_TRIGGER_SECONDS = 30;
 const FADE_DURATION_MS = 8000;
 const LOOP_VOLUME = 60;
 const COOLDOWN_MS = 3000;
-const SUGGESTION_COUNT = 4;
 
 function generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -37,7 +36,6 @@ export const useSmartMix = ({
     deckBState,
     deckAControls,
     deckBControls,
-    tracks,
     onImportTrack,
 }: UseSmartMixOptions) => {
     const [isActive, setIsActive] = useState(false);
