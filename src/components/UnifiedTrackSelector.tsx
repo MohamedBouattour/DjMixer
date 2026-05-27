@@ -110,9 +110,13 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
             onClick={() => setSelectedTrack(track)}
         >
             <div className="w-[62px] h-[62px] bg-[#333] rounded overflow-hidden shrink-0 max-md:w-[52px] max-md:h-[52px]">
-                <svg viewBox="0 0 24 24" fill="currentColor" opacity="0.5" className="w-full h-full p-2">
-                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                </svg>
+                {!track.file && !track.id.startsWith('local-') ? (
+                    <img src={`https://i.ytimg.com/vi/${track.id}/mqdefault.jpg`} alt="" className="w-full h-full object-cover" />
+                ) : (
+                    <svg viewBox="0 0 24 24" fill="currentColor" opacity="0.5" className="w-full h-full p-2">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                    </svg>
+                )}
             </div>
             <div className="flex-1 min-w-0 pr-10">
                 <div className="text-[18px] font-semibold text-white truncate">{track.name}</div>
