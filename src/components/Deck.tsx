@@ -34,6 +34,8 @@ interface DeckProps {
     isAutoMixActive?: boolean;
     isAutoMixIdle?: boolean;
     onAutoMixRefetch?: () => void;
+    onAutoMixTrigger?: () => void;
+    autoMixPhase?: string;
 }
 
 export const Deck: React.FC<DeckProps> = ({
@@ -44,7 +46,9 @@ export const Deck: React.FC<DeckProps> = ({
     shortcuts,
     isAutoMixActive,
     isAutoMixIdle,
-    onAutoMixRefetch
+    onAutoMixRefetch,
+    onAutoMixTrigger,
+    autoMixPhase
 }) => {
     const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
     const { 
@@ -152,17 +156,33 @@ export const Deck: React.FC<DeckProps> = ({
                 </div>
                 {track && (
                     <div className="flex items-center gap-3 flex-1 justify-end overflow-hidden">
-                        {isAutoMixActive && isAutoMixIdle && onAutoMixRefetch && (
-                            <button
-                                onClick={onAutoMixRefetch}
-                                title="Refetch Auto Mix Suggestion"
-                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold border border-white/10 transition-colors shrink-0 max-xl:text-[9px] max-xl:px-1.5 landscape:text-[8px] cursor-pointer"
-                            >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                                </svg>
-                                <span>REFETCH</span>
-                            </button>
+                        {isAutoMixActive && isAutoMixIdle && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                {onAutoMixRefetch && (
+                                    <button
+                                        onClick={onAutoMixRefetch}
+                                        title="Refetch Auto Mix Suggestion"
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold border border-white/10 transition-colors shrink-0 max-xl:text-[9px] max-xl:px-1.5 landscape:text-[8px] cursor-pointer"
+                                    >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                                        </svg>
+                                        <span>REFETCH</span>
+                                    </button>
+                                )}
+                                {autoMixPhase === 'LOOPING' && onAutoMixTrigger && (
+                                    <button
+                                        onClick={onAutoMixTrigger}
+                                        title="Trigger transition into this deck immediately"
+                                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-gradient-to-br from-deck-a to-deck-b text-white text-[10px] font-bold border border-white/20 transition-all cursor-pointer shadow-[0_0_8px_rgba(255,0,128,0.5)] hover:scale-105 active:scale-95 max-xl:text-[9px] max-xl:px-1.5 landscape:text-[8px]"
+                                    >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M13 2v9h7L11 22v-9H4l9-10z" />
+                                        </svg>
+                                        <span>MIX NOW</span>
+                                    </button>
+                                )}
+                            </div>
                         )}
                         <div className="text-[13px] font-semibold text-white truncate max-xl:text-[11px] landscape:text-[10px]">{track.name}</div>
                         {effectiveBPM && (

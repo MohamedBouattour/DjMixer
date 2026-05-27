@@ -535,6 +535,8 @@ function App() {
             isAutoMixActive={autoMix.isActive}
             isAutoMixIdle={autoMix.activeDeck === 'B'}
             onAutoMixRefetch={autoMix.refetch}
+            onAutoMixTrigger={autoMix.triggerTransition}
+            autoMixPhase={autoMix.phase}
             shortcuts={
               !isMobile
                 ? {
@@ -566,6 +568,8 @@ function App() {
             isAutoMixActive={autoMix.isActive}
             isAutoMixIdle={autoMix.activeDeck === 'A'}
             onAutoMixRefetch={autoMix.refetch}
+            onAutoMixTrigger={autoMix.triggerTransition}
+            autoMixPhase={autoMix.phase}
             shortcuts={
               !isMobile
                 ? {

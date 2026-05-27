@@ -61,6 +61,9 @@ export const useAutoMix = ({
     const fadeAnimRef = useRef<number | null>(null);
     const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const transitionStartedRef = useRef(false);
+    
+    // Asynchronous request cancellation token
+    const currentSearchIdRef = useRef<number>(0);
 
     // Keep refs in sync
     useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
@@ -78,6 +81,13 @@ export const useAutoMix = ({
     const getActiveControls = useCallback((): DeckControls => {
         return activeDeckRef.current === 'A' ? deckAControls : deckBControls;
     }, [deckAControls, deckBControls]);
+
+    // Keep activeIsPlayingRef updated
+    const activeIsPlayingRef = useRef(false);
+    useEffect(() => {
+        const activeState = activeDeck === 'A' ? deckAState : deckBState;
+        activeIsPlayingRef.current = activeState.isPlaying;
+    }, [activeDeck, deckAState.isPlaying, deckBState.isPlaying]);
 
     // Find a similar track by BPM — local library first, then API
     const findSimilarTrack = useCallback(async (currentBpm: number): Promise<Track | null> => {
@@ -101,14 +111,32 @@ export const useAutoMix = ({
 
         // 2. Fallback to API
         try {
-            const excludeIds = Array.from(playedSetRef.current).join(',');
-            const response = await fetch(
+            let excludeIds = Array.from(playedSetRef.current).join(',');
+            let response = await fetch(
                 `${API_ENDPOINTS.SUGGEST}?bpm=${Math.round(currentBpm)}&exclude=${encodeURIComponent(excludeIds)}`
             );
             if (!response.ok) throw new Error('Suggest API failed');
-            const suggestions = await response.json();
+            let suggestions = await response.json();
 
-            if (suggestions.length > 0) {
+            // If suggestions are empty, prune playedSetRef and try again
+            if (suggestions.length === 0 && playedSetRef.current.size > 2) {
+                console.log('[AutoMix] Suggestion pool exhausted, pruning history exclusions...');
+                const activeId = activeDeckRef.current === 'A' ? deckAState.track?.id : deckBState.track?.id;
+                const idleId = activeDeckRef.current === 'A' ? deckBState.track?.id : deckAState.track?.id;
+                playedSetRef.current.clear();
+                if (activeId) playedSetRef.current.add(activeId);
+                if (idleId) playedSetRef.current.add(idleId);
+
+                excludeIds = Array.from(playedSetRef.current).join(',');
+                response = await fetch(
+                    `${API_ENDPOINTS.SUGGEST}?bpm=${Math.round(currentBpm)}&exclude=${encodeURIComponent(excludeIds)}`
+                );
+                if (response.ok) {
+                    suggestions = await response.json();
+                }
+            }
+
+            if (suggestions && suggestions.length > 0) {
                 const pick = suggestions[0];
                 const track: Track = {
                     id: pick.id,
@@ -125,7 +153,7 @@ export const useAutoMix = ({
         }
 
         return null;
-    }, [tracks]);
+    }, [tracks, deckAState.track?.id, deckBState.track?.id]);
 
     // Calculate loop bounds: first 8 beats from start
     const getLoopBounds = useCallback((bpm: number): { start: number; end: number } => {
@@ -134,7 +162,7 @@ export const useAutoMix = ({
         return { start: 0, end: Math.max(loopDuration, 2) }; // minimum 2 seconds
     }, []);
 
-    // Smooth volume fade using requestAnimationFrame
+    // Smooth volume fade using requestAnimationFrame (pauses when music is paused)
     const fadeVolume = useCallback((
         controls: DeckControls,
         fromVol: number,
@@ -144,10 +172,19 @@ export const useAutoMix = ({
     ) => {
         if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
 
-        const startTime = performance.now();
+        let elapsedMs = 0;
+        let lastTime = performance.now();
+
         const animate = (now: number) => {
-            const elapsed = now - startTime;
-            const progress = Math.min(elapsed / durationMs, 1);
+            const delta = now - lastTime;
+            lastTime = now;
+
+            // Only advance fade progress if the active track is playing
+            if (activeIsPlayingRef.current) {
+                elapsedMs += delta;
+            }
+
+            const progress = Math.min(elapsedMs / durationMs, 1);
             // Ease in-out
             const eased = progress < 0.5
                 ? 2 * progress * progress
@@ -170,6 +207,8 @@ export const useAutoMix = ({
     const startFinding = useCallback(async () => {
         if (!isActiveRef.current) return;
 
+        const searchId = ++currentSearchIdRef.current;
+
         setPhase('FINDING');
         setStatusText('Finding next track...');
 
@@ -177,16 +216,20 @@ export const useAutoMix = ({
         const currentBpm = activeState.track?.bpm || 120;
 
         const nextTrack = await findSimilarTrack(currentBpm);
+        
+        // Guard against cancellation / new search triggered
+        if (!isActiveRef.current || searchId !== currentSearchIdRef.current) return;
+
         if (!nextTrack) {
             setStatusText('No matches found');
             // Retry after a delay
             setTimeout(() => {
-                if (isActiveRef.current) startFinding();
+                if (isActiveRef.current && searchId === currentSearchIdRef.current) {
+                    startFinding();
+                }
             }, 5000);
             return;
         }
-
-        if (!isActiveRef.current) return;
 
         // === LOADING phase ===
         setPhase('LOADING');
@@ -199,19 +242,22 @@ export const useAutoMix = ({
             await onImportTrack(nextTrack, idleDeckId, true);
         } catch (e) {
             console.error('[AutoMix] Load failed:', e);
+            if (!isActiveRef.current || searchId !== currentSearchIdRef.current) return;
             setStatusText('Load failed, retrying...');
             setTimeout(() => {
-                if (isActiveRef.current) startFinding();
+                if (isActiveRef.current && searchId === currentSearchIdRef.current) {
+                    startFinding();
+                }
             }, 3000);
             return;
         }
 
-        if (!isActiveRef.current) return;
+        if (!isActiveRef.current || searchId !== currentSearchIdRef.current) return;
 
         // === LOOPING phase ===
         // Wait a moment for the track to fully load into the deck
         setTimeout(() => {
-            if (!isActiveRef.current) return;
+            if (!isActiveRef.current || searchId !== currentSearchIdRef.current) return;
 
             setPhase('LOOPING');
             setStatusText('Next track ready — looping...');
@@ -225,89 +271,180 @@ export const useAutoMix = ({
             idleControls.setVolume(LOOP_VOLUME);
             idleControls.seek(start);
             idleControls.setLoop(start, end);
-            idleControls.play();
+            
+            // Sync play state with active deck
+            const activeState2 = activeDeckRef.current === 'A' ? deckAState : deckBState;
+            if (activeState2.isPlaying) {
+                idleControls.play();
+            } else {
+                idleControls.pause();
+            }
         }, 1000);
     }, [deckAState, deckBState, findSimilarTrack, getIdleDeckId, getIdleControls, getLoopBounds, onImportTrack]);
+
+    // === Trigger Transition manually / force mix ===
+    const triggerTransition = useCallback(() => {
+        if (!isActiveRef.current || phaseRef.current !== 'LOOPING' || transitionStartedRef.current) {
+            console.warn('[AutoMix] Cannot trigger transition: phase is not LOOPING or already transitioning');
+            return;
+        }
+
+        console.log('[AutoMix] Manually triggering transition...');
+        transitionStartedRef.current = true;
+        setPhase('TRANSITIONING');
+        setStatusText('Transitioning...');
+
+        const idleControls = getIdleControls();
+        const activeControls = getActiveControls();
+        const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
+
+        // Exit the loop on the next track
+        idleControls.clearLoop();
+
+        // Fade new track from LOOP_VOLUME → 100
+        fadeVolume(idleControls, LOOP_VOLUME, 100, FADE_DURATION_MS);
+
+        // Fade old track from current volume → 0
+        fadeVolume(activeControls, activeState.volume, 0, FADE_DURATION_MS, () => {
+            if (!isActiveRef.current) return;
+
+            // Old track done — pause it
+            activeControls.pause();
+            activeControls.setVolume(100); // Reset for later use
+
+            // Swap active deck
+            const newActiveDeck = getIdleDeckId();
+            setActiveDeck(newActiveDeck);
+
+            // === COOLDOWN phase ===
+            setPhase('COOLDOWN');
+            setStatusText('Preparing next...');
+
+            cooldownTimerRef.current = setTimeout(() => {
+                if (isActiveRef.current) {
+                    startFinding();
+                }
+            }, COOLDOWN_MS);
+        });
+    }, [getIdleControls, getActiveControls, getIdleDeckId, fadeVolume, startFinding, deckAState, deckBState]);
 
     // === Monitor active deck for transition trigger ===
     useEffect(() => {
         if (!isActive) return;
 
-        const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
+        const activeState = activeDeck === 'A' ? deckAState : deckBState;
         if (!activeState.track || !activeState.isPlaying) return;
 
         const timeRemaining = activeState.track.duration - activeState.currentTime;
 
         // Enter TRANSITIONING phase (exit loop, fade in next track, fade out current track 30s before end / rhythm down)
         if (phase === 'LOOPING' && timeRemaining <= TRANSITION_TRIGGER_SECONDS && !transitionStartedRef.current) {
-            transitionStartedRef.current = true;
-            setPhase('TRANSITIONING');
-            setStatusText('Transitioning...');
-
-            const idleControls = getIdleControls();
-            const activeControls = getActiveControls();
-            const activeState2 = activeDeckRef.current === 'A' ? deckAState : deckBState;
-
-            // Exit the loop on the next track
-            idleControls.clearLoop();
-
-            // Fade new track from LOOP_VOLUME → 100
-            fadeVolume(idleControls, LOOP_VOLUME, 100, FADE_DURATION_MS);
-
-            // Fade old track from current volume → 0
-            fadeVolume(activeControls, activeState2.volume, 0, FADE_DURATION_MS, () => {
-                if (!isActiveRef.current) return;
-
-                // Old track done — pause it
-                activeControls.pause();
-                activeControls.setVolume(100); // Reset for later use
-
-                // Swap active deck
-                const newActiveDeck = getIdleDeckId();
-                setActiveDeck(newActiveDeck);
-
-                // === COOLDOWN phase ===
-                setPhase('COOLDOWN');
-                setStatusText('Preparing next...');
-
-                cooldownTimerRef.current = setTimeout(() => {
-                    if (isActiveRef.current) {
-                        startFinding();
-                    }
-                }, COOLDOWN_MS);
-            });
+            triggerTransition();
         }
-    }, [isActive, phase, activeDeck, deckAState, deckBState, getIdleControls, getActiveControls, getIdleDeckId, getLoopBounds, fadeVolume, startFinding]);
+    }, [isActive, phase, activeDeck, deckAState.currentTime, deckAState.track?.duration, deckAState.isPlaying, deckBState.currentTime, deckBState.track?.duration, deckBState.isPlaying, triggerTransition]);
 
-    // === Sync idle deck playing state with active deck playing state during LOOPING phase ===
+    // === Sync idle deck playing state with active deck playing state ===
     useEffect(() => {
-        if (!isActive || phase !== 'LOOPING') return;
+        if (!isActive || (phase !== 'LOOPING' && phase !== 'TRANSITIONING')) return;
 
-        const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
-        const idleControls = getIdleControls();
+        const activeState = activeDeck === 'A' ? deckAState : deckBState;
+        const idleControls = activeDeck === 'A' ? deckBControls : deckAControls;
 
         if (activeState.isPlaying) {
             idleControls.play();
         } else {
             idleControls.pause();
         }
-    }, [isActive, phase, deckAState.isPlaying, deckBState.isPlaying, getIdleControls]);
+    }, [isActive, phase, activeDeck, deckAState.isPlaying, deckBState.isPlaying, deckAControls, deckBControls]);
 
     // === Track if the active track changed to trigger refetch ===
     const lastActiveTrackIdRef = useRef<string | null>(null);
+    const lastActiveDeckRef = useRef<'A' | 'B' | null>(null);
     useEffect(() => {
         if (!isActive || phase === 'IDLE') return;
 
-        const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
+        const activeState = activeDeck === 'A' ? deckAState : deckBState;
         if (!activeState.track) return;
 
         const currentTrackId = activeState.track.id;
-        if (lastActiveTrackIdRef.current && lastActiveTrackIdRef.current !== currentTrackId) {
-            console.log(`[AutoMix] Active track changed from ${lastActiveTrackIdRef.current} to ${currentTrackId}. Adapting and refetching...`);
+        
+        // Manual song change check: same deck, different track ID
+        const deckHasChanged = lastActiveDeckRef.current !== activeDeck;
+        const trackHasChanged = lastActiveTrackIdRef.current && lastActiveTrackIdRef.current !== currentTrackId;
+
+        if (!deckHasChanged && trackHasChanged) {
+            console.log(`[AutoMix] Active track manually changed on deck ${activeDeck} from ${lastActiveTrackIdRef.current} to ${currentTrackId}. Adapting and refetching...`);
+            
+            // Cancel pending transitions & timers
+            currentSearchIdRef.current++;
+            if (cooldownTimerRef.current) {
+                clearTimeout(cooldownTimerRef.current);
+                cooldownTimerRef.current = null;
+            }
+            if (fadeAnimRef.current) {
+                cancelAnimationFrame(fadeAnimRef.current);
+                fadeAnimRef.current = null;
+            }
+            transitionStartedRef.current = false;
+            
             startFinding();
         }
+
         lastActiveTrackIdRef.current = currentTrackId;
-    }, [isActive, phase, deckAState.track?.id, deckBState.track?.id, startFinding]);
+        lastActiveDeckRef.current = activeDeck;
+    }, [isActive, phase, activeDeck, deckAState.track?.id, deckBState.track?.id, startFinding]);
+
+    // === Track if the idle track was changed manually ===
+    const lastIdleTrackIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!isActive) return;
+
+        const idleDeckId = activeDeck === 'A' ? 'B' : 'A';
+        const idleState = idleDeckId === 'A' ? deckAState : deckBState;
+        const idleControls = idleDeckId === 'A' ? deckAControls : deckBControls;
+
+        if (!idleState.track) {
+            lastIdleTrackIdRef.current = null;
+            return;
+        }
+
+        const currentIdleTrackId = idleState.track.id;
+
+        if (lastIdleTrackIdRef.current && lastIdleTrackIdRef.current !== currentIdleTrackId) {
+            if (phase !== 'TRANSITIONING' && phase !== 'COOLDOWN') {
+                console.log(`[AutoMix] Idle track manually changed on deck ${idleDeckId} to ${idleState.track.name}. Adapting...`);
+                
+                // Cancel pending search
+                currentSearchIdRef.current++;
+                if (cooldownTimerRef.current) {
+                    clearTimeout(cooldownTimerRef.current);
+                    cooldownTimerRef.current = null;
+                }
+                
+                // Set phase to LOOPING since track is loaded
+                setPhase('LOOPING');
+                setStatusText(`Manual track ready: ${idleState.track.name.substring(0, 20)}`);
+                transitionStartedRef.current = false;
+
+                const bpm = idleState.track.bpm || 120;
+                const { start, end } = getLoopBounds(bpm);
+
+                // Setup loop and volume and play state
+                idleControls.setVolume(LOOP_VOLUME);
+                idleControls.seek(start);
+                idleControls.setLoop(start, end);
+                
+                const activeState = activeDeck === 'A' ? deckAState : deckBState;
+                if (activeState.isPlaying) {
+                    idleControls.play();
+                } else {
+                    idleControls.pause();
+                }
+            }
+        }
+
+        lastIdleTrackIdRef.current = currentIdleTrackId;
+    }, [isActive, phase, activeDeck, deckAState.track?.id, deckBState.track?.id, deckAState.isPlaying, deckBState.isPlaying, getLoopBounds, deckAControls, deckBControls]);
 
     // === Toggle Auto Mix ===
     const toggle = useCallback(() => {
@@ -318,6 +455,7 @@ export const useAutoMix = ({
             setActiveDeck(null);
             setStatusText('');
             transitionStartedRef.current = false;
+            currentSearchIdRef.current++; // cancel pending searches
 
             if (fadeAnimRef.current) {
                 cancelAnimationFrame(fadeAnimRef.current);
@@ -379,6 +517,7 @@ export const useAutoMix = ({
     // Cleanup on unmount
     useEffect(() => {
         return () => {
+            currentSearchIdRef.current++;
             if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
             if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
         };
@@ -391,5 +530,6 @@ export const useAutoMix = ({
         statusText,
         toggle,
         refetch: startFinding,
+        triggerTransition,
     };
 };
