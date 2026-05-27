@@ -5,9 +5,11 @@ export interface Track {
     url: string;
     bpm?: number;
     file?: File;
+    artist?: string;
+    genre?: string;
+    thumbnail?: string;
 }
 
-// Deck State Interface
 export interface DeckState {
     track: Track | null;
     isPlaying: boolean;
@@ -60,7 +62,7 @@ export type ActionIdentifier =
     | 'EFFECT_B_TOGGLE'
 
 export interface KeyMap {
-    [actionId: string]: string; // Key code (e.g., 'KeyA', 'Space')
+    [actionId: string]: string;
 }
 
 export const DEFAULT_KEY_MAP: KeyMap = {
@@ -77,3 +79,31 @@ export const DEFAULT_KEY_MAP: KeyMap = {
     'EFFECT_A_TOGGLE': 'KeyE',
     'EFFECT_B_TOGGLE': 'KeyI',
 };
+
+export interface SmartSuggestion {
+    id: string;
+    title: string;
+    artist: string;
+    genre: string;
+    bpm: number;
+    reason: string;
+    status: 'pending' | 'found' | 'not_found';
+    thumbnail?: string;
+    duration?: number;
+    videoId?: string;
+}
+
+export interface SmartMixQueueItem {
+    id: string;
+    track: Track;
+    suggestion?: SmartSuggestion;
+}
+
+export type SmartMixPhase =
+    | 'IDLE'
+    | 'FETCHING'
+    | 'AWAITING_CHOICE'
+    | 'LOADING'
+    | 'LOOPING'
+    | 'TRANSITIONING'
+    | 'COOLDOWN';

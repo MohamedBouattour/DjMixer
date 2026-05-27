@@ -419,6 +419,195 @@ app.get('/api/suggest', async (req, res) => {
     }
 });
 
+// ─── Smart Mix V2: AI-powered track suggestions via OpenRouter ──────────────
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct';
+
+app.post('/api/smart-suggest', express.json(), async (req, res) => {
+    try {
+        const { bpm, name, artist, genre, playedIds } = req.body;
+        if (!name) return res.status(400).json({ error: 'Track name required' });
+
+        const currentBpm = bpm || 120;
+        const excludeList = playedIds || [];
+
+        console.log(`[SMART-SUGGEST] AI suggesting for: "${name}" (${currentBpm} BPM)`);
+
+        if (!OPENROUTER_API_KEY) {
+            console.warn('[SMART-SUGGEST] No OPENROUTER_API_KEY set. Falling back to random suggest.');
+            const fallbackResults = await getRandomSuggestions(currentBpm, excludeList);
+            return res.json({ suggestions: fallbackResults, ai: false });
+        }
+
+        const prompt = `You are a professional DJ recommendation engine. Given a currently playing track, suggest exactly 4 songs that would mix well with it in a DJ set.
+
+Current track: "${name}"${artist ? ` by ${artist}` : ''}
+${genre ? `Genre: ${genre}` : ''}
+BPM: ${currentBpm}
+
+Consider:
+- Compatible BPM range (within ±10%)
+- Harmonic mixing and key compatibility
+- Genre blending potential
+- Energy flow and set progression
+
+Return ONLY a valid JSON array of exactly 4 objects. Each object must have:
+- "title": string (song title)
+- "artist": string (artist name)
+- "genre": string (best guess genre)
+- "bpm": number (approximate BPM)
+- "reason": string (one sentence explaining the mix compatibility)
+
+Example:
+[{"title":"Strobe","artist":"deadmau5","genre":"Progressive House","bpm":128,"reason":"Similar BPM and progressive build structure for a smooth energy transition"}]
+
+No markdown, no code fences, just the JSON array.`;
+
+        const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://djmixer.app',
+                'X-Title': 'DJ Mixer Smart Mix',
+            },
+            body: JSON.stringify({
+                model: OPENROUTER_MODEL,
+                messages: [{ role: 'user', content: prompt }],
+                response_format: { type: 'json_object' },
+                temperature: 0.7,
+                max_tokens: 1000,
+            }),
+        });
+
+        if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            console.error(`[SMART-SUGGEST] OpenRouter error (${aiResponse.status}):`, errorText);
+            const fallbackResults = await getRandomSuggestions(currentBpm, excludeList);
+            return res.json({ suggestions: fallbackResults, ai: false });
+        }
+
+        const aiData = await aiResponse.json();
+        const content = aiData.choices?.[0]?.message?.content;
+
+        if (!content) {
+            console.warn('[SMART-SUGGEST] Empty AI response');
+            const fallbackResults = await getRandomSuggestions(currentBpm, excludeList);
+            return res.json({ suggestions: fallbackResults, ai: false });
+        }
+
+        let parsed;
+        try {
+            parsed = JSON.parse(content);
+            if (Array.isArray(parsed)) {
+                parsed = { suggestions: parsed };
+            }
+        } catch {
+            console.warn('[SMART-SUGGEST] Failed to parse AI JSON, trying extraction...');
+            const match = content.match(/\[[\s\S]*?\]/);
+            if (match) {
+                try { parsed = { suggestions: JSON.parse(match[0]) }; }
+                catch { parsed = { suggestions: [] }; }
+            } else {
+                parsed = { suggestions: [] };
+            }
+        }
+
+        const rawSuggestions = (parsed?.suggestions || []).slice(0, 4);
+
+        if (rawSuggestions.length === 0) {
+            console.warn('[SMART-SUGGEST] AI returned no suggestions, falling back');
+            const fallbackResults = await getRandomSuggestions(currentBpm, excludeList);
+            return res.json({ suggestions: fallbackResults, ai: false });
+        }
+
+        const suggestions = [];
+        for (const s of rawSuggestions) {
+            const searchQuery = `${s.title} ${s.artist} audio`;
+            try {
+                const searchResult = await yts(searchQuery);
+                const video = searchResult.videos?.find(v =>
+                    !excludeList.includes(v.videoId) &&
+                    v.seconds > 60 && v.seconds < 600
+                ) || searchResult.videos?.[0];
+
+                if (video && video.seconds > 30) {
+                    suggestions.push({
+                        id: video.videoId,
+                        title: video.title,
+                        artist: video.author?.name || s.artist,
+                        genre: s.genre || 'Electronic',
+                        bpm: s.bpm || currentBpm,
+                        reason: s.reason || 'AI suggests this track for a great mix',
+                        status: 'found',
+                        thumbnail: video.thumbnail,
+                        duration: video.seconds,
+                        videoId: video.videoId,
+                    });
+                } else {
+                    suggestions.push({
+                        id: `ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        title: s.title,
+                        artist: s.artist,
+                        genre: s.genre || 'Electronic',
+                        bpm: s.bpm || currentBpm,
+                        reason: s.reason || 'Great mix potential',
+                        status: 'not_found',
+                    });
+                }
+            } catch {
+                suggestions.push({
+                    id: `ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    title: s.title,
+                    artist: s.artist,
+                    genre: s.genre || 'Electronic',
+                    bpm: s.bpm || currentBpm,
+                    reason: s.reason || 'Great mix potential',
+                    status: 'not_found',
+                });
+            }
+        }
+
+        console.log(`[SMART-SUGGEST] Returned ${suggestions.length} AI suggestions`);
+        res.json({ suggestions, ai: true });
+    } catch (error) {
+        console.error('[SMART-SUGGEST] Error:', error);
+        try {
+            const bpm = parseInt(req.body?.bpm) || 120;
+            const excludeList = req.body?.playedIds || [];
+            const fallbackResults = await getRandomSuggestions(bpm, excludeList);
+            return res.json({ suggestions: fallbackResults, ai: false });
+        } catch {
+            res.status(500).json({ error: 'Smart suggest failed' });
+        }
+    }
+});
+
+async function getRandomSuggestions(bpm, excludeList = []) {
+    const genres = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop', 'remix'];
+    const genre = genres[Math.floor(Math.random() * genres.length)];
+    const query = `${genre} radio edit`;
+
+    const r = await yts(query);
+    const excludeSet = new Set(excludeList.filter(Boolean));
+    const videos = r.videos
+        .filter(v => !excludeSet.has(v.videoId) && v.seconds > 60 && v.seconds < 600)
+        .slice(0, 4);
+
+    return videos.map(v => ({
+        id: v.videoId,
+        title: v.title,
+        artist: v.author?.name || 'Unknown',
+        genre: genre.charAt(0).toUpperCase() + genre.slice(1),
+        bpm: bpm,
+        reason: `Similar BPM (${bpm}) from ${genre} genre — good energy match`,
+        status: 'found',
+        thumbnail: v.thumbnail,
+        duration: v.seconds,
+        videoId: v.videoId,
+    }));
+}
+
 app.get('/api/stream', async (req, res) => {
     try {
         let videoId = req.query.videoId;

@@ -60,7 +60,10 @@ export const UnifiedTrackSelector: React.FC<UnifiedTrackSelectorProps> = ({
                 name: item.title,
                 duration: item.duration,
                 url: `${API_ENDPOINTS.STREAM}?videoId=${item.id}`,
-                bpm: item.bpm
+                bpm: item.bpm,
+                artist: item.artist || item.author,
+                thumbnail: item.thumbnail,
+                genre: item.genre,
             })));
         } catch (error) {
             console.error('Search error:', error);

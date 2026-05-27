@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Deck } from "./components/Deck";
 import { Mixer } from "./components/Mixer";
+import { SmartMixPanel } from "./components/SmartMixPanel";
 import { UnifiedTrackSelector } from "./components/UnifiedTrackSelector";
 import { SettingsModal } from "./components/SettingsModal";
 import { AuthModal } from "./components/AuthModal";
 
 import { useDeck } from "./hooks/useDeck";
-import { useAutoMix } from "./hooks/useAutoMix";
+import { useSmartMix } from "./hooks/useSmartMix";
 import type { Track } from "./types";
 import { getAllTracksFromDB, saveTrackToDB, deleteTrackFromDB } from "./utils/storage";
 import { useSettings } from "./contexts/SettingsContext";
@@ -14,16 +15,13 @@ import { useAuth } from "./contexts/AuthContext";
 import { getKeyLabel } from "./utils/keyHelpers";
 import { API_ENDPOINTS } from "./config";
 
-// ✅ Bug A Fix: Global persistent AudioContext initialized eagerly
 const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
 const globalAudioContext = new AudioContextClass();
 
-// ✅ Register AudioWorklets once
 let workletLoaded = false;
 const loadWorklets = async () => {
   if (workletLoaded) return;
   try {
-    // Note: The path must be relative to the public root
     await globalAudioContext.audioWorklet.addModule('/worklets/scratch-processor.js');
     console.log('[AudioWorklet] scratch-processor loaded');
     workletLoaded = true;
@@ -32,7 +30,6 @@ const loadWorklets = async () => {
   }
 };
 
-// Initialize shared nodes outside component for stability
 const masterGain = globalAudioContext.createGain();
 masterGain.connect(globalAudioContext.destination);
 
@@ -48,20 +45,17 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTrackSelectorOpen, setIsTrackSelectorOpen] = useState(false);
   const [isWorkletReady, setIsWorkletReady] = useState(false);
-
   const { keyMap, layout } = useSettings();
   const { user, isAuthenticated, logout } = useAuth();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
-  // Update Logic
   useEffect(() => {
     const checkVersion = async () => {
       try {
         const res = await fetch(API_ENDPOINTS.VERSION);
         if (!res.ok) return;
         const data = await res.json();
-
         if (
           data &&
           data.version &&
@@ -70,11 +64,9 @@ function App() {
         ) {
           const remoteVersion = data.version;
           const localVersion = localStorage.getItem("app_version");
-
           if (!localVersion) {
             localStorage.setItem("app_version", remoteVersion);
           } else if (localVersion !== remoteVersion) {
-            // Auto update without prompting
             localStorage.setItem("app_version", remoteVersion);
             window.location.reload();
           }
@@ -93,7 +85,6 @@ function App() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
     window.addEventListener("resize", checkMobile);
@@ -109,7 +100,6 @@ function App() {
     globalAudioContext.state === 'suspended' ? 'uninitialized' : globalAudioContext.state
   );
 
-  // Handle AudioContext state changes and auto-resume
   useEffect(() => {
     const handleStateChange = () => {
       setAudioContextState(globalAudioContext.state);
@@ -129,7 +119,6 @@ function App() {
     };
   }, []);
 
-  // Unified Audio Unlocker
   const unlockAudio = async () => {
     if (globalAudioContext.state === "suspended") {
       try {
@@ -138,8 +127,6 @@ function App() {
         console.error("[Audio] Manual resume failed:", e);
       }
     }
-
-    // Play silent sound to unlock iOS
     try {
       const osc = globalAudioContext.createOscillator();
       const silentGain = globalAudioContext.createGain();
@@ -151,11 +138,9 @@ function App() {
     } catch (e) {
       console.warn("[Audio] Unlock sound failed:", e);
     }
-
     setAudioContextState(globalAudioContext.state);
   };
 
-  // Automated first-gesture handler
   useEffect(() => {
     if (audioContextState === "running") return;
     const handleGesture = () => {
@@ -185,11 +170,9 @@ function App() {
     isWorkletReady
   });
 
-  // Screen Wake Lock
   useEffect(() => {
     let wakeLock: WakeLockSentinel | null = null;
     const isPlaying = deckAState.isPlaying || deckBState.isPlaying;
-
     const requestWakeLock = async () => {
       if (typeof navigator !== "undefined" && "wakeLock" in navigator) {
         try {
@@ -199,7 +182,6 @@ function App() {
         }
       }
     };
-
     if (isPlaying) requestWakeLock();
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isPlaying) requestWakeLock();
@@ -211,7 +193,6 @@ function App() {
     };
   }, [deckAState.isPlaying, deckBState.isPlaying]);
 
-  // Update crossfader
   useEffect(() => {
     const deckAVolume = 1 - crossfader / 100;
     const deckBVolume = crossfader / 100;
@@ -221,12 +202,10 @@ function App() {
 
   const downloadingTracksRef = useRef<Set<string>>(new Set());
 
-  // Load tracks from DB and User Sync
   useEffect(() => {
     const loadTracks = async () => {
       try {
         const storedTracks = await getAllTracksFromDB();
-
         let userTracks: any[] = [];
         if (isAuthenticated && user?.id) {
           try {
@@ -234,10 +213,7 @@ function App() {
             if (res.ok) userTracks = await res.json();
           } catch (e) { console.warn("Failed to fetch user tracks", e); }
         }
-
         const combined = [...storedTracks];
-
-        // Add user tracks from other devices
         userTracks.forEach(ut => {
           if (!combined.find(t => t.id === ut.id)) {
             combined.push({
@@ -246,7 +222,6 @@ function App() {
             } as Track);
           }
         });
-
         setTracks(combined);
       } catch (err) { console.error("Failed to load tracks", err); }
     };
@@ -256,7 +231,6 @@ function App() {
   const syncTracksToBackend = async (updatedTracks: Track[]) => {
     if (!isAuthenticated || !user?.id) return;
     try {
-      // Don't send File objects to backend
       const serializableTracks = updatedTracks.map(({ file, ...track }) => track);
       await fetch(API_ENDPOINTS.USER_TRACKS(user.id), {
         method: 'POST',
@@ -269,14 +243,11 @@ function App() {
   };
 
   const handleDeleteTrack = async (track: Track) => {
-    // Delete locally
     try {
       await deleteTrackFromDB(track.id);
     } catch (e) {
       console.warn("Failed to delete track from local DB", e);
     }
-
-    // Delete remotely
     if (isAuthenticated && user?.id) {
       try {
         await fetch(`${API_ENDPOINTS.USER_TRACKS(user.id)}/${track.id}`, { method: 'DELETE' });
@@ -284,7 +255,6 @@ function App() {
         console.warn("Failed to delete track from backend", e);
       }
     }
-
     const newTracks = tracks.filter(t => t.id !== track.id);
     setTracks(newTracks);
   };
@@ -334,8 +304,8 @@ function App() {
     }
   };
 
-  // Auto Mix
-  const autoMix = useAutoMix({
+  // Smart Mix V2
+  const smartMix = useSmartMix({
     deckAState,
     deckBState,
     deckAControls: deckA,
@@ -353,6 +323,8 @@ function App() {
     const deck = deckId === 'A' ? deckA : deckB;
     deck.setEQ(band, val);
   };
+
+  const activeTrack = smartMix.activeDeck === 'A' ? deckAState.track : deckBState.track;
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -446,23 +418,23 @@ function App() {
             </button>
           )}
 
-          {/* Auto Mix Toggle */}
+          {/* Smart Mix Toggle */}
           <button
             className={`relative flex items-center gap-1.5 h-10 px-3 rounded-lg font-bold text-[11px] tracking-wider uppercase transition-all duration-300 ${
-              autoMix.isActive
+              smartMix.isActive
                 ? 'bg-gradient-to-r from-deck-a to-deck-b text-white border border-white/20 shadow-[0_0_20px_rgba(255,0,128,0.4),0_0_20px_rgba(0,212,255,0.4)] animate-[auto-mix-pulse_2s_ease-in-out_infinite]'
                 : 'bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30 hover:-translate-y-0.5'
             }`}
-            onClick={autoMix.toggle}
-            title={autoMix.isActive ? 'Stop Auto Mix' : 'Start Auto Mix'}
+            onClick={smartMix.toggle}
+            title={smartMix.isActive ? 'Stop Smart Mix' : 'Start Smart Mix'}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.6 6.62c-1.44 0-2.8.56-3.77 1.53L7.8 14.39c-.64.64-1.49.99-2.4.99-1.87 0-3.39-1.51-3.39-3.38S3.53 8.62 5.4 8.62c.91 0 1.76.35 2.44 1.03l1.13 1 1.51-1.34L9.22 8.2C8.2 7.18 6.84 6.62 5.4 6.62 2.42 6.62 0 9.04 0 12s2.42 5.38 5.4 5.38c1.44 0 2.8-.56 3.77-1.53l7.03-6.24c.64-.64 1.49-.99 2.4-.99 1.87 0 3.39 1.51 3.39 3.38s-1.52 3.38-3.39 3.38c-.9 0-1.76-.35-2.44-1.03l-1.14-1.01-1.51 1.34 1.27 1.12c1.02 1.01 2.37 1.57 3.82 1.57 2.98 0 5.4-2.41 5.4-5.38s-2.42-5.37-5.4-5.37z" />
             </svg>
-            <span>AUTO</span>
-            {autoMix.isActive && autoMix.statusText && (
+            <span>SMART</span>
+            {smartMix.isActive && smartMix.statusText && (
               <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[8px] text-white/70 whitespace-nowrap font-normal tracking-normal normal-case">
-                {autoMix.statusText}
+                {smartMix.statusText}
               </span>
             )}
           </button>
@@ -540,11 +512,11 @@ function App() {
             state={deckAState}
             controls={deckA}
             color="#ff0080"
-            isAutoMixActive={autoMix.isActive}
-            isAutoMixIdle={autoMix.activeDeck === 'B'}
-            onAutoMixRefetch={autoMix.refetch}
-            onAutoMixTrigger={autoMix.triggerTransition}
-            autoMixPhase={autoMix.phase}
+            isAutoMixActive={smartMix.isActive}
+            isAutoMixIdle={smartMix.activeDeck === 'B'}
+            onAutoMixRefetch={smartMix.refreshSuggestions}
+            onAutoMixTrigger={smartMix.triggerTransition}
+            autoMixPhase={smartMix.phase}
             shortcuts={
               !isMobile
                 ? {
@@ -564,7 +536,7 @@ function App() {
               deckBState={deckBState}
               onVolumeChange={handleVolumeChange}
               onEQChange={handleEQChange}
-              isAutoMixActive={autoMix.isActive}
+              isAutoMixActive={smartMix.isActive}
             />
           </section>
 
@@ -573,11 +545,11 @@ function App() {
             state={deckBState}
             controls={deckB}
             color="#00d4ff"
-            isAutoMixActive={autoMix.isActive}
-            isAutoMixIdle={autoMix.activeDeck === 'A'}
-            onAutoMixRefetch={autoMix.refetch}
-            onAutoMixTrigger={autoMix.triggerTransition}
-            autoMixPhase={autoMix.phase}
+            isAutoMixActive={smartMix.isActive}
+            isAutoMixIdle={smartMix.activeDeck === 'A'}
+            onAutoMixRefetch={smartMix.refreshSuggestions}
+            onAutoMixTrigger={smartMix.triggerTransition}
+            autoMixPhase={smartMix.phase}
             shortcuts={
               !isMobile
                 ? {
@@ -589,6 +561,28 @@ function App() {
             }
           />
         </div>
+
+        <SmartMixPanel
+          isActive={smartMix.isActive}
+          phase={smartMix.phase}
+          statusText={smartMix.statusText}
+          suggestions={smartMix.suggestions}
+          queue={smartMix.queue}
+          queueIndex={smartMix.queueIndex}
+          isAiPowered={smartMix.isAiPowered}
+          currentTrackName={activeTrack?.name}
+          currentTrackArtist={activeTrack?.artist}
+          currentTrackBpm={activeTrack?.bpm}
+          onToggle={smartMix.toggle}
+          onSelectSuggestion={smartMix.selectSuggestion}
+          onQueueAll={smartMix.queueAll}
+          onAddToQueue={smartMix.addToQueue}
+          onRemoveFromQueue={smartMix.removeFromQueue}
+          onReorderQueue={smartMix.reorderQueue}
+          onRefreshSuggestions={smartMix.refreshSuggestions}
+          onClearQueue={smartMix.clearQueue}
+          onTriggerTransition={smartMix.triggerTransition}
+        />
 
         <UnifiedTrackSelector
           isOpen={isTrackSelectorOpen}
@@ -610,8 +604,6 @@ function App() {
           isOpen={isAuthOpen}
           onClose={() => setIsAuthOpen(false)}
         />
-
-
       </main>
     </div>
   );
