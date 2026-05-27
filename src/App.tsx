@@ -360,6 +360,14 @@ function App() {
       if (isSettingsOpen || isTrackSelectorOpen) return;
       if (e.target instanceof HTMLInputElement) return;
 
+      if (e.code === 'Escape') {
+        e.preventDefault();
+        deckA.clearLoop();
+        deckB.clearLoop();
+        console.log('[Shortcuts] Cleared all deck loops via Escape key');
+        return;
+      }
+
       const action = Object.entries(keyMap).find(([_, code]) => code === e.code)?.[0];
       if (!action) return;
 

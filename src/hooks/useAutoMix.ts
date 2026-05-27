@@ -271,14 +271,7 @@ export const useAutoMix = ({
             idleControls.setVolume(LOOP_VOLUME);
             idleControls.seek(start);
             idleControls.setLoop(start, end);
-            
-            // Sync play state with active deck
-            const activeState2 = activeDeckRef.current === 'A' ? deckAState : deckBState;
-            if (activeState2.isPlaying) {
-                idleControls.play();
-            } else {
-                idleControls.pause();
-            }
+            idleControls.play();
         }, 1000);
     }, [deckAState, deckBState, findSimilarTrack, getIdleDeckId, getIdleControls, getLoopBounds, onImportTrack]);
 
@@ -343,19 +336,7 @@ export const useAutoMix = ({
         }
     }, [isActive, phase, activeDeck, deckAState.currentTime, deckAState.track?.duration, deckAState.isPlaying, deckBState.currentTime, deckBState.track?.duration, deckBState.isPlaying, triggerTransition]);
 
-    // === Sync idle deck playing state with active deck playing state ===
-    useEffect(() => {
-        if (!isActive || (phase !== 'LOOPING' && phase !== 'TRANSITIONING')) return;
 
-        const activeState = activeDeck === 'A' ? deckAState : deckBState;
-        const idleControls = activeDeck === 'A' ? deckBControls : deckAControls;
-
-        if (activeState.isPlaying) {
-            idleControls.play();
-        } else {
-            idleControls.pause();
-        }
-    }, [isActive, phase, activeDeck, deckAState.isPlaying, deckBState.isPlaying, deckAControls, deckBControls]);
 
     // === Track if the active track changed to trigger refetch ===
     const lastActiveTrackIdRef = useRef<string | null>(null);
@@ -433,13 +414,7 @@ export const useAutoMix = ({
                 idleControls.setVolume(LOOP_VOLUME);
                 idleControls.seek(start);
                 idleControls.setLoop(start, end);
-                
-                const activeState = activeDeck === 'A' ? deckAState : deckBState;
-                if (activeState.isPlaying) {
-                    idleControls.play();
-                } else {
-                    idleControls.pause();
-                }
+                idleControls.play();
             }
         }
 
