@@ -8,6 +8,7 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  base: '/mixer/',
   define: {
     '__BUILD_DATE__': JSON.stringify(new Date().toISOString())
   },

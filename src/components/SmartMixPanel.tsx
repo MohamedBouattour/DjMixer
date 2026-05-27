@@ -143,9 +143,9 @@ export const SmartMixPanel = ({
                             <span className="text-sm font-bold text-white">{statusText || 'Smart Mix'}</span>
                             {isAiPowered && (
                                 <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-gradient-to-r from-purple-600 to-indigo-600 rounded text-white/90">
-                                    AI POWERED
-                                </span>
-                            )}
+                            AI
+                        </span>
+                    )}
                             {phase === 'FETCHING' && (
                                 <span className="flex gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />

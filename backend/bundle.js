@@ -32,9 +32,43 @@ var publicPath = path.join(__dirname, "public");
 var distPath = path.join(__dirname, "../dist");
 var cacheDir = path.join(__dirname, "cache");
 var dataDir = path.join(__dirname, "data");
+var logsDir = path.join(__dirname, "logs");
 var staticDir = null;
 if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+var logFile = path.join(logsDir, "app.log");
+var logStream = fs.createWriteStream(logFile, { flags: "w" });
+function writeToLogFile(level, args) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const message = args.map((arg) => {
+    if (typeof arg === "object") {
+      try {
+        return JSON.stringify(arg, null, 2);
+      } catch (e) {
+        return String(arg);
+      }
+    }
+    return String(arg);
+  }).join(" ");
+  logStream.write(`[${timestamp}] [${level}] ${message}
+`);
+}
+var originalLog = console.log;
+var originalWarn = console.warn;
+var originalError = console.error;
+console.log = (...args) => {
+  writeToLogFile("INFO", args);
+  originalLog.apply(console, args);
+};
+console.warn = (...args) => {
+  writeToLogFile("WARN", args);
+  originalWarn.apply(console, args);
+};
+console.error = (...args) => {
+  writeToLogFile("ERROR", args);
+  originalError.apply(console, args);
+};
 var db = new Database(path.join(dataDir, "djmixer.db"));
 db.pragma("journal_mode = WAL");
 db.exec(`
@@ -100,6 +134,100 @@ if (fs.existsSync(publicPath)) {
 function decodeHTMLEntities(text) {
   if (!text) return "";
   return text.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+function parseTrackMetadata(videoTitle, channelName) {
+  if (!videoTitle) return { artist: "Unknown Artist", title: "Unknown Title" };
+  let clean = videoTitle.replace(/\s+-\s*/g, " - ").replace(/\s*-\s+/g, " - ");
+  clean = clean.replace(/\[\s*(official\s+video|official\s+audio|official\s+music\s+video|official\s+lyric\s+video|lyric\s+video|lyrics|official|audio|video|hd|hq|1080p|4k|visualizer|clip\s+officiel)\s*\]/gi, "").replace(/\(\s*(official\s+video|official\s+audio|official\s+music\s+video|official\s+lyric\s+video|lyric\s+video|lyrics|official|audio|video|hd|hq|1080p|4k|visualizer|clip\s+officiel)\s*\)/gi, "").trim();
+  const separators = [" - ", " \u2013 ", " \u2014 ", " | ", " : ", " / "];
+  let leftmostSep = null;
+  let leftmostIdx = Infinity;
+  for (const sep of separators) {
+    const idx = clean.indexOf(sep);
+    if (idx !== -1 && idx < leftmostIdx) {
+      leftmostIdx = idx;
+      leftmostSep = sep;
+    }
+  }
+  let artist = "";
+  let songTitle = "";
+  if (leftmostSep) {
+    const parts = clean.split(leftmostSep);
+    artist = parts[0].trim();
+    songTitle = parts.slice(1).join(leftmostSep).trim();
+  } else {
+    const match = clean.match(/^([^-]+)-+(.+)$/);
+    if (match) {
+      artist = match[1].trim();
+      songTitle = match[2].trim();
+    }
+  }
+  const lowerChannel = (channelName || "").toLowerCase();
+  const isGenericChannel = lowerChannel.includes("topic") || lowerChannel.includes("lyrics") || lowerChannel.includes("music") || lowerChannel.includes("vevo") || lowerChannel.includes("records") || lowerChannel.includes("studio") || lowerChannel.includes("uploads") || lowerChannel.includes("soundtrack") || lowerChannel.includes("channel") || lowerChannel.includes("mp3") || lowerChannel.includes("karaoke") || lowerChannel.includes("sound");
+  if (!artist || !songTitle || artist.length > 50) {
+    if (channelName && !isGenericChannel) {
+      artist = channelName;
+      songTitle = clean;
+    } else {
+      artist = "Unknown Artist";
+      songTitle = clean;
+    }
+  } else {
+    const parsedArtistLower = artist.toLowerCase();
+    const isArtistGeneric = parsedArtistLower.includes("topic") || parsedArtistLower.includes("lyrics") || parsedArtistLower.includes("music") || parsedArtistLower.includes("vevo") || parsedArtistLower.includes("records") || parsedArtistLower.includes("studio") || parsedArtistLower.includes("uploads") || parsedArtistLower.includes("soundtrack") || parsedArtistLower.includes("channel") || parsedArtistLower.includes("sound") || parsedArtistLower.length > 35;
+    if (isArtistGeneric && songTitle) {
+      let subLeftmostSep = null;
+      let subLeftmostIdx = Infinity;
+      for (const sep of [...separators, "-"]) {
+        const idx = songTitle.indexOf(sep);
+        if (idx !== -1 && idx < subLeftmostIdx) {
+          subLeftmostIdx = idx;
+          subLeftmostSep = sep;
+        }
+      }
+      if (subLeftmostSep) {
+        const subParts = songTitle.split(subLeftmostSep);
+        const subArtist = subParts[0].trim();
+        const subTitle = subParts.slice(1).join(subLeftmostSep).trim();
+        if (subArtist && subTitle && subArtist.length < 35) {
+          artist = subArtist;
+          songTitle = subTitle;
+        }
+      }
+    }
+  }
+  artist = artist.replace(/^["'«\s]+|["'»\s]+$/g, "").trim();
+  songTitle = songTitle.replace(/^["'«\s]+|["'»\s]+$/g, "").trim();
+  return { artist, title: songTitle };
+}
+function getNormalizedString(str) {
+  if (!str) return "";
+  return str.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, "").replace(/official/g, "").replace(/video/g, "").replace(/audio/g, "").replace(/lyrics/g, "").replace(/lyric/g, "").replace(/original/g, "").replace(/mix/g, "").replace(/remix/g, "").replace(/cover/g, "").replace(/full/g, "").replace(/song/g, "").trim();
+}
+function getLcs(s1, s2) {
+  const m = s1.length;
+  const n = s2.length;
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  return dp[m][n];
+}
+function areTitlesSimilar(t1, t2) {
+  const n1 = getNormalizedString(t1);
+  const n2 = getNormalizedString(t2);
+  if (!n1 || !n2) return false;
+  if (n1.includes(n2) || n2.includes(n1)) return true;
+  const lcs = getLcs(n1, n2);
+  const minLen = Math.min(n1.length, n2.length);
+  if (minLen === 0) return false;
+  return lcs / minLen > 0.75;
 }
 async function fetchRapidAPI(videoId) {
   const url = `https://youtube-mp36.p.rapidapi.com/dl?id=${videoId}`;
@@ -229,6 +357,31 @@ app.post("/api/users/:uid/tracks", (req, res) => {
     res.status(500).json({ error: "Failed to save user tracks" });
   }
 });
+app.delete("/api/users/:uid/tracks/:trackId", (req, res) => {
+  try {
+    const uid = req.params.uid;
+    const trackId = req.params.trackId;
+    const delStmt = db.prepare("DELETE FROM user_tracks WHERE user_id = ? AND track_id = ?");
+    delStmt.run(uid, trackId);
+    console.log(`[USER_TRACKS] Deleted track ${trackId} for user ${uid}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("[USER_TRACKS] Error deleting track:", error);
+    res.status(500).json({ error: "Failed to delete user track" });
+  }
+});
+app.get("/api/logs", (req, res) => {
+  try {
+    if (fs.existsSync(logFile)) {
+      res.download(logFile, "app.log");
+    } else {
+      res.status(404).json({ error: "Log file not found" });
+    }
+  } catch (error) {
+    originalError("[LOGS_ENDPOINT] Error downloading log file:", error);
+    res.status(500).json({ error: "Failed to retrieve logs" });
+  }
+});
 app.get("/api/search", async (req, res) => {
   try {
     const query = req.query.q;
@@ -289,16 +442,19 @@ app.get("/api/search", async (req, res) => {
       }
     }
     const r = await yts(query);
-    const videos = r.videos.slice(0, 15).map((v) => ({
-      id: v.videoId,
-      title: v.title,
-      artist: v.author.name,
-      author: v.author.name,
-      duration: v.seconds,
-      timestamp: v.timestamp,
-      thumbnail: v.thumbnail,
-      source: "youtube"
-    }));
+    const videos = r.videos.slice(0, 15).map((v) => {
+      const parsed = parseTrackMetadata(v.title, v.author?.name);
+      return {
+        id: v.videoId,
+        title: parsed.title,
+        artist: parsed.artist,
+        author: v.author?.name || parsed.artist,
+        duration: v.seconds,
+        timestamp: v.timestamp,
+        thumbnail: v.thumbnail,
+        source: "youtube"
+      };
+    });
     console.log(`[SEARCH] Found ${videos.length} YouTube tracks`);
     res.json(videos);
   } catch (error) {
@@ -306,6 +462,344 @@ app.get("/api/search", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+app.get("/api/suggest", async (req, res) => {
+  try {
+    const bpm = parseInt(req.query.bpm);
+    const exclude = req.query.exclude || "";
+    if (!bpm || isNaN(bpm)) return res.status(400).json({ error: "bpm required" });
+    const genres = ["house", "techno", "edm", "dance", "electronic", "hip hop", "pop", "remix"];
+    const genre = genres[Math.floor(Math.random() * genres.length)];
+    const query = `${genre} radio edit`;
+    console.log(`[SUGGEST] Searching: "${query}" (target BPM: ${bpm})`);
+    const r = await yts(query);
+    const excludeSet = new Set(exclude.split(",").filter(Boolean));
+    const videos = r.videos.filter((v) => !excludeSet.has(v.videoId) && v.seconds > 60 && v.seconds < 600).slice(0, 5).map((v) => {
+      const parsed = parseTrackMetadata(v.title, v.author?.name);
+      return {
+        id: v.videoId,
+        title: parsed.title,
+        name: parsed.title,
+        artist: parsed.artist,
+        author: v.author?.name || parsed.artist,
+        duration: v.seconds,
+        timestamp: v.timestamp,
+        thumbnail: v.thumbnail,
+        source: "youtube"
+      };
+    });
+    console.log(`[SUGGEST] Found ${videos.length} suggestions for ${bpm} BPM`);
+    res.json(videos);
+  } catch (error) {
+    console.error("[SUGGEST] Error:", error);
+    res.status(500).json({ error: "Suggestion failed" });
+  }
+});
+var OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+var OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+app.post("/api/smart-suggest", express.json(), async (req, res) => {
+  try {
+    const { name, artist, bpm, genre, playedIds } = req.body;
+    const currentBpm = parseInt(bpm) || 120;
+    const excludeSet = new Set(playedIds || []);
+    const seedParsed = parseTrackMetadata(name, artist);
+    const cleanName = seedParsed.title;
+    const cleanArtist = seedParsed.artist !== "Unknown Artist" ? seedParsed.artist : artist || "";
+    const trackLabel = `${cleanArtist ? cleanArtist + " - " : ""}${cleanName || "Unknown"}`;
+    console.log(`
+========== SMART-SUGGEST REQUEST ==========`);
+    console.log(`Track:  "${trackLabel}"`);
+    console.log(`BPM:    ${currentBpm}`);
+    console.log(`Genre:  ${genre || "?"}`);
+    console.log(`Artist: ${cleanArtist || "?"}`);
+    console.log(`Played: ${playedIds?.length || 0} IDs`);
+    console.log(`Has AI key: ${OPENROUTER_KEY ? "YES" : "NO"}`);
+    console.log(`Model:  ${OPENROUTER_MODEL}`);
+    let suggestions = [];
+    if (OPENROUTER_KEY) {
+      console.log(`[SMART-SUGGEST] Calling OpenRouter...`);
+      try {
+        suggestions = await aiSuggest(cleanName, cleanArtist, currentBpm, genre, excludeSet, trackLabel);
+        console.log(`[SMART-SUGGEST] AI returned ${suggestions.length} real tracks`);
+        if (suggestions.length > 0) {
+          console.log(`[SMART-SUGGEST] Final response:`);
+          suggestions.forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" - ${s.artist} (yt:${s.videoId})`));
+          console.log(`============================================
+`);
+          return res.json({ suggestions, ai: true });
+        }
+      } catch (e) {
+        console.warn(`[SMART-SUGGEST] AI failed:`, e.message);
+        if (e.stack) console.warn(e.stack.split("\n").slice(0, 4).join("\n"));
+      }
+    }
+    console.log(`[SMART-SUGGEST] FALLBACK: context-aware query search`);
+    const genres = ["house", "techno", "edm", "dance", "electronic", "hip hop", "pop", "remix"];
+    const currentGenre = genre || genres[Math.floor(Math.random() * genres.length)];
+    let fallbackQuery = "";
+    if (cleanArtist && cleanName) {
+      fallbackQuery = `${cleanArtist} similar tracks`;
+    } else if (cleanArtist) {
+      fallbackQuery = `${cleanArtist} ${currentGenre} mix`;
+    } else if (cleanName) {
+      fallbackQuery = `${cleanName} ${currentGenre} similar`;
+    } else {
+      fallbackQuery = `${currentGenre} dj mix radio edit`;
+    }
+    console.log(`[SMART-SUGGEST] Query: "${fallbackQuery}"`);
+    const r = await yts(fallbackQuery);
+    const rawVideos = r.videos || [];
+    console.log(`[SMART-SUGGEST] YouTube returned ${rawVideos.length} raw results`);
+    const seedNormTitle = getNormalizedString(cleanName);
+    const fbVideos = [];
+    const seenNormalizedTitles = /* @__PURE__ */ new Set();
+    if (seedNormTitle) {
+      seenNormalizedTitles.add(seedNormTitle);
+    }
+    for (const v of rawVideos) {
+      if (fbVideos.length >= 4) break;
+      if (excludeSet.has(v.videoId)) continue;
+      if (v.seconds <= 60 || v.seconds >= 600) continue;
+      const parsed = parseTrackMetadata(v.title, v.author?.name);
+      const normTitle = getNormalizedString(parsed.title);
+      let isDuplicate = false;
+      for (const seenTitle of seenNormalizedTitles) {
+        if (areTitlesSimilar(parsed.title, seenTitle)) {
+          isDuplicate = true;
+          break;
+        }
+        const n1 = normTitle;
+        const n2 = getNormalizedString(seenTitle);
+        if (n1.includes(n2) || n2.includes(n1)) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      if (isDuplicate) {
+        console.log(`[SMART-SUGGEST] Skipping duplicate suggestion: "${v.title}"`);
+        continue;
+      }
+      seenNormalizedTitles.add(normTitle);
+      fbVideos.push({
+        id: v.videoId,
+        title: parsed.title,
+        artist: parsed.artist || cleanArtist || "Unknown",
+        genre: currentGenre,
+        bpm: currentBpm,
+        reason: parsed.artist && parsed.artist !== "Unknown Artist" ? `Matches energy and style of ${parsed.artist}` : `Good match for ${currentGenre} style at ${currentBpm} BPM`,
+        status: "found",
+        thumbnail: v.thumbnail,
+        duration: v.seconds,
+        videoId: v.videoId
+      });
+    }
+    console.log(`[SMART-SUGGEST] Fallback returning ${fbVideos.length} tracks`);
+    fbVideos.forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" - ${s.artist} (yt:${s.videoId})`));
+    console.log(`============================================
+`);
+    res.json({ suggestions: fbVideos, ai: false });
+  } catch (error) {
+    console.error(`[SMART-SUGGEST] UNCAUGHT ERROR:`, error);
+    res.json({ suggestions: [], ai: false });
+  }
+});
+async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
+  const modelsToTry = [];
+  if (process.env.OPENROUTER_MODEL) {
+    modelsToTry.push(process.env.OPENROUTER_MODEL);
+  }
+  const freeModelsList = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemini-2.0-flash-exp:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "meta-llama/llama-3.1-8b-instruct:free"
+  ];
+  for (const m of freeModelsList) {
+    if (!modelsToTry.includes(m)) {
+      modelsToTry.push(m);
+    }
+  }
+  let aiSongs = [];
+  let usedModel = "";
+  for (const model of modelsToTry) {
+    console.log(`[AI-SUGGEST] Trying OpenRouter model: ${model}...`);
+    try {
+      const prompt = [
+        `You are a professional DJ music recommendation engine. Given the current track, suggest exactly 4 real, well-known songs that would mix well after it.`,
+        ``,
+        `Current track:`,
+        `  Title: ${name || "Unknown"}`,
+        `  Artist: ${artist || "Unknown"}`,
+        `  BPM: ${bpm}`,
+        `  Genre: ${genre || "Unknown"}`,
+        ``,
+        `Requirements:`,
+        `- Each song MUST be a real, existing track by a real artist.`,
+        `- Songs must match the energy, style, key compatibility, or genre of the current track.`,
+        `- Prefer songs with similar BPM (within \xB115%).`,
+        `- Include a mix of known hits and deeper cuts that fit the vibe.`,
+        `- DO NOT make up songs or artists.`,
+        `- DO NOT use generic placeholders \u2014 provide the actual song title and artist.`,
+        ``,
+        `Return ONLY a valid JSON object with a single key "recommendations" containing an array of exactly 4 objects with these fields:`,
+        `  title: string (the full song title)`,
+        `  artist: string (the full artist name)`,
+        `  reason: string (1 sentence explaining why it mixes well)`,
+        ``,
+        `Example:`,
+        `{`,
+        `  "recommendations": [`,
+        `    {"title": "Strobe", "artist": "deadmau5", "reason": "Progressive house with a similar build-up energy and key compatibility"}`,
+        `  ]`,
+        `}`,
+        ``,
+        `Return ONLY the JSON object, no other text, no markdown, no code fences.`
+      ].join("\n");
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://djmixer.app",
+          "X-Title": "DJ Mixer"
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          temperature: 0.7,
+          max_tokens: 800
+        })
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`OpenRouter HTTP ${response.status}: ${errText}`);
+      }
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error("Empty AI response");
+      let parsed = null;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        const match = text.match(/\{[\s\S]*\}/) || text.match(/\[[\s\S]*\]/);
+        if (match) {
+          parsed = JSON.parse(match[0]);
+        } else {
+          throw new Error("No JSON object found in response");
+        }
+      }
+      let songs = parsed.recommendations || parsed.songs || parsed.suggestions || [];
+      if (!Array.isArray(songs) && typeof parsed === "object") {
+        const keys = Object.keys(parsed);
+        for (const key of keys) {
+          if (Array.isArray(parsed[key])) {
+            songs = parsed[key];
+            break;
+          }
+        }
+      }
+      if (!Array.isArray(songs)) {
+        songs = Array.isArray(parsed) ? parsed : [];
+      }
+      if (songs.length > 0) {
+        aiSongs = songs;
+        usedModel = model;
+        break;
+      } else {
+        throw new Error("Recommendations array is empty");
+      }
+    } catch (err) {
+      console.warn(`[AI-SUGGEST] Model ${model} failed: ${err.message}. Retrying...`);
+    }
+  }
+  if (aiSongs.length === 0) {
+    throw new Error("All AI models failed or returned empty results");
+  }
+  console.log(`[AI-SUGGEST] Success with model: ${usedModel}`);
+  console.log(`[AI-SUGGEST] AI suggested ${aiSongs.length} songs:`);
+  aiSongs.slice(0, 4).forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" by ${s.artist} \u2014 ${(s.reason || "").substring(0, 80)}`));
+  const results = [];
+  for (const song of aiSongs.slice(0, 4)) {
+    const songTitle = (song.title || "").trim();
+    const songArtist = (song.artist || "").trim();
+    const reason = (song.reason || `Matches the vibe of "${name}"`).trim();
+    if (!songTitle) {
+      console.log(`[AI-SUGGEST] Skipping song with no title`);
+      continue;
+    }
+    const searchQuery = songArtist ? `${songArtist} - ${songTitle} official audio` : `${songTitle} official audio`;
+    console.log(`[AI-SUGGEST] YouTube search #1: "${searchQuery}"`);
+    try {
+      const r = await yts(searchQuery);
+      console.log(`[AI-SUGGEST]   returned ${r.videos?.length || 0} results`);
+      const video = r.videos?.find(
+        (v) => !excludeSet.has(v.videoId) && v.seconds > 60 && v.seconds < 600
+      );
+      if (video) {
+        console.log(`[AI-SUGGEST]   FOUND: "${video.title}" (${video.videoId})`);
+        excludeSet.add(video.videoId);
+        const parsed = parseTrackMetadata(video.title, video.author?.name || songArtist);
+        results.push({
+          id: video.videoId,
+          title: parsed.title,
+          artist: parsed.artist || songArtist,
+          genre: genre || "Music",
+          bpm,
+          reason,
+          status: "found",
+          thumbnail: video.thumbnail,
+          duration: video.seconds,
+          videoId: video.videoId
+        });
+      } else {
+        console.log(`[AI-SUGGEST]   no suitable video found (all excluded, too short, or too long)`);
+      }
+    } catch (e) {
+      console.warn(`[AI-SUGGEST] YouTube search failed for "${searchQuery}":`, e.message);
+    }
+  }
+  if (results.length === 0) {
+    console.log(`[AI-SUGGEST] No results from primary search, trying broader queries...`);
+    for (const song of aiSongs.slice(0, 4)) {
+      const songTitle = (song.title || "").trim();
+      const songArtist = (song.artist || "").trim();
+      const reason = (song.reason || `Matches the vibe of "${name}"`).trim();
+      if (!songTitle) continue;
+      const searchQuery = songArtist ? `${songArtist} ${songTitle}` : songTitle;
+      console.log(`[AI-SUGGEST] YouTube search #2: "${searchQuery}"`);
+      try {
+        const r = await yts(searchQuery);
+        console.log(`[AI-SUGGEST]   returned ${r.videos?.length || 0} results`);
+        const video = r.videos?.find(
+          (v) => !excludeSet.has(v.videoId) && v.seconds > 60 && v.seconds < 600
+        );
+        if (video) {
+          console.log(`[AI-SUGGEST]   FOUND: "${video.title}" (${video.videoId})`);
+          excludeSet.add(video.videoId);
+          const parsed = parseTrackMetadata(video.title, video.author?.name || songArtist);
+          results.push({
+            id: video.videoId,
+            title: parsed.title,
+            artist: parsed.artist || songArtist,
+            genre: genre || "Music",
+            bpm,
+            reason,
+            status: "found",
+            thumbnail: video.thumbnail,
+            duration: video.seconds,
+            videoId: video.videoId
+          });
+        } else {
+          console.log(`[AI-SUGGEST]   no suitable video found`);
+        }
+      } catch (e) {
+        console.warn(`[AI-SUGGEST] Fallback search failed for "${searchQuery}":`, e.message);
+      }
+    }
+  }
+  console.log(`[AI-SUGGEST] Total YouTube matches: ${results.length}/${aiSongs.length}`);
+  return results;
+}
 app.get("/api/stream", async (req, res) => {
   try {
     let videoId = req.query.videoId;
@@ -356,11 +850,12 @@ app.get("/api/stream", async (req, res) => {
                   metadata = JSON.parse(fs.readFileSync(metadataPath2, "utf8"));
                 } catch (e) {
                 }
+                const parsed = parseTrackMetadata(r.title, r.author?.name);
                 metadata[videoId] = {
                   id: r.videoId,
-                  title: r.title,
-                  artist: r.author.name,
-                  author: r.author.name,
+                  title: parsed.title,
+                  artist: parsed.artist,
+                  author: r.author?.name || parsed.artist,
                   duration: r.seconds,
                   timestamp: r.timestamp,
                   thumbnail: r.thumbnail,
@@ -393,11 +888,12 @@ app.get("/api/stream", async (req, res) => {
           console.log(`[METADATA] Fetching missing info for ${videoId}...`);
           const r = await yts({ videoId });
           if (r) {
+            const parsed = parseTrackMetadata(r.title, r.author?.name);
             metadata[videoId] = {
               id: r.videoId,
-              title: r.title,
-              artist: r.author.name,
-              author: r.author.name,
+              title: parsed.title,
+              artist: parsed.artist,
+              author: r.author?.name || parsed.artist,
               duration: r.seconds,
               timestamp: r.timestamp,
               thumbnail: r.thumbnail,
@@ -444,85 +940,6 @@ app.get("/api/stream", async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: "Stream failed" });
     }
-  }
-});
-app.get("/api/cache", (req, res) => {
-  try {
-    const metadataPath = path.join(cacheDir, "metadata.json");
-    let metadata = {};
-    if (fs.existsSync(metadataPath)) {
-      try {
-        metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
-      } catch (e) {
-        metadata = {};
-      }
-    }
-    const files = fs.readdirSync(cacheDir).filter((f) => f.endsWith(".mp3")).map((f) => f.replace(".mp3", ""));
-    const cachedTracks = [];
-    for (const videoId of files) {
-      if (metadata[videoId]) {
-        cachedTracks.push(metadata[videoId]);
-      } else {
-        cachedTracks.push({
-          id: videoId,
-          title: `Cached Track (${videoId})`,
-          artist: "Unknown",
-          source: "youtube"
-        });
-      }
-    }
-    res.json(cachedTracks);
-  } catch (error) {
-    console.error("[CACHE] Error scanning cache:", error);
-    res.status(500).json({ error: "Cache scan failed" });
-  }
-});
-app.get("/api/cache/sync", async (req, res) => {
-  try {
-    const metadataPath = path.join(cacheDir, "metadata.json");
-    let metadata = {};
-    if (fs.existsSync(metadataPath)) {
-      try {
-        metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
-      } catch (e) {
-        metadata = {};
-      }
-    }
-    const files = fs.readdirSync(cacheDir).filter((f) => f.endsWith(".mp3")).map((f) => f.replace(".mp3", ""));
-    const missingIds = files.filter((id) => !metadata[id]);
-    if (missingIds.length === 0) {
-      return res.json({ message: "All tracks synchronized", count: 0 });
-    }
-    console.log(`[SYNC] Syncing ${missingIds.length} tracks...`);
-    let syncedCount = 0;
-    for (const id of missingIds) {
-      try {
-        const r = await yts({ videoId: id });
-        if (r) {
-          metadata[id] = {
-            id: r.videoId,
-            title: r.title,
-            artist: r.author.name,
-            author: r.author.name,
-            duration: r.seconds,
-            timestamp: r.timestamp,
-            thumbnail: r.thumbnail,
-            source: "youtube"
-          };
-          syncedCount++;
-          if (syncedCount % 5 === 0) {
-            fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-          }
-        }
-      } catch (err) {
-        console.warn(`[SYNC] Failed to sync ${id}: ${err.message}`);
-      }
-    }
-    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-    res.json({ message: `Successfully synced ${syncedCount} tracks`, count: syncedCount });
-  } catch (error) {
-    console.error("[SYNC] Error during synchronization:", error);
-    res.status(500).json({ error: "Synchronization failed" });
   }
 });
 app.get("/api/version", (req, res) => {
