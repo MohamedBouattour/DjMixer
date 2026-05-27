@@ -347,6 +347,12 @@ export const useAutoMix = ({
             setIsActive(true);
             setActiveDeck(startDeck);
             setStatusText('Auto Mix ON');
+            setPhase('FINDING');
+
+            // Set refs immediately
+            isActiveRef.current = true;
+            activeDeckRef.current = startDeck;
+            phaseRef.current = 'FINDING';
 
             // If the active deck isn't playing, start it
             const controls = startDeck === 'A' ? deckAControls : deckBControls;
@@ -354,17 +360,11 @@ export const useAutoMix = ({
             if (!state.isPlaying && state.track) {
                 controls.play();
             }
-        }
-    }, [isActive, deckAState, deckBState, deckAControls, deckBControls]);
 
-    // Start finding when activated
-    useEffect(() => {
-        if (isActive && phase === 'IDLE' && activeDeck) {
-            // Small delay to let state settle
-            const timer = setTimeout(() => startFinding(), 500);
-            return () => clearTimeout(timer);
+            // Start finding immediately
+            startFinding();
         }
-    }, [isActive, phase, activeDeck, startFinding]);
+    }, [isActive, deckAState, deckBState, deckAControls, deckBControls, startFinding]);
 
     // Cleanup on unmount
     useEffect(() => {
