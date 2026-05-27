@@ -277,7 +277,37 @@ export const useAutoMix = ({
                 }, COOLDOWN_MS);
             });
         }
-    }, [isActive, phase, deckAState, deckBState, getIdleControls, getActiveControls, getIdleDeckId, getLoopBounds, fadeVolume, startFinding]);
+    }, [isActive, phase, activeDeck, deckAState, deckBState, getIdleControls, getActiveControls, getIdleDeckId, getLoopBounds, fadeVolume, startFinding]);
+
+    // === Sync idle deck playing state with active deck playing state during LOOPING phase ===
+    useEffect(() => {
+        if (!isActive || phase !== 'LOOPING') return;
+
+        const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
+        const idleControls = getIdleControls();
+
+        if (activeState.isPlaying) {
+            idleControls.play();
+        } else {
+            idleControls.pause();
+        }
+    }, [isActive, phase, deckAState.isPlaying, deckBState.isPlaying, getIdleControls]);
+
+    // === Track if the active track changed to trigger refetch ===
+    const lastActiveTrackIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!isActive || phase === 'IDLE') return;
+
+        const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
+        if (!activeState.track) return;
+
+        const currentTrackId = activeState.track.id;
+        if (lastActiveTrackIdRef.current && lastActiveTrackIdRef.current !== currentTrackId) {
+            console.log(`[AutoMix] Active track changed from ${lastActiveTrackIdRef.current} to ${currentTrackId}. Adapting and refetching...`);
+            startFinding();
+        }
+        lastActiveTrackIdRef.current = currentTrackId;
+    }, [isActive, phase, deckAState.track?.id, deckBState.track?.id, startFinding]);
 
     // === Toggle Auto Mix ===
     const toggle = useCallback(() => {
@@ -360,5 +390,6 @@ export const useAutoMix = ({
         activeDeck,
         statusText,
         toggle,
+        refetch: startFinding,
     };
 };

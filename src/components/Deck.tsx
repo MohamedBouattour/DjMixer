@@ -31,6 +31,9 @@ interface DeckProps {
         cue?: string;
         effect?: string;
     };
+    isAutoMixActive?: boolean;
+    isAutoMixIdle?: boolean;
+    onAutoMixRefetch?: () => void;
 }
 
 export const Deck: React.FC<DeckProps> = ({
@@ -38,7 +41,10 @@ export const Deck: React.FC<DeckProps> = ({
     state,
     controls,
     color,
-    shortcuts
+    shortcuts,
+    isAutoMixActive,
+    isAutoMixIdle,
+    onAutoMixRefetch
 }) => {
     const { track, isPlaying, currentTime, pitch, activeEffects, cuePoints, activeLoop } = state;
     const { 
@@ -146,6 +152,18 @@ export const Deck: React.FC<DeckProps> = ({
                 </div>
                 {track && (
                     <div className="flex items-center gap-3 flex-1 justify-end overflow-hidden">
+                        {isAutoMixActive && isAutoMixIdle && onAutoMixRefetch && (
+                            <button
+                                onClick={onAutoMixRefetch}
+                                title="Refetch Auto Mix Suggestion"
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold border border-white/10 transition-colors shrink-0 max-xl:text-[9px] max-xl:px-1.5 landscape:text-[8px] cursor-pointer"
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                                </svg>
+                                <span>REFETCH</span>
+                            </button>
+                        )}
                         <div className="text-[13px] font-semibold text-white truncate max-xl:text-[11px] landscape:text-[10px]">{track.name}</div>
                         {effectiveBPM && (
                             <div className="flex flex-col items-center">

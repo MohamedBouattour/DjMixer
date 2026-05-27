@@ -532,6 +532,9 @@ function App() {
             state={deckAState}
             controls={deckA}
             color="#ff0080"
+            isAutoMixActive={autoMix.isActive}
+            isAutoMixIdle={autoMix.activeDeck === 'B'}
+            onAutoMixRefetch={autoMix.refetch}
             shortcuts={
               !isMobile
                 ? {
@@ -560,6 +563,9 @@ function App() {
             state={deckBState}
             controls={deckB}
             color="#00d4ff"
+            isAutoMixActive={autoMix.isActive}
+            isAutoMixIdle={autoMix.activeDeck === 'A'}
+            onAutoMixRefetch={autoMix.refetch}
             shortcuts={
               !isMobile
                 ? {
