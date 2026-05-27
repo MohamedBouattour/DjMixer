@@ -4,7 +4,7 @@ import { Mixer } from "./components/Mixer";
 import { UnifiedTrackSelector } from "./components/UnifiedTrackSelector";
 import { SettingsModal } from "./components/SettingsModal";
 import { AuthModal } from "./components/AuthModal";
-import { InstallPWA } from "./components/InstallPWA";
+
 import { useDeck } from "./hooks/useDeck";
 import { useAutoMix } from "./hooks/useAutoMix";
 import type { Track } from "./types";
@@ -593,7 +593,7 @@ function App() {
           onClose={() => setIsAuthOpen(false)}
         />
 
-        <InstallPWA />
+
       </main>
     </div>
   );
