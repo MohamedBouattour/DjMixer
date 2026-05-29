@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { Track, SmartSuggestion, SmartMixQueueItem, SmartMixPhase } from '../types';
+import type { Track, SmartSuggestion, SmartMixQueueItem, SmartMixPhase, DeckState } from '../types';
 import { API_ENDPOINTS } from '../config';
 
 interface DeckControls {
@@ -8,14 +8,15 @@ interface DeckControls {
     pause: () => void;
     seek: (time: number) => void;
     setVolume: (update: number | ((prev: number) => number)) => void;
+    setEQ: (band: 'low' | 'mid' | 'high', value: number) => void;
     setLoop: (start: number, end: number) => void;
     clearLoop: () => void;
     setIsLoading: (isLoading: boolean) => void;
 }
 
 interface UseSmartMixOptions {
-    deckAState: { track: Track | null; isPlaying: boolean; currentTime: number; volume: number };
-    deckBState: { track: Track | null; isPlaying: boolean; currentTime: number; volume: number };
+    deckAState: DeckState;
+    deckBState: DeckState;
     deckAControls: DeckControls;
     deckBControls: DeckControls;
     tracks: Track[];
@@ -51,7 +52,10 @@ export const useSmartMix = ({
     const phaseRef = useRef<SmartMixPhase>('IDLE');
     const activeDeckRef = useRef<'A' | 'B' | null>(null);
     const playedSetRef = useRef<Set<string>>(new Set());
-    const fadeAnimRef = useRef<number | null>(null);
+    const fadeActiveAnimRef = useRef<number | null>(null);
+    const fadeIdleAnimRef = useRef<number | null>(null);
+    const fadeActiveEQAnimRef = useRef<number | null>(null);
+    const fadeIdleEQAnimRef = useRef<number | null>(null);
     const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const transitionStartedRef = useRef(false);
     const currentSearchIdRef = useRef(0);
@@ -96,9 +100,11 @@ export const useSmartMix = ({
         fromVol: number,
         toVol: number,
         durationMs: number,
+        isIdleDeck: boolean,
         onComplete?: () => void
     ) => {
-        if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
+        const animRef = isIdleDeck ? fadeIdleAnimRef : fadeActiveAnimRef;
+        if (animRef.current) cancelAnimationFrame(animRef.current);
         let elapsedMs = 0;
         let lastTime = performance.now();
 
@@ -112,13 +118,44 @@ export const useSmartMix = ({
                 : 1 - Math.pow(-2 * progress + 2, 2) / 2;
             controls.setVolume(Math.round(fromVol + (toVol - fromVol) * eased));
             if (progress < 1) {
-                fadeAnimRef.current = requestAnimationFrame(animate);
+                animRef.current = requestAnimationFrame(animate);
             } else {
-                fadeAnimRef.current = null;
+                animRef.current = null;
                 onComplete?.();
             }
         };
-        fadeAnimRef.current = requestAnimationFrame(animate);
+        animRef.current = requestAnimationFrame(animate);
+    }, []);
+
+    const fadeEQ = useCallback((
+        controls: DeckControls,
+        band: 'low' | 'mid' | 'high',
+        fromVal: number,
+        toVal: number,
+        durationMs: number,
+        isIdleDeck: boolean
+    ) => {
+        const animRef = isIdleDeck ? fadeIdleEQAnimRef : fadeActiveEQAnimRef;
+        if (animRef.current) cancelAnimationFrame(animRef.current);
+        let elapsedMs = 0;
+        let lastTime = performance.now();
+
+        const animate = (now: number) => {
+            const delta = now - lastTime;
+            lastTime = now;
+            if (activeIsPlayingRef.current) elapsedMs += delta;
+            const progress = Math.min(elapsedMs / durationMs, 1);
+            const eased = progress < 0.5
+                ? 2 * progress * progress
+                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+            controls.setEQ(band, Math.round(fromVal + (toVal - fromVal) * eased));
+            if (progress < 1) {
+                animRef.current = requestAnimationFrame(animate);
+            } else {
+                animRef.current = null;
+            }
+        };
+        animRef.current = requestAnimationFrame(animate);
     }, []);
 
     const fetchSuggestions = useCallback(async () => {
@@ -240,6 +277,7 @@ export const useSmartMix = ({
             const { start, end } = getLoopBounds(bpm);
 
             idleControls.setVolume(LOOP_VOLUME);
+            idleControls.setEQ('low', 30); // Keep bass low while looping
             idleControls.seek(start);
             idleControls.setLoop(start, end);
             idleControls.play();
@@ -247,7 +285,10 @@ export const useSmartMix = ({
     }, [getIdleDeckId, getIdleControls, getLoopBounds, onImportTrack, fetchSuggestions]);
 
     const triggerTransition = useCallback(() => {
-        if (!isActiveRef.current || phaseRef.current !== 'LOOPING' || transitionStartedRef.current) {
+        const idleDeckId = activeDeckRef.current === 'A' ? 'B' : 'A';
+        const idleState = idleDeckId === 'A' ? deckAState : deckBState;
+
+        if (!isActiveRef.current || !idleState.track || transitionStartedRef.current) {
             return;
         }
 
@@ -260,12 +301,22 @@ export const useSmartMix = ({
         const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
 
         idleControls.clearLoop();
-        fadeVolume(idleControls, LOOP_VOLUME, 100, FADE_DURATION_MS);
-        fadeVolume(activeControls, activeState.volume, 0, FADE_DURATION_MS, () => {
+
+        // Crossover volume and EQ:
+        // Fade incoming track from LOOP_VOLUME (60) to 150 (max volume), and low EQ from 30 to 50
+        fadeVolume(idleControls, LOOP_VOLUME, 150, FADE_DURATION_MS, true);
+        fadeEQ(idleControls, 'low', 30, 50, FADE_DURATION_MS, true);
+
+        // Fade outgoing track volume to 0, and Low EQ from current to 0 (bass cut)
+        fadeEQ(activeControls, 'low', activeState.eq.low, 0, FADE_DURATION_MS, false);
+        fadeVolume(activeControls, activeState.volume, 0, FADE_DURATION_MS, false, () => {
             if (!isActiveRef.current) return;
 
             activeControls.pause();
-            activeControls.setVolume(100);
+            activeControls.setVolume(150); // Reset volume to max
+            activeControls.setEQ('low', 50); // Reset EQs to flat
+            activeControls.setEQ('mid', 50);
+            activeControls.setEQ('high', 50);
 
             const newActiveDeck = getIdleDeckId();
             setActiveDeck(newActiveDeck);
@@ -275,16 +326,14 @@ export const useSmartMix = ({
 
             cooldownTimerRef.current = setTimeout(() => {
                 if (isActiveRef.current) {
-                    setQueueIndex(prev => {
-                        const next = prev + 1;
-                        queueIndexRef.current = next;
-                        return next;
-                    });
+                    const next = queueIndexRef.current + 1;
+                    queueIndexRef.current = next;
+                    setQueueIndex(next);
                     loadNextFromQueue();
                 }
             }, COOLDOWN_MS);
         });
-    }, [getIdleControls, getActiveControls, getIdleDeckId, fadeVolume, deckAState, deckBState]);
+    }, [getIdleControls, getActiveControls, getIdleDeckId, fadeVolume, fadeEQ, deckAState, deckBState]);
 
     useEffect(() => {
         if (!isActive) return;
@@ -319,15 +368,18 @@ export const useSmartMix = ({
         setQueue(prev => {
             const idx = prev.length;
             const notLoading = phaseRef.current !== 'LOADING' && phaseRef.current !== 'LOOPING' && phaseRef.current !== 'TRANSITIONING' && phaseRef.current !== 'COOLDOWN';
+            const nextQueue = [...prev, queueItem];
+            queueRef.current = nextQueue;
             if (notLoading) {
                 setTimeout(() => {
                     if (isActiveRef.current) {
+                        queueIndexRef.current = idx;
                         setQueueIndex(idx);
                         loadNextFromQueue();
                     }
                 }, 100);
             }
-            return [...prev, queueItem];
+            return nextQueue;
         });
 
         const remainingCount = suggestionsRef.current.length;
@@ -362,15 +414,18 @@ export const useSmartMix = ({
         setQueue(prev => {
             const startIdx = prev.length;
             const notLoading = phaseRef.current !== 'LOADING' && phaseRef.current !== 'LOOPING' && phaseRef.current !== 'TRANSITIONING' && phaseRef.current !== 'COOLDOWN';
+            const nextQueue = [...prev, ...newItems];
+            queueRef.current = nextQueue;
             if (notLoading) {
                 setTimeout(() => {
                     if (isActiveRef.current) {
+                        queueIndexRef.current = startIdx;
                         setQueueIndex(startIdx);
                         loadNextFromQueue();
                     }
                 }, 100);
             }
-            return [...prev, ...newItems];
+            return nextQueue;
         });
 
         setSuggestions([]);
@@ -389,7 +444,11 @@ export const useSmartMix = ({
             genre: suggestion.genre,
             thumbnail: suggestion.thumbnail,
         };
-        setQueue(prev => [...prev, { id: generateId(), track, suggestion }]);
+        setQueue(prev => {
+            const nextQueue = [...prev, { id: generateId(), track, suggestion }];
+            queueRef.current = nextQueue;
+            return nextQueue;
+        });
         setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
     }, []);
 
@@ -399,8 +458,11 @@ export const useSmartMix = ({
             const index = prev.findIndex(i => i.id === itemId);
             if (index < 0) return prev;
             const newQueue = prev.filter(i => i.id !== itemId);
+            queueRef.current = newQueue;
             if (index < currentIdx) {
-                setQueueIndex(prevIdx => Math.max(0, prevIdx - 1));
+                const nextIdx = Math.max(0, currentIdx - 1);
+                queueIndexRef.current = nextIdx;
+                setQueueIndex(nextIdx);
             }
             return newQueue;
         });
@@ -411,6 +473,7 @@ export const useSmartMix = ({
             const newQueue = [...prev];
             const [moved] = newQueue.splice(fromIndex, 1);
             newQueue.splice(toIndex, 0, moved);
+            queueRef.current = newQueue;
             return newQueue;
         });
     }, []);
@@ -421,6 +484,8 @@ export const useSmartMix = ({
     }, [fetchSuggestions]);
 
     const clearQueue = useCallback(() => {
+        queueRef.current = [];
+        queueIndexRef.current = 0;
         setQueue([]);
         setQueueIndex(0);
     }, []);
@@ -443,11 +508,25 @@ export const useSmartMix = ({
                 clearTimeout(cooldownTimerRef.current);
                 cooldownTimerRef.current = null;
             }
-            if (fadeAnimRef.current) {
-                cancelAnimationFrame(fadeAnimRef.current);
-                fadeAnimRef.current = null;
+            if (fadeActiveAnimRef.current) {
+                cancelAnimationFrame(fadeActiveAnimRef.current);
+                fadeActiveAnimRef.current = null;
+            }
+            if (fadeIdleAnimRef.current) {
+                cancelAnimationFrame(fadeIdleAnimRef.current);
+                fadeIdleAnimRef.current = null;
+            }
+            if (fadeActiveEQAnimRef.current) {
+                cancelAnimationFrame(fadeActiveEQAnimRef.current);
+                fadeActiveEQAnimRef.current = null;
+            }
+            if (fadeIdleEQAnimRef.current) {
+                cancelAnimationFrame(fadeIdleEQAnimRef.current);
+                fadeIdleEQAnimRef.current = null;
             }
             transitionStartedRef.current = false;
+            queueRef.current = [];
+            queueIndexRef.current = 0;
             setQueue([]);
             setQueueIndex(0);
             setSuggestions([]);
@@ -484,6 +563,7 @@ export const useSmartMix = ({
                 const bpm = idleState.track.bpm || 120;
                 const { start, end } = getLoopBounds(bpm);
                 idleControls.setVolume(LOOP_VOLUME);
+                idleControls.setEQ('low', 30); // Keep bass low while looping
                 idleControls.seek(start);
                 idleControls.setLoop(start, end);
                 idleControls.play();
@@ -498,6 +578,8 @@ export const useSmartMix = ({
             setPhase('IDLE');
             setActiveDeck(null);
             setStatusText('');
+            queueRef.current = [];
+            queueIndexRef.current = 0;
             setQueue([]);
             setQueueIndex(0);
             setSuggestions([]);
@@ -505,9 +587,21 @@ export const useSmartMix = ({
             transitionStartedRef.current = false;
             currentSearchIdRef.current++;
             isFetchingRef.current = false;
-            if (fadeAnimRef.current) {
-                cancelAnimationFrame(fadeAnimRef.current);
-                fadeAnimRef.current = null;
+            if (fadeActiveAnimRef.current) {
+                cancelAnimationFrame(fadeActiveAnimRef.current);
+                fadeActiveAnimRef.current = null;
+            }
+            if (fadeIdleAnimRef.current) {
+                cancelAnimationFrame(fadeIdleAnimRef.current);
+                fadeIdleAnimRef.current = null;
+            }
+            if (fadeActiveEQAnimRef.current) {
+                cancelAnimationFrame(fadeActiveEQAnimRef.current);
+                fadeActiveEQAnimRef.current = null;
+            }
+            if (fadeIdleEQAnimRef.current) {
+                cancelAnimationFrame(fadeIdleEQAnimRef.current);
+                fadeIdleEQAnimRef.current = null;
             }
             if (cooldownTimerRef.current) {
                 clearTimeout(cooldownTimerRef.current);
@@ -553,7 +647,10 @@ export const useSmartMix = ({
     useEffect(() => {
         return () => {
             currentSearchIdRef.current++;
-            if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
+            if (fadeActiveAnimRef.current) cancelAnimationFrame(fadeActiveAnimRef.current);
+            if (fadeIdleAnimRef.current) cancelAnimationFrame(fadeIdleAnimRef.current);
+            if (fadeActiveEQAnimRef.current) cancelAnimationFrame(fadeActiveEQAnimRef.current);
+            if (fadeIdleEQAnimRef.current) cancelAnimationFrame(fadeIdleEQAnimRef.current);
             if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
         };
     }, []);

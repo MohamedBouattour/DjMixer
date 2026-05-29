@@ -320,6 +320,43 @@ function areTitlesSimilar(t1, t2) {
     return (lcs / minLen) > 0.75;
 }
 
+function getUniqueSongKeywords(songName, artistName) {
+    const stopWords = new Set([
+        'official', 'video', 'audio', 'lyrics', 'lyric', 'music', 'song', 'full', 'clip',
+        'remix', 'mix', 'edit', 'radio', 'cover', 'instrumental', 'karaoke', 'version', 
+        'ft', 'feat', 'prod', 'by', 'similar', 'tracks', 'track', 'live', 'concert', 'remixby',
+        'أحمد', 'احمد', 'سعد', 'محمد', 'محمود', 'حسن', 'علي', 'على', 'حسين', 'عبد', 'الله', 
+        'دياب', 'تامر', 'عمرو', 'خالد', 'جمال', 'ياسر', 'كريم', 'مصطفى', 'مصطفي', 'يوسف'
+    ]);
+    
+    const artistWords = new Set(
+        (artistName || '').toLowerCase()
+            .replace(/[^a-z0-9\u0600-\u06FF\s]/g, '')
+            .split(/\s+/)
+            .filter(w => w.length > 2 || /[\u0600-\u06FF]/.test(w))
+    );
+
+    // Also extract words from the raw songName
+    const allWords = songName.toLowerCase()
+        .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2 || /[\u0600-\u06FF]/.test(w));
+
+    // Keep words that are not in artistWords and not stopWords
+    const uniqueKeywords = allWords.filter(w => {
+        if (stopWords.has(w)) return false;
+        if (artistWords.has(w)) return false;
+        
+        // Check fuzzy substring match
+        for (const aw of artistWords) {
+            if (aw.includes(w) || w.includes(aw)) return false;
+        }
+        return true;
+    });
+
+    return uniqueKeywords;
+}
+
 // Helper: Fetch from RapidAPI with retry for 'processing' status
 async function fetchRapidAPI(videoId) {
     const url = `https://youtube-mp36.p.rapidapi.com/dl?id=${videoId}`;
@@ -701,6 +738,8 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
         console.log(`[SMART-SUGGEST] YouTube returned ${rawVideos.length} raw results`);
 
         const seedNormTitle = getNormalizedString(cleanName);
+        const seedKeywords = getUniqueSongKeywords(name || cleanName, artist || cleanArtist);
+        console.log(`[SMART-SUGGEST] Seed unique keywords:`, seedKeywords);
         
         const fbVideos = [];
         const seenNormalizedTitles = new Set();
@@ -708,6 +747,7 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
             seenNormalizedTitles.add(seedNormTitle);
         }
 
+        // Pass 1: Strict duplicate checking (filters out covers, tutorials, and remixes of the seed track name)
         for (const v of rawVideos) {
             if (fbVideos.length >= 4) break;
 
@@ -717,23 +757,53 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
             const parsed = parseTrackMetadata(v.title, v.author?.name);
             const normTitle = getNormalizedString(parsed.title);
 
-            // Similarity check
             let isDuplicate = false;
-            for (const seenTitle of seenNormalizedTitles) {
-                if (areTitlesSimilar(parsed.title, seenTitle)) {
+
+            // 1. Keyword check against the seed track
+            const normCandidateTitle = getNormalizedString(v.title);
+            const candidateWords = new Set(
+                v.title.toLowerCase()
+                    .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
+                    .split(/\s+/)
+            );
+
+            for (const kw of seedKeywords) {
+                const normKw = getNormalizedString(kw);
+                if (!normKw) continue;
+
+                if (normCandidateTitle.includes(normKw)) {
                     isDuplicate = true;
                     break;
                 }
-                const n1 = normTitle;
-                const n2 = getNormalizedString(seenTitle);
-                if (n1.includes(n2) || n2.includes(n1)) {
-                    isDuplicate = true;
-                    break;
+
+                for (const cw of candidateWords) {
+                    const normCw = getNormalizedString(cw);
+                    if (normCw.length >= 4 && areTitlesSimilar(normKw, normCw)) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+                if (isDuplicate) break;
+            }
+
+            // 2. Check standard similarity against already added items
+            if (!isDuplicate) {
+                for (const seenTitle of seenNormalizedTitles) {
+                    if (areTitlesSimilar(parsed.title, seenTitle)) {
+                        isDuplicate = true;
+                        break;
+                    }
+                    const n1 = normTitle;
+                    const n2 = getNormalizedString(seenTitle);
+                    if (n1.includes(n2) || n2.includes(n1)) {
+                        isDuplicate = true;
+                        break;
+                    }
                 }
             }
 
             if (isDuplicate) {
-                console.log(`[SMART-SUGGEST] Skipping duplicate suggestion: "${v.title}"`);
+                console.log(`[SMART-SUGGEST] Skipping duplicate suggestion (strict): "${v.title}"`);
                 continue;
             }
 
@@ -753,6 +823,59 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
                 duration: v.seconds,
                 videoId: v.videoId,
             });
+        }
+
+        // Pass 2: Relaxed pass if we have fewer than 4 suggestions (blocks duplicates of suggestions but relaxes the seed keyword check)
+        if (fbVideos.length < 4) {
+            console.log(`[SMART-SUGGEST] Strict pass returned only ${fbVideos.length} tracks. Running relaxed pass...`);
+            for (const v of rawVideos) {
+                if (fbVideos.length >= 4) break;
+
+                if (excludeSet.has(v.videoId)) continue;
+                if (v.seconds <= 60 || v.seconds >= 600) continue;
+
+                // Ensure it wasn't already added
+                if (fbVideos.some(fv => fv.id === v.videoId)) continue;
+
+                const parsed = parseTrackMetadata(v.title, v.author?.name);
+                const normTitle = getNormalizedString(parsed.title);
+
+                let isDuplicate = false;
+                for (const seenTitle of seenNormalizedTitles) {
+                    if (areTitlesSimilar(parsed.title, seenTitle)) {
+                        isDuplicate = true;
+                        break;
+                    }
+                    const n1 = normTitle;
+                    const n2 = getNormalizedString(seenTitle);
+                    if (n1.includes(n2) || n2.includes(n1)) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+
+                if (isDuplicate) {
+                    console.log(`[SMART-SUGGEST] Skipping duplicate suggestion (relaxed): "${v.title}"`);
+                    continue;
+                }
+
+                seenNormalizedTitles.add(normTitle);
+
+                fbVideos.push({
+                    id: v.videoId,
+                    title: parsed.title,
+                    artist: parsed.artist || cleanArtist || 'Unknown',
+                    genre: currentGenre,
+                    bpm: currentBpm,
+                    reason: parsed.artist && parsed.artist !== 'Unknown Artist'
+                        ? `Matches energy and style of ${parsed.artist}`
+                        : `Good match for ${currentGenre} style at ${currentBpm} BPM`,
+                    status: 'found',
+                    thumbnail: v.thumbnail,
+                    duration: v.seconds,
+                    videoId: v.videoId,
+                });
+            }
         }
 
         console.log(`[SMART-SUGGEST] Fallback returning ${fbVideos.length} tracks`);

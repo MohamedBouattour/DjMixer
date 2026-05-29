@@ -17,6 +17,7 @@ interface DeckControls {
     pause: () => void;
     seek: (time: number) => void;
     setVolume: (update: number | ((prev: number) => number)) => void;
+    setEQ: (band: 'low' | 'mid' | 'high', value: number) => void;
     setLoop: (start: number, end: number) => void;
     clearLoop: () => void;
     setIsLoading: (isLoading: boolean) => void;
@@ -58,7 +59,10 @@ export const useAutoMix = ({
     const phaseRef = useRef<AutoMixPhase>('IDLE');
     const activeDeckRef = useRef<'A' | 'B' | null>(null);
     const playedSetRef = useRef<Set<string>>(new Set());
-    const fadeAnimRef = useRef<number | null>(null);
+    const fadeActiveAnimRef = useRef<number | null>(null);
+    const fadeIdleAnimRef = useRef<number | null>(null);
+    const fadeActiveEQAnimRef = useRef<number | null>(null);
+    const fadeIdleEQAnimRef = useRef<number | null>(null);
     const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const transitionStartedRef = useRef(false);
     
@@ -168,9 +172,11 @@ export const useAutoMix = ({
         fromVol: number,
         toVol: number,
         durationMs: number,
+        isIdleDeck: boolean,
         onComplete?: () => void
     ) => {
-        if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
+        const animRef = isIdleDeck ? fadeIdleAnimRef : fadeActiveAnimRef;
+        if (animRef.current) cancelAnimationFrame(animRef.current);
 
         let elapsedMs = 0;
         let lastTime = performance.now();
@@ -194,13 +200,44 @@ export const useAutoMix = ({
             controls.setVolume(Math.round(currentVol));
 
             if (progress < 1) {
-                fadeAnimRef.current = requestAnimationFrame(animate);
+                animRef.current = requestAnimationFrame(animate);
             } else {
-                fadeAnimRef.current = null;
+                animRef.current = null;
                 onComplete?.();
             }
         };
-        fadeAnimRef.current = requestAnimationFrame(animate);
+        animRef.current = requestAnimationFrame(animate);
+    }, []);
+
+    const fadeEQ = useCallback((
+        controls: DeckControls,
+        band: 'low' | 'mid' | 'high',
+        fromVal: number,
+        toVal: number,
+        durationMs: number,
+        isIdleDeck: boolean
+    ) => {
+        const animRef = isIdleDeck ? fadeIdleEQAnimRef : fadeActiveEQAnimRef;
+        if (animRef.current) cancelAnimationFrame(animRef.current);
+        let elapsedMs = 0;
+        let lastTime = performance.now();
+
+        const animate = (now: number) => {
+            const delta = now - lastTime;
+            lastTime = now;
+            if (activeIsPlayingRef.current) elapsedMs += delta;
+            const progress = Math.min(elapsedMs / durationMs, 1);
+            const eased = progress < 0.5
+                ? 2 * progress * progress
+                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+            controls.setEQ(band, Math.round(fromVal + (toVal - fromVal) * eased));
+            if (progress < 1) {
+                animRef.current = requestAnimationFrame(animate);
+            } else {
+                animRef.current = null;
+            }
+        };
+        animRef.current = requestAnimationFrame(animate);
     }, []);
 
     // === Main cycle: FINDING phase ===
@@ -267,8 +304,9 @@ export const useAutoMix = ({
             const bpm = nextTrack.bpm || currentBpm;
             const { start, end } = getLoopBounds(bpm);
 
-            // Set loop, volume to 40%, and start playing immediately
+            // Set loop, volume to 40%, low EQ to 30, and start playing immediately
             idleControls.setVolume(LOOP_VOLUME);
+            idleControls.setEQ('low', 30); // Keep bass low while looping
             idleControls.seek(start);
             idleControls.setLoop(start, end);
             idleControls.play();
@@ -277,12 +315,15 @@ export const useAutoMix = ({
 
     // === Trigger Transition manually / force mix ===
     const triggerTransition = useCallback(() => {
-        if (!isActiveRef.current || phaseRef.current !== 'LOOPING' || transitionStartedRef.current) {
-            console.warn('[AutoMix] Cannot trigger transition: phase is not LOOPING or already transitioning');
+        const idleDeckId = activeDeckRef.current === 'A' ? 'B' : 'A';
+        const idleState = idleDeckId === 'A' ? deckAState : deckBState;
+
+        if (!isActiveRef.current || !idleState.track || transitionStartedRef.current) {
+            console.warn('[AutoMix] Cannot trigger transition: no track on idle deck or already transitioning');
             return;
         }
 
-        console.log('[AutoMix] Manually triggering transition...');
+        console.log('[AutoMix] Triggering transition...');
         transitionStartedRef.current = true;
         setPhase('TRANSITIONING');
         setStatusText('Transitioning...');
@@ -294,16 +335,22 @@ export const useAutoMix = ({
         // Exit the loop on the next track
         idleControls.clearLoop();
 
-        // Fade new track from LOOP_VOLUME → 100
-        fadeVolume(idleControls, LOOP_VOLUME, 100, FADE_DURATION_MS);
+        // Crossover volume and EQ:
+        // Fade incoming track from LOOP_VOLUME (60) to 150 (max volume), and low EQ from 30 to 50
+        fadeVolume(idleControls, LOOP_VOLUME, 150, FADE_DURATION_MS, true);
+        fadeEQ(idleControls, 'low', 30, 50, FADE_DURATION_MS, true);
 
-        // Fade old track from current volume → 0
-        fadeVolume(activeControls, activeState.volume, 0, FADE_DURATION_MS, () => {
+        // Fade outgoing track volume to 0, and Low EQ from current to 0 (bass cut)
+        fadeEQ(activeControls, 'low', activeState.eq.low, 0, FADE_DURATION_MS, false);
+        fadeVolume(activeControls, activeState.volume, 0, FADE_DURATION_MS, false, () => {
             if (!isActiveRef.current) return;
 
             // Old track done — pause it
             activeControls.pause();
-            activeControls.setVolume(100); // Reset for later use
+            activeControls.setVolume(150); // Reset for later use
+            activeControls.setEQ('low', 50); // Reset EQs to flat
+            activeControls.setEQ('mid', 50);
+            activeControls.setEQ('high', 50);
 
             // Swap active deck
             const newActiveDeck = getIdleDeckId();
@@ -319,7 +366,7 @@ export const useAutoMix = ({
                 }
             }, COOLDOWN_MS);
         });
-    }, [getIdleControls, getActiveControls, getIdleDeckId, fadeVolume, startFinding, deckAState, deckBState]);
+    }, [getIdleControls, getActiveControls, getIdleDeckId, fadeVolume, fadeEQ, startFinding, deckAState, deckBState]);
 
     // === Monitor active deck for transition trigger ===
     useEffect(() => {
@@ -362,9 +409,21 @@ export const useAutoMix = ({
                 clearTimeout(cooldownTimerRef.current);
                 cooldownTimerRef.current = null;
             }
-            if (fadeAnimRef.current) {
-                cancelAnimationFrame(fadeAnimRef.current);
-                fadeAnimRef.current = null;
+            if (fadeActiveAnimRef.current) {
+                cancelAnimationFrame(fadeActiveAnimRef.current);
+                fadeActiveAnimRef.current = null;
+            }
+            if (fadeIdleAnimRef.current) {
+                cancelAnimationFrame(fadeIdleAnimRef.current);
+                fadeIdleAnimRef.current = null;
+            }
+            if (fadeActiveEQAnimRef.current) {
+                cancelAnimationFrame(fadeActiveEQAnimRef.current);
+                fadeActiveEQAnimRef.current = null;
+            }
+            if (fadeIdleEQAnimRef.current) {
+                cancelAnimationFrame(fadeIdleEQAnimRef.current);
+                fadeIdleEQAnimRef.current = null;
             }
             transitionStartedRef.current = false;
             
@@ -412,6 +471,7 @@ export const useAutoMix = ({
 
                 // Setup loop and volume and play state
                 idleControls.setVolume(LOOP_VOLUME);
+                idleControls.setEQ('low', 30); // Keep bass low while looping
                 idleControls.seek(start);
                 idleControls.setLoop(start, end);
                 idleControls.play();
@@ -432,9 +492,21 @@ export const useAutoMix = ({
             transitionStartedRef.current = false;
             currentSearchIdRef.current++; // cancel pending searches
 
-            if (fadeAnimRef.current) {
-                cancelAnimationFrame(fadeAnimRef.current);
-                fadeAnimRef.current = null;
+            if (fadeActiveAnimRef.current) {
+                cancelAnimationFrame(fadeActiveAnimRef.current);
+                fadeActiveAnimRef.current = null;
+            }
+            if (fadeIdleAnimRef.current) {
+                cancelAnimationFrame(fadeIdleAnimRef.current);
+                fadeIdleAnimRef.current = null;
+            }
+            if (fadeActiveEQAnimRef.current) {
+                cancelAnimationFrame(fadeActiveEQAnimRef.current);
+                fadeActiveEQAnimRef.current = null;
+            }
+            if (fadeIdleEQAnimRef.current) {
+                cancelAnimationFrame(fadeIdleEQAnimRef.current);
+                fadeIdleEQAnimRef.current = null;
             }
             if (cooldownTimerRef.current) {
                 clearTimeout(cooldownTimerRef.current);
@@ -493,7 +565,10 @@ export const useAutoMix = ({
     useEffect(() => {
         return () => {
             currentSearchIdRef.current++;
-            if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
+            if (fadeActiveAnimRef.current) cancelAnimationFrame(fadeActiveAnimRef.current);
+            if (fadeIdleAnimRef.current) cancelAnimationFrame(fadeIdleAnimRef.current);
+            if (fadeActiveEQAnimRef.current) cancelAnimationFrame(fadeActiveEQAnimRef.current);
+            if (fadeIdleEQAnimRef.current) cancelAnimationFrame(fadeIdleEQAnimRef.current);
             if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
         };
     }, []);

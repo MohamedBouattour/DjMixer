@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import type { SmartSuggestion, SmartMixQueueItem, SmartMixPhase } from '../types';
+import type { Track, SmartSuggestion, SmartMixQueueItem, SmartMixPhase } from '../types';
 
 interface SmartMixPanelProps {
     isActive: boolean;
@@ -21,6 +21,7 @@ interface SmartMixPanelProps {
     onRefreshSuggestions: () => void;
     onClearQueue: () => void;
     onTriggerTransition: () => void;
+    onDoubleClickQueueItem?: (track: Track) => void;
 }
 
 const phaseColors: Record<SmartMixPhase, string> = {
@@ -62,6 +63,7 @@ export const SmartMixPanel = ({
     onRefreshSuggestions,
     onClearQueue,
     onTriggerTransition,
+    onDoubleClickQueueItem,
 }: SmartMixPanelProps) => {
     const [expanded, setExpanded] = useState(false);
     const dragItemRef = useRef<number | null>(null);
@@ -212,6 +214,8 @@ export const SmartMixPanel = ({
                                         onDragStart={() => handleDragStart(queueIndex + index)}
                                         onDragOver={(e) => { e.preventDefault(); handleDragOver(queueIndex + index); }}
                                         onDrop={handleDrop}
+                                        onDoubleClick={() => onDoubleClickQueueItem?.(item.track)}
+                                        title="Double-click to load this track to the free deck"
                                         className={`flex items-center gap-3 px-2.5 py-2 rounded-lg transition-all cursor-grab active:cursor-grabbing ${
                                             index === 0 && phase !== 'TRANSITIONING'
                                                 ? 'bg-white/8 border border-white/10'

@@ -12,6 +12,8 @@ interface MixerProps {
     onVolumeChange: (deck: 'A' | 'B', value: number) => void;
     onEQChange: (deck: 'A' | 'B', band: 'low' | 'mid' | 'high', value: number) => void;
     isAutoMixActive?: boolean;
+    activeDeck?: 'A' | 'B' | null;
+    onTriggerTransition?: () => void;
     shortcuts?: {
         volumeA?: { up: string; down: string };
         volumeB?: { up: string; down: string };
@@ -26,9 +28,13 @@ export const Mixer: React.FC<MixerProps> = ({
     deckBState,
     onVolumeChange,
     onEQChange,
-    isAutoMixActive
+    isAutoMixActive,
+    activeDeck,
+    onTriggerTransition
 }) => {
     const [isEQPopupOpen, setIsEQPopupOpen] = useState(false);
+
+    const canTransition = !!(isAutoMixActive && activeDeck && (activeDeck === 'A' ? deckBState.track : deckAState.track));
 
     const renderEQControls = (deckId: 'A' | 'B', state: DeckState, color: string) => {
         const { eq } = state;
@@ -126,6 +132,21 @@ export const Mixer: React.FC<MixerProps> = ({
                         >
                             MIX
                         </button>
+                        {isAutoMixActive && onTriggerTransition && (
+                            <button
+                                className={cn(
+                                    "text-[9px] font-bold text-white border-none px-3.5 py-1.5 rounded-md tracking-wider cursor-pointer transition-all duration-200 shadow-md",
+                                    canTransition
+                                        ? "bg-gradient-to-r from-amber-500 to-orange-500 shadow-[0_2px_6px_rgba(245,158,11,0.4)] hover:scale-105 hover:shadow-[0_4px_10px_rgba(245,158,11,0.6)] active:scale-95"
+                                        : "bg-gray-700/50 text-white/30 cursor-not-allowed opacity-50"
+                                )}
+                                onClick={canTransition ? onTriggerTransition : undefined}
+                                disabled={!canTransition}
+                                title={canTransition ? "Force transition to the next track manually" : "Load a track on the idle deck first"}
+                            >
+                                TRANSITION
+                            </button>
+                        )}
                         <span className="text-[12px] font-bold text-deck-b whitespace-nowrap max-xl:text-[11px] landscape:text-[9px]">{Math.round(deckBState.volume)}%</span>
                     </div>
 

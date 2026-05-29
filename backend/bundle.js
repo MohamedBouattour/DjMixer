@@ -229,6 +229,71 @@ function areTitlesSimilar(t1, t2) {
   if (minLen === 0) return false;
   return lcs / minLen > 0.75;
 }
+function getUniqueSongKeywords(songName, artistName) {
+  const stopWords = /* @__PURE__ */ new Set([
+    "official",
+    "video",
+    "audio",
+    "lyrics",
+    "lyric",
+    "music",
+    "song",
+    "full",
+    "clip",
+    "remix",
+    "mix",
+    "edit",
+    "radio",
+    "cover",
+    "instrumental",
+    "karaoke",
+    "version",
+    "ft",
+    "feat",
+    "prod",
+    "by",
+    "similar",
+    "tracks",
+    "track",
+    "live",
+    "concert",
+    "remixby",
+    "\u0623\u062D\u0645\u062F",
+    "\u0627\u062D\u0645\u062F",
+    "\u0633\u0639\u062F",
+    "\u0645\u062D\u0645\u062F",
+    "\u0645\u062D\u0645\u0648\u062F",
+    "\u062D\u0633\u0646",
+    "\u0639\u0644\u064A",
+    "\u0639\u0644\u0649",
+    "\u062D\u0633\u064A\u0646",
+    "\u0639\u0628\u062F",
+    "\u0627\u0644\u0644\u0647",
+    "\u062F\u064A\u0627\u0628",
+    "\u062A\u0627\u0645\u0631",
+    "\u0639\u0645\u0631\u0648",
+    "\u062E\u0627\u0644\u062F",
+    "\u062C\u0645\u0627\u0644",
+    "\u064A\u0627\u0633\u0631",
+    "\u0643\u0631\u064A\u0645",
+    "\u0645\u0635\u0637\u0641\u0649",
+    "\u0645\u0635\u0637\u0641\u064A",
+    "\u064A\u0648\u0633\u0641"
+  ]);
+  const artistWords = new Set(
+    (artistName || "").toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, "").split(/\s+/).filter((w) => w.length > 2 || /[\u0600-\u06FF]/.test(w))
+  );
+  const allWords = songName.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 || /[\u0600-\u06FF]/.test(w));
+  const uniqueKeywords = allWords.filter((w) => {
+    if (stopWords.has(w)) return false;
+    if (artistWords.has(w)) return false;
+    for (const aw of artistWords) {
+      if (aw.includes(w) || w.includes(aw)) return false;
+    }
+    return true;
+  });
+  return uniqueKeywords;
+}
 async function fetchRapidAPI(videoId) {
   const url = `https://youtube-mp36.p.rapidapi.com/dl?id=${videoId}`;
   const options = {
@@ -550,6 +615,8 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
     const rawVideos = r.videos || [];
     console.log(`[SMART-SUGGEST] YouTube returned ${rawVideos.length} raw results`);
     const seedNormTitle = getNormalizedString(cleanName);
+    const seedKeywords = getUniqueSongKeywords(name || cleanName, artist || cleanArtist);
+    console.log(`[SMART-SUGGEST] Seed unique keywords:`, seedKeywords);
     const fbVideos = [];
     const seenNormalizedTitles = /* @__PURE__ */ new Set();
     if (seedNormTitle) {
@@ -562,20 +629,42 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
       const parsed = parseTrackMetadata(v.title, v.author?.name);
       const normTitle = getNormalizedString(parsed.title);
       let isDuplicate = false;
-      for (const seenTitle of seenNormalizedTitles) {
-        if (areTitlesSimilar(parsed.title, seenTitle)) {
+      const normCandidateTitle = getNormalizedString(v.title);
+      const candidateWords = new Set(
+        v.title.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, " ").split(/\s+/)
+      );
+      for (const kw of seedKeywords) {
+        const normKw = getNormalizedString(kw);
+        if (!normKw) continue;
+        if (normCandidateTitle.includes(normKw)) {
           isDuplicate = true;
           break;
         }
-        const n1 = normTitle;
-        const n2 = getNormalizedString(seenTitle);
-        if (n1.includes(n2) || n2.includes(n1)) {
-          isDuplicate = true;
-          break;
+        for (const cw of candidateWords) {
+          const normCw = getNormalizedString(cw);
+          if (normCw.length >= 4 && areTitlesSimilar(normKw, normCw)) {
+            isDuplicate = true;
+            break;
+          }
+        }
+        if (isDuplicate) break;
+      }
+      if (!isDuplicate) {
+        for (const seenTitle of seenNormalizedTitles) {
+          if (areTitlesSimilar(parsed.title, seenTitle)) {
+            isDuplicate = true;
+            break;
+          }
+          const n1 = normTitle;
+          const n2 = getNormalizedString(seenTitle);
+          if (n1.includes(n2) || n2.includes(n1)) {
+            isDuplicate = true;
+            break;
+          }
         }
       }
       if (isDuplicate) {
-        console.log(`[SMART-SUGGEST] Skipping duplicate suggestion: "${v.title}"`);
+        console.log(`[SMART-SUGGEST] Skipping duplicate suggestion (strict): "${v.title}"`);
         continue;
       }
       seenNormalizedTitles.add(normTitle);
@@ -591,6 +680,47 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
         duration: v.seconds,
         videoId: v.videoId
       });
+    }
+    if (fbVideos.length < 4) {
+      console.log(`[SMART-SUGGEST] Strict pass returned only ${fbVideos.length} tracks. Running relaxed pass...`);
+      for (const v of rawVideos) {
+        if (fbVideos.length >= 4) break;
+        if (excludeSet.has(v.videoId)) continue;
+        if (v.seconds <= 60 || v.seconds >= 600) continue;
+        if (fbVideos.some((fv) => fv.id === v.videoId)) continue;
+        const parsed = parseTrackMetadata(v.title, v.author?.name);
+        const normTitle = getNormalizedString(parsed.title);
+        let isDuplicate = false;
+        for (const seenTitle of seenNormalizedTitles) {
+          if (areTitlesSimilar(parsed.title, seenTitle)) {
+            isDuplicate = true;
+            break;
+          }
+          const n1 = normTitle;
+          const n2 = getNormalizedString(seenTitle);
+          if (n1.includes(n2) || n2.includes(n1)) {
+            isDuplicate = true;
+            break;
+          }
+        }
+        if (isDuplicate) {
+          console.log(`[SMART-SUGGEST] Skipping duplicate suggestion (relaxed): "${v.title}"`);
+          continue;
+        }
+        seenNormalizedTitles.add(normTitle);
+        fbVideos.push({
+          id: v.videoId,
+          title: parsed.title,
+          artist: parsed.artist || cleanArtist || "Unknown",
+          genre: currentGenre,
+          bpm: currentBpm,
+          reason: parsed.artist && parsed.artist !== "Unknown Artist" ? `Matches energy and style of ${parsed.artist}` : `Good match for ${currentGenre} style at ${currentBpm} BPM`,
+          status: "found",
+          thumbnail: v.thumbnail,
+          duration: v.seconds,
+          videoId: v.videoId
+        });
+      }
     }
     console.log(`[SMART-SUGGEST] Fallback returning ${fbVideos.length} tracks`);
     fbVideos.forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" - ${s.artist} (yt:${s.videoId})`));
