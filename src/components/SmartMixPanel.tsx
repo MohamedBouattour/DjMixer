@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import type { Track, SmartSuggestion, SmartMixQueueItem, SmartMixPhase } from '../types';
+import { API_ENDPOINTS } from '../config';
 
 interface SmartMixPanelProps {
     isActive: boolean;
@@ -22,6 +23,7 @@ interface SmartMixPanelProps {
     onClearQueue: () => void;
     onTriggerTransition: () => void;
     onDoubleClickQueueItem?: (track: Track) => void;
+    onAddTrackFromYt: (track: Track) => void;
 }
 
 const phaseColors: Record<SmartMixPhase, string> = {
@@ -64,8 +66,43 @@ export const SmartMixPanel = ({
     onClearQueue,
     onTriggerTransition,
     onDoubleClickQueueItem,
+    onAddTrackFromYt,
 }: SmartMixPanelProps) => {
     const [expanded, setExpanded] = useState(false);
+    const [ytSearchQuery, setYtSearchQuery] = useState('');
+    const [ytSearchResults, setYtSearchResults] = useState<Track[]>([]);
+    const [isYtSearching, setIsYtSearching] = useState(false);
+
+    const handleSearchYt = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!ytSearchQuery.trim()) return;
+        setIsYtSearching(true);
+        try {
+            const response = await fetch(`${API_ENDPOINTS.SEARCH}?q=${encodeURIComponent(ytSearchQuery)}`);
+            if (!response.ok) throw new Error('Search failed');
+            const data = await response.json();
+            setYtSearchResults(data.map((item: { id: string; title: string; duration: number; artist?: string; author?: string; thumbnail?: string; genre?: string; bpm?: number }) => ({
+                id: item.id,
+                name: item.title,
+                duration: item.duration,
+                url: `${API_ENDPOINTS.STREAM}?videoId=${item.id}`,
+                bpm: item.bpm,
+                artist: item.artist || item.author,
+                thumbnail: item.thumbnail,
+                genre: item.genre,
+            })));
+        } catch (error) {
+            console.error('YT search error:', error);
+        } finally {
+            setIsYtSearching(false);
+        }
+    };
+
+    const handleAddYtTrackToQueue = (track: Track) => {
+        onAddTrackFromYt(track);
+        setYtSearchResults([]);
+        setYtSearchQuery('');
+    };
     const dragItemRef = useRef<number | null>(null);
     const dragOverRef = useRef<number | null>(null);
 
@@ -197,6 +234,92 @@ export const SmartMixPanel = ({
                         </div>
                     )}
 
+                    {/* YouTube Search Bar */}
+                    <div className="px-4 py-3 border-b border-white/5 bg-white/[0.01]">
+                        <form onSubmit={handleSearchYt} className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input
+                                    type="text"
+                                    placeholder="Search YouTube to add to queue..."
+                                    value={ytSearchQuery}
+                                    onChange={(e) => setYtSearchQuery(e.target.value)}
+                                    className="w-full h-8 bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                />
+                                <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30"
+                                >
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="m21 21-4.3-4.3" />
+                                </svg>
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isYtSearching}
+                                className="px-3 h-8 text-[10px] font-bold uppercase tracking-wider bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 rounded-lg hover:bg-indigo-600/30 disabled:opacity-50 transition-all shrink-0"
+                            >
+                                {isYtSearching ? '...' : 'Search'}
+                            </button>
+                        </form>
+
+                        {/* Search Results */}
+                        {ytSearchResults.length > 0 && (
+                            <div className="mt-2.5 space-y-1 max-h-[150px] overflow-y-auto bg-black/40 p-2 rounded-lg border border-white/5">
+                                <div className="flex justify-between items-center px-1 mb-1">
+                                    <span className="text-[9px] uppercase tracking-widest text-white/30 font-semibold">Search Results</span>
+                                    <button
+                                        onClick={() => setYtSearchResults([])}
+                                        className="text-[8px] uppercase tracking-wider text-red-400 hover:text-red-300"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                                {ytSearchResults.map((track) => (
+                                    <div
+                                        key={track.id}
+                                        className="flex items-center justify-between p-1.5 rounded-md hover:bg-white/5 transition-all cursor-pointer"
+                                        onClick={() => handleAddYtTrackToQueue(track)}
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                                            {track.thumbnail ? (
+                                                <img
+                                                    src={track.thumbnail}
+                                                    alt=""
+                                                    className="w-10 h-6 object-cover rounded bg-white/5 shrink-0"
+                                                />
+                                            ) : (
+                                                <div className="w-10 h-6 rounded bg-white/5 shrink-0 flex items-center justify-center">
+                                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" className="text-white/20">
+                                                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-[11px] font-semibold text-white/80 truncate">{track.name}</div>
+                                                <div className="text-[9px] text-white/40 truncate">{track.artist || 'Unknown Artist'}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <span className="text-[8px] font-mono text-white/40">
+                                                {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
+                                            </span>
+                                            <button
+                                                className="px-1.5 py-0.5 text-[8px] font-bold bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded hover:bg-indigo-500/30 transition-all"
+                                            >
+                                                + Queue
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Queue section */}
                     {queue.length > 0 && (
                         <div className="px-4 py-3 border-b border-white/5">
@@ -285,7 +408,7 @@ export const SmartMixPanel = ({
                                     </button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
                                 {suggestions.map((s) => (
                                     <SuggestionCard
                                         key={s.id}
@@ -368,7 +491,9 @@ const SuggestionCard = ({ suggestion: s, onSelect, onAddToQueue }: SuggestionCar
         <div
             className={`relative rounded-xl overflow-hidden transition-all duration-200 group ${
                 isFound
-                    ? 'bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 hover:-translate-y-0.5'
+                    ? s.isDiverse
+                        ? 'bg-purple-950/[0.1] border border-purple-500/30 hover:bg-purple-950/[0.15] hover:border-purple-500/50 hover:-translate-y-0.5 shadow-[0_0_15px_rgba(168,85,247,0.05)]'
+                        : 'bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 hover:-translate-y-0.5'
                     : 'bg-white/[0.02] border border-white/5 opacity-50'
             }`}
         >
@@ -406,6 +531,12 @@ const SuggestionCard = ({ suggestion: s, onSelect, onAddToQueue }: SuggestionCar
                 {s.genre && (
                     <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[8px] font-bold bg-black/60 backdrop-blur-sm rounded text-white/70">
                         {s.genre}
+                    </div>
+                )}
+                {/* Diverse Choice badge */}
+                {s.isDiverse && (
+                    <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 rounded text-white shadow-[0_0_10px_rgba(236,72,153,0.5)] z-10">
+                        Diverse Choice
                     </div>
                 )}
             </div>

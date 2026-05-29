@@ -620,6 +620,7 @@ function App() {
           onClearQueue={smartMix.clearQueue}
           onTriggerTransition={smartMix.triggerTransition}
           onDoubleClickQueueItem={handleDoubleClickQueueTrack}
+          onAddTrackFromYt={smartMix.addTrackFromYt}
         />
 
         <UnifiedTrackSelector

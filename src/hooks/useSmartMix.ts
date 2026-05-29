@@ -63,6 +63,8 @@ export const useSmartMix = ({
     const queueRef = useRef<SmartMixQueueItem[]>([]);
     const queueIndexRef = useRef(0);
     const suggestionsRef = useRef<SmartSuggestion[]>([]);
+    const loadNextFromQueueRef = useRef<() => Promise<void>>(() => Promise.resolve());
+    const autoFetchAndQueueNextRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
     useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
     useEffect(() => { phaseRef.current = phase; }, [phase]);
@@ -158,7 +160,7 @@ export const useSmartMix = ({
         animRef.current = requestAnimationFrame(animate);
     }, []);
 
-    const fetchSuggestions = useCallback(async () => {
+    const fetchSuggestions = useCallback(async (customSeedTrack?: Track) => {
         if (isFetchingRef.current) return;
         isFetchingRef.current = true;
         setPhase('FETCHING');
@@ -169,7 +171,7 @@ export const useSmartMix = ({
 
         try {
             const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
-            const currentTrack = activeState.track;
+            const currentTrack = customSeedTrack || activeState.track;
 
             const response = await fetch(API_ENDPOINTS.SMART_SUGGEST, {
                 method: 'POST',
@@ -179,7 +181,7 @@ export const useSmartMix = ({
                     name: currentTrack?.name || '',
                     artist: currentTrack?.artist || '',
                     genre: currentTrack?.genre || '',
-                    playedIds: Array.from(playedSetRef.current),
+                    playedIds: [...Array.from(playedSetRef.current), ...queueRef.current.map(q => q.track.id)],
                 }),
             });
 
@@ -190,7 +192,7 @@ export const useSmartMix = ({
             const data = await response.json();
             if (searchId !== currentSearchIdRef.current || !isActiveRef.current) return;
 
-            const newSuggestions: SmartSuggestion[] = (data.suggestions || []).map((s: any) => ({
+            const newSuggestions: SmartSuggestion[] = (data.suggestions || []).map((s: { id?: string; title?: string; artist?: string; genre?: string; bpm?: number; reason?: string; status?: 'pending' | 'found' | 'not_found'; thumbnail?: string; duration?: number; videoId?: string; isDiverse?: boolean }) => ({
                 id: s.id || generateId(),
                 title: s.title || 'Unknown Track',
                 artist: s.artist || 'Unknown Artist',
@@ -201,6 +203,7 @@ export const useSmartMix = ({
                 thumbnail: s.thumbnail,
                 duration: s.duration,
                 videoId: s.videoId,
+                isDiverse: s.isDiverse,
             }));
 
             setSuggestions(newSuggestions);
@@ -216,7 +219,7 @@ export const useSmartMix = ({
                 setStatusText('Failed to get AI suggestions — check your connection');
                 setTimeout(() => {
                     if (isActiveRef.current && searchId === currentSearchIdRef.current) {
-                        fetchSuggestions();
+                        fetchSuggestions(customSeedTrack);
                     }
                 }, 5000);
             }
@@ -225,6 +228,99 @@ export const useSmartMix = ({
         }
     }, [deckAState, deckBState]);
 
+    const autoFetchAndQueueNext = useCallback(async () => {
+        if (!isActiveRef.current) return;
+        const searchId = ++currentSearchIdRef.current;
+        setPhase('FETCHING');
+        setStatusText('Auto-matching next track...');
+
+        try {
+            const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
+            const currentTrack = activeState.track;
+
+            const excludeIds = new Set(playedSetRef.current);
+            queueRef.current.forEach(item => excludeIds.add(item.track.id));
+
+            const response = await fetch(API_ENDPOINTS.SMART_SUGGEST, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bpm: currentTrack?.bpm || 120,
+                    name: currentTrack?.name || '',
+                    artist: currentTrack?.artist || '',
+                    genre: currentTrack?.genre || '',
+                    playedIds: Array.from(excludeIds),
+                }),
+            });
+
+            if (searchId !== currentSearchIdRef.current || !isActiveRef.current) return;
+
+            if (!response.ok) throw new Error('Auto-suggest failed');
+
+            const data = await response.json();
+            if (searchId !== currentSearchIdRef.current || !isActiveRef.current) return;
+
+            const newSuggestions = data.suggestions || [];
+            const firstFound = newSuggestions.find((s: { status?: string; videoId?: string; id?: string; title?: string; artist?: string; genre?: string; bpm?: number; reason?: string; thumbnail?: string; duration?: number; isDiverse?: boolean }) => s.status === 'found' && s.videoId);
+
+            if (firstFound) {
+                const track: Track = {
+                    id: firstFound.videoId,
+                    name: firstFound.title,
+                    duration: firstFound.duration || 180,
+                    url: `${API_ENDPOINTS.STREAM}?videoId=${firstFound.videoId}`,
+                    bpm: firstFound.bpm,
+                    artist: firstFound.artist,
+                    genre: firstFound.genre,
+                    thumbnail: firstFound.thumbnail,
+                };
+
+                const queueItem: SmartMixQueueItem = {
+                    id: generateId(),
+                    track,
+                    suggestion: {
+                        id: firstFound.id || generateId(),
+                        title: firstFound.title,
+                        artist: firstFound.artist,
+                        genre: firstFound.genre,
+                        bpm: firstFound.bpm,
+                        reason: firstFound.reason,
+                        status: firstFound.status,
+                        thumbnail: firstFound.thumbnail,
+                        duration: firstFound.duration,
+                        videoId: firstFound.videoId,
+                        isDiverse: firstFound.isDiverse,
+                    }
+                };
+
+                setQueue(prev => {
+                    const nextQueue = [...prev, queueItem];
+                    queueRef.current = nextQueue;
+                    return nextQueue;
+                });
+
+                setTimeout(() => {
+                    if (isActiveRef.current && searchId === currentSearchIdRef.current) {
+                        loadNextFromQueueRef.current();
+                    }
+                }, 100);
+            } else {
+                throw new Error('No suggestions found to auto-queue');
+            }
+        } catch (e) {
+            console.error('[SmartMix] Auto-fetch next track failed:', e);
+            if (searchId === currentSearchIdRef.current && isActiveRef.current) {
+                setStatusText('Failed to auto-suggest. Retrying...');
+                setTimeout(() => {
+                    if (isActiveRef.current && searchId === currentSearchIdRef.current) {
+                        autoFetchAndQueueNext();
+                    }
+                }, 5000);
+            }
+        }
+    }, [deckAState, deckBState]);
+    autoFetchAndQueueNextRef.current = autoFetchAndQueueNext;
+
     const loadNextFromQueue = useCallback(async () => {
         if (!isActiveRef.current) return;
         const searchId = ++currentSearchIdRef.current;
@@ -232,13 +328,7 @@ export const useSmartMix = ({
         const currentQueue = queueRef.current;
         const currentIdx = queueIndexRef.current;
         if (currentQueue.length === 0 || currentIdx >= currentQueue.length) {
-            const currentSuggestions = suggestionsRef.current;
-            if (currentSuggestions.length > 0) {
-                setPhase('AWAITING_CHOICE');
-                setStatusText('Choose your next track');
-            } else {
-                fetchSuggestions();
-            }
+            autoFetchAndQueueNext();
             return;
         }
 
@@ -257,7 +347,7 @@ export const useSmartMix = ({
             setQueueIndex(prev => prev + 1);
             setTimeout(() => {
                 if (isActiveRef.current && searchId === currentSearchIdRef.current) {
-                    loadNextFromQueue();
+                    loadNextFromQueueRef.current();
                 }
             }, 3000);
             return;
@@ -282,7 +372,8 @@ export const useSmartMix = ({
             idleControls.setLoop(start, end);
             idleControls.play();
         }, 1000);
-    }, [getIdleDeckId, getIdleControls, getLoopBounds, onImportTrack, fetchSuggestions]);
+    }, [getIdleDeckId, getIdleControls, getLoopBounds, onImportTrack]);
+    loadNextFromQueueRef.current = loadNextFromQueue;
 
     const triggerTransition = useCallback(() => {
         const idleDeckId = activeDeckRef.current === 'A' ? 'B' : 'A';
@@ -329,7 +420,7 @@ export const useSmartMix = ({
                     const next = queueIndexRef.current + 1;
                     queueIndexRef.current = next;
                     setQueueIndex(next);
-                    loadNextFromQueue();
+                    loadNextFromQueueRef.current();
                 }
             }, COOLDOWN_MS);
         });
@@ -375,7 +466,7 @@ export const useSmartMix = ({
                     if (isActiveRef.current) {
                         queueIndexRef.current = idx;
                         setQueueIndex(idx);
-                        loadNextFromQueue();
+                        loadNextFromQueueRef.current();
                     }
                 }, 100);
             }
@@ -390,7 +481,7 @@ export const useSmartMix = ({
                 setStatusText(remainingCount > 1 ? 'Choose more or start mixing' : 'Queue ready — mixing!');
             }
         }, 1500);
-    }, [loadNextFromQueue]);
+    }, []);
 
     const queueAll = useCallback(() => {
         const found = suggestionsRef.current.filter(s => s.status === 'found' && s.videoId);
@@ -421,7 +512,7 @@ export const useSmartMix = ({
                     if (isActiveRef.current) {
                         queueIndexRef.current = startIdx;
                         setQueueIndex(startIdx);
-                        loadNextFromQueue();
+                        loadNextFromQueueRef.current();
                     }
                 }, 100);
             }
@@ -430,7 +521,7 @@ export const useSmartMix = ({
 
         setSuggestions([]);
         setStatusText(`Queued ${newItems.length} tracks`);
-    }, [loadNextFromQueue]);
+    }, []);
 
     const addToQueue = useCallback((suggestion: SmartSuggestion) => {
         if (suggestion.status !== 'found' || !suggestion.videoId) return;
@@ -655,6 +746,32 @@ export const useSmartMix = ({
         };
     }, []);
 
+    const addTrackFromYt = useCallback((track: Track) => {
+        const queueItem: SmartMixQueueItem = {
+            id: generateId(),
+            track,
+        };
+
+        setQueue(prev => {
+            const idx = prev.length;
+            const notLoading = phaseRef.current !== 'LOADING' && phaseRef.current !== 'LOOPING' && phaseRef.current !== 'TRANSITIONING' && phaseRef.current !== 'COOLDOWN';
+            const nextQueue = [...prev, queueItem];
+            queueRef.current = nextQueue;
+            if (notLoading) {
+                setTimeout(() => {
+                    if (isActiveRef.current) {
+                        queueIndexRef.current = idx;
+                        setQueueIndex(idx);
+                        loadNextFromQueueRef.current();
+                    }
+                }, 100);
+            }
+            return nextQueue;
+        });
+
+        fetchSuggestions(track);
+    }, [fetchSuggestions]);
+
     return {
         isActive,
         phase,
@@ -673,5 +790,6 @@ export const useSmartMix = ({
         refreshSuggestions,
         clearQueue,
         triggerTransition,
+        addTrackFromYt,
     };
 };

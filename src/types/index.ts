@@ -91,6 +91,7 @@ export interface SmartSuggestion {
     thumbnail?: string;
     duration?: number;
     videoId?: string;
+    isDiverse?: boolean;
 }
 
 export interface SmartMixQueueItem {
