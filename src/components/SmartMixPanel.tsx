@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Track, SmartSuggestion, SmartMixQueueItem, SmartMixPhase } from '../types';
 import { API_ENDPOINTS } from '../config';
 
@@ -73,6 +73,19 @@ export const SmartMixPanel = ({
     const [ytSearchResults, setYtSearchResults] = useState<Track[]>([]);
     const [isYtSearching, setIsYtSearching] = useState(false);
 
+    // Close expanded panel on Escape key
+    useEffect(() => {
+        if (!expanded) return;
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                setExpanded(false);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [expanded]);
+
     const handleSearchYt = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!ytSearchQuery.trim()) return;
@@ -127,11 +140,19 @@ export const SmartMixPanel = ({
     const suggestionsFound = suggestions.filter(s => s.status === 'found');
 
     return (
-        <div
-            className={`fixed bottom-0 left-0 right-0 z-[5000] transition-all duration-300 ease-in-out ${
-                isActive ? 'translate-y-0' : 'translate-y-full'
-            }`}
-        >
+        <>
+            {/* Backdrop overlay to close panel when clicking outside */}
+            {expanded && isActive && (
+                <div
+                    className="fixed inset-0 z-[4999]"
+                    onClick={() => setExpanded(false)}
+                />
+            )}
+            <div
+                className={`fixed bottom-0 left-0 right-0 z-[5000] transition-all duration-300 ease-in-out ${
+                    isActive ? 'translate-y-0' : 'translate-y-full'
+                }`}
+            >
             {/* Collapsed bar */}
             <div
                 className={`h-12 px-4 flex items-center justify-between cursor-pointer border-t border-white/10 backdrop-blur-xl transition-all ${
@@ -473,7 +494,8 @@ export const SmartMixPanel = ({
                     <div className="h-2" />
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 };
 

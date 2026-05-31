@@ -895,7 +895,7 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
             let addedDiverse = 0;
             
             for (const v of rawDivVideos) {
-                if (addedDiverse >= 3) break;
+                if (addedDiverse >= 2) break;
                 if (excludeSet.has(v.videoId)) continue;
                 if (fbVideos.some(fv => fv.id === v.videoId)) continue;
                 if (v.seconds <= 60 || v.seconds >= 600) continue;
@@ -975,7 +975,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
         console.log(`[AI-SUGGEST] Trying OpenRouter model: ${model}...`);
         try {
             const prompt = [
-                `You are a professional DJ music recommendation engine. Given the current track, suggest exactly 7 real, well-known songs that would mix well after it.`,
+                `You are a professional DJ music recommendation engine. Given the current track, suggest exactly 6 real, well-known songs that would mix well after it.`,
                 ``,
                 `Current track:`,
                 `  Title: ${name || 'Unknown'}`,
@@ -985,16 +985,16 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
                 ``,
                 `Requirements:`,
                 `- The first 4 songs (index 0-3) MUST be standard matching tracks: similar genre, vibe, energy level, and BPM (within ±10%).`,
-                `- The next 3 songs (index 4-6) MUST be diverse choices: tracks from different genres, unexpected tempo/energy transitions, throwback classics, or surprising stylistic variations that would still dynamically mix well or create a unique transition.`,
+                `- The next 2 songs (index 4-5) MUST be diverse choices: tracks from different genres, unexpected tempo/energy transitions, throwback classics, or surprising stylistic variations that would still dynamically mix well or create a unique transition.`,
                 `- Each song MUST be a real, existing track by a real artist.`,
                 `- DO NOT make up songs or artists.`,
                 `- DO NOT use generic placeholders — provide the actual song title and artist.`,
                 ``,
-                `Return ONLY a valid JSON object with a single key "recommendations" containing an array of exactly 7 objects with these fields:`,
+                `Return ONLY a valid JSON object with a single key "recommendations" containing an array of exactly 6 objects with these fields:`,
                 `  title: string (the full song title)`,
                 `  artist: string (the full artist name)`,
                 `  reason: string (1 sentence explaining why it mixes well)`,
-                `  isDiverse: boolean (false for the first 4 standard recommendations, true for the 3 diverse recommendations)`,
+                `  isDiverse: boolean (false for the first 4 standard recommendations, true for the 2 diverse recommendations)`,
                 ``,
                 `Example:`,
                 `{`,
@@ -1077,11 +1077,11 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
 
     console.log(`[AI-SUGGEST] Success with model: ${usedModel}`);
     console.log(`[AI-SUGGEST] AI suggested ${aiSongs.length} songs:`);
-    aiSongs.slice(0, 7).forEach((s, i) => console.log(`  ${i+1}. "${s.title}" by ${s.artist} [Diverse: ${s.isDiverse}] — ${(s.reason || '').substring(0, 80)}`));
+    aiSongs.slice(0, 6).forEach((s, i) => console.log(`  ${i+1}. "${s.title}" by ${s.artist} [Diverse: ${s.isDiverse}] — ${(s.reason || '').substring(0, 80)}`));
 
     // For each AI suggestion, search YouTube to find the real video
     const results = [];
-    for (const song of aiSongs.slice(0, 7)) {
+    for (const song of aiSongs.slice(0, 6)) {
         const songTitle = (song.title || '').trim();
         const songArtist = (song.artist || '').trim();
         const reason = (song.reason || `Matches the vibe of "${name}"`).trim();
@@ -1129,7 +1129,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
     if (results.length === 0) {
         console.log(`[AI-SUGGEST] No results from primary search, trying broader queries...`);
         // Try broader search for each song
-        for (const song of aiSongs.slice(0, 7)) {
+        for (const song of aiSongs.slice(0, 6)) {
             const songTitle = (song.title || '').trim();
             const songArtist = (song.artist || '').trim();
             const reason = (song.reason || `Matches the vibe of "${name}"`).trim();
