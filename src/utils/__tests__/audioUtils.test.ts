@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { generateWaveformPeaks, detectBPM } from '../audioUtils';
 
 function createMockAudioBuffer(length: number, sampleRate: number): AudioBuffer {
