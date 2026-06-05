@@ -204,6 +204,13 @@ function App() {
 
   const downloadingTracksRef = useRef<Set<string>>(new Set());
 
+  const authHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (user?.token) headers['Authorization'] = `Bearer ${user.token}`;
+    return headers;
+  };
+
+  // Load tracks from DB and User Sync
   useEffect(() => {
     const loadTracks = async () => {
       try {
@@ -211,7 +218,9 @@ function App() {
         let userTracks: any[] = [];
         if (isAuthenticated && user?.id) {
           try {
-            const res = await fetch(API_ENDPOINTS.USER_TRACKS(user.id));
+            const res = await fetch(API_ENDPOINTS.USER_TRACKS(user.id), {
+              headers: authHeaders()
+            });
             if (res.ok) userTracks = await res.json();
           } catch (e) { console.warn("Failed to fetch user tracks", e); }
         }
@@ -236,7 +245,7 @@ function App() {
       const serializableTracks = updatedTracks.map(({ file, ...track }) => track);
       await fetch(API_ENDPOINTS.USER_TRACKS(user.id), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders() },
         body: JSON.stringify({ tracks: serializableTracks })
       });
     } catch (e) {
@@ -252,7 +261,10 @@ function App() {
     }
     if (isAuthenticated && user?.id) {
       try {
-        await fetch(`${API_ENDPOINTS.USER_TRACKS(user.id)}/${track.id}`, { method: 'DELETE' });
+        await fetch(`${API_ENDPOINTS.USER_TRACKS(user.id)}/${track.id}`, {
+          method: 'DELETE',
+          headers: { ...authHeaders() }
+        });
       } catch (e) {
         console.warn("Failed to delete track from backend", e);
       }

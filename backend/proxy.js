@@ -16,7 +16,7 @@ const path = require('path');
 const yts = require('yt-search');
 const youtubedl = require('youtube-dl-exec');
 const { OAuth2Client } = require('google-auth-library');
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -39,7 +39,6 @@ const distPath = path.join(__dirname, '../dist');
 const cacheDir = path.join(__dirname, 'cache');
 const dataDir = path.join(__dirname, 'data');
 const logsDir = path.join(__dirname, 'logs');
-let staticDir = null;
 
 if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -81,63 +80,246 @@ console.error = (...args) => {
     originalError.apply(console, args);
 };
 
-// ─── SQLite Database Setup ────────────────────────────────────────────────────
-const db = new Database(path.join(dataDir, 'djmixer.db'));
-db.pragma('journal_mode = WAL'); // better concurrency
+// ─── PostgreSQL Database Setup ──────────────────────────────────────────────
+const pgPool = new Pool({
+    host: process.env.PGHOST || 'localhost',
+    port: parseInt(process.env.PGPORT || '5432'),
+    database: process.env.PGDATABASE || 'djmixer',
+    user: process.env.PGUSER || 'djmixer',
+    password: process.env.PGPASSWORD || 'djmixer',
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+});
 
-db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-        id          TEXT PRIMARY KEY,
-        email       TEXT UNIQUE NOT NULL,
-        username    TEXT NOT NULL,
-        password    TEXT,
-        picture     TEXT,
-        provider    TEXT NOT NULL DEFAULT 'email',
-        created_at  INTEGER DEFAULT (unixepoch())
-    );
-    CREATE TABLE IF NOT EXISTS user_tracks (
-        user_id     TEXT NOT NULL,
-        track_id    TEXT NOT NULL,
-        track_data  TEXT NOT NULL,
-        updated_at  INTEGER DEFAULT (unixepoch()),
-        PRIMARY KEY (user_id, track_id)
-    );
-`);
+pgPool.on('error', (err) => {
+    console.error('[DB] Unexpected pool error:', err);
+});
 
-// Migrate old JSON flat-files into SQLite (one-time, non-destructive)
-try {
-    if (fs.existsSync(dataDir)) {
-        fs.readdirSync(dataDir)
-          .filter(f => f.endsWith('_tracks.json'))
-          .forEach(f => {
-              const uid = f.replace('_tracks.json', '');
-              const tracks = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf8'));
-              if (Array.isArray(tracks)) {
-                  const insert = db.prepare(`INSERT OR IGNORE INTO user_tracks (user_id,track_id,track_data) VALUES (?,?,?)`);
-                  const run = db.transaction((rows) => rows.forEach(t => insert.run(uid, t.id, JSON.stringify(t))));
-                  run(tracks.filter(t => t.id));
-                  console.log(`[MIGRATE] Imported ${tracks.length} tracks for ${uid}`);
-              }
-          });
+async function initDB() {
+    const client = await pgPool.connect();
+    try {
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id          TEXT PRIMARY KEY,
+                email       TEXT UNIQUE NOT NULL,
+                username    TEXT NOT NULL,
+                password    TEXT,
+                picture     TEXT,
+                provider    TEXT NOT NULL DEFAULT 'email',
+                created_at  BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT)
+            );
+        `);
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS profiles (
+                user_id      TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                display_name TEXT,
+                bio          TEXT,
+                avatar_url   TEXT,
+                updated_at   BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT)
+            );
+        `);
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS user_tracks (
+                user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                track_id    TEXT NOT NULL,
+                track_data  TEXT NOT NULL,
+                updated_at  BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT),
+                PRIMARY KEY (user_id, track_id)
+            );
+        `);
+        console.log('[DB] PostgreSQL schema ready');
+    } finally {
+        client.release();
     }
-} catch(e) { console.warn('[MIGRATE] Migration error:', e.message); }
+}
 
-// ─── DB Helper Fns ────────────────────────────────────────────────────────────
+initDB().catch(err => {
+    console.error('[DB] Failed to initialize schema:', err);
+    process.exit(1);
+});
+
+// Migrate old JSON flat-files into PostgreSQL (one-time, non-destructive)
+async function migrateOldData() {
+    try {
+        if (!fs.existsSync(dataDir)) return;
+        const files = fs.readdirSync(dataDir).filter(f => f.endsWith('_tracks.json'));
+        if (files.length === 0) return;
+
+        const client = await pgPool.connect();
+        try {
+            for (const f of files) {
+                const uid = f.replace('_tracks.json', '');
+                const tracks = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf8'));
+                if (!Array.isArray(tracks)) continue;
+
+                // Ensure user exists (ghost entry for old data)
+                await client.query(
+                    `INSERT INTO users (id, email, username, provider) VALUES ($1, $2, $3, 'legacy')
+                     ON CONFLICT (id) DO NOTHING`,
+                    [uid, `${uid}@legacy.djmixer`, uid]
+                );
+                await client.query(
+                    `INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+                    [uid]
+                );
+
+                for (const t of tracks) {
+                    if (!t.id) continue;
+                    await client.query(
+                        `INSERT INTO user_tracks (user_id, track_id, track_data) VALUES ($1, $2, $3)
+                         ON CONFLICT (user_id, track_id) DO NOTHING`,
+                        [uid, t.id, JSON.stringify(t)]
+                    );
+                }
+                console.log(`[MIGRATE] Imported ${tracks.length} tracks for ${uid}`);
+            }
+        } finally {
+            client.release();
+        }
+    } catch (e) {
+        console.warn('[MIGRATE] Migration error:', e.message);
+    }
+}
+
+migrateOldData();
+
+// ─── DB Helper Fns ──────────────────────────────────────────────────────────
 const generateId = () => require('crypto').randomUUID();
 
-const getUser = db.prepare('SELECT * FROM users WHERE id = ?');
-const getUserByEmail = db.prepare('SELECT * FROM users WHERE email = ?');
-const insertUser = db.prepare(`INSERT INTO users (id,email,username,password,picture,provider) VALUES (?,?,?,?,?,?)`);
-const upsertGoogleUser = db.prepare(`
-    INSERT INTO users (id,email,username,picture,provider) VALUES (?,?,?,?,'google')
-    ON CONFLICT(email) DO UPDATE SET username=excluded.username, picture=excluded.picture
-    RETURNING *
-`);
-const getUserTracksStmt = db.prepare('SELECT track_data FROM user_tracks WHERE user_id = ? ORDER BY updated_at DESC');
-const upsertTrack = db.prepare(`INSERT INTO user_tracks (user_id,track_id,track_data,updated_at) VALUES (?,?,?,unixepoch()) ON CONFLICT(user_id,track_id) DO UPDATE SET track_data=excluded.track_data, updated_at=excluded.updated_at`);
-const saveAllTracks = db.transaction((uid, tracks) => {
-    tracks.forEach(t => upsertTrack.run(uid, t.id, JSON.stringify(t)));
-});
+async function getUserById(id) {
+    const { rows } = await pgPool.query('SELECT * FROM users WHERE id = $1', [id]);
+    return rows[0] || null;
+}
+
+async function getUserByEmail(email) {
+    const { rows } = await pgPool.query('SELECT * FROM users WHERE email = $1', [email]);
+    return rows[0] || null;
+}
+
+async function createUser(id, email, username, hashedPassword, picture, provider) {
+    const { rows } = await pgPool.query(
+        `INSERT INTO users (id, email, username, password, picture, provider)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [id, email, username, hashedPassword, picture, provider]
+    );
+    // Create profile entry
+    await pgPool.query(
+        `INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+        [id]
+    );
+    return rows[0];
+}
+
+async function upsertGoogleUser(sub, email, username, picture) {
+    const { rows } = await pgPool.query(
+        `INSERT INTO users (id, email, username, picture, provider)
+         VALUES ($1, $2, $3, $4, 'google')
+         ON CONFLICT (email) DO UPDATE SET username = EXCLUDED.username, picture = EXCLUDED.picture
+         RETURNING *`,
+        [sub, email, username, picture]
+    );
+    // Ensure profile exists
+    await pgPool.query(
+        `INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+        [rows[0].id]
+    );
+    return rows[0];
+}
+
+async function getUserTracks(uid) {
+    const { rows } = await pgPool.query(
+        'SELECT track_data FROM user_tracks WHERE user_id = $1 ORDER BY updated_at DESC',
+        [uid]
+    );
+    return rows.map(r => { try { return JSON.parse(r.track_data); } catch { return null; } }).filter(Boolean);
+}
+
+async function upsertTrack(uid, trackId, trackData) {
+    await pgPool.query(
+        `INSERT INTO user_tracks (user_id, track_id, track_data, updated_at)
+         VALUES ($1, $2, $3, EXTRACT(EPOCH FROM NOW())::BIGINT)
+         ON CONFLICT (user_id, track_id)
+         DO UPDATE SET track_data = EXCLUDED.track_data, updated_at = EXCLUDED.updated_at`,
+        [uid, trackId, JSON.stringify(trackData)]
+    );
+}
+
+async function saveAllTracks(uid, tracks) {
+    const client = await pgPool.connect();
+    try {
+        await client.query('BEGIN');
+        for (const t of tracks) {
+            if (!t.id) continue;
+            await client.query(
+                `INSERT INTO user_tracks (user_id, track_id, track_data, updated_at)
+                 VALUES ($1, $2, $3, EXTRACT(EPOCH FROM NOW())::BIGINT)
+                 ON CONFLICT (user_id, track_id)
+                 DO UPDATE SET track_data = EXCLUDED.track_data, updated_at = EXCLUDED.updated_at`,
+                [uid, t.id, JSON.stringify(t)]
+            );
+        }
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    } finally {
+        client.release();
+    }
+}
+
+async function deleteUserTrack(uid, trackId) {
+    await pgPool.query('DELETE FROM user_tracks WHERE user_id = $1 AND track_id = $2', [uid, trackId]);
+}
+
+async function getProfile(userId) {
+    const { rows } = await pgPool.query(
+        `SELECT u.id, u.email, u.username, u.picture, u.provider, u.created_at,
+                p.display_name, p.bio, p.avatar_url, p.updated_at as profile_updated_at
+         FROM users u
+         LEFT JOIN profiles p ON p.user_id = u.id
+         WHERE u.id = $1`,
+        [userId]
+    );
+    return rows[0] || null;
+}
+
+async function updateProfile(userId, { display_name, bio, avatar_url }) {
+    const fields = [];
+    const values = [];
+    let idx = 1;
+    if (display_name !== undefined) { fields.push(`display_name = $${idx++}`); values.push(display_name); }
+    if (bio !== undefined) { fields.push(`bio = $${idx++}`); values.push(bio); }
+    if (avatar_url !== undefined) { fields.push(`avatar_url = $${idx++}`); values.push(avatar_url); }
+    if (fields.length === 0) return null;
+
+    fields.push(`updated_at = EXTRACT(EPOCH FROM NOW())::BIGINT`);
+    values.push(userId);
+
+    const { rows } = await pgPool.query(
+        `INSERT INTO profiles (user_id, ${fields.map(f => f.split('=')[0].trim()).join(', ')})
+         VALUES (${values.map((_, i) => `$${i + 1}`).join(', ')})
+         ON CONFLICT (user_id)
+         DO UPDATE SET ${fields.join(', ')}
+         RETURNING *`,
+        values
+    );
+    return rows[0];
+}
+
+// ─── Auth Middleware ────────────────────────────────────────────────────────
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access token required' });
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(403).json({ error: 'Invalid or expired token' });
+        req.user = decoded;
+        next();
+    });
+}
+
+let staticDir = null;
 
 if (fs.existsSync(publicPath)) {
     console.log(`[SERVER] Serving static files from ${publicPath}`);
@@ -369,7 +551,7 @@ async function fetchRapidAPI(videoId) {
     };
 
     let attempts = 0;
-    const maxAttempts = 10; // Wait up to 10-15 seconds
+    const maxAttempts = 10;
 
     while (attempts < maxAttempts) {
         try {
@@ -388,7 +570,7 @@ async function fetchRapidAPI(videoId) {
             }
         } catch (error) {
             console.error(`[RapidAPI] Error: ${error.message}`);
-            throw error; // Propagate error to trigger fallback or failure
+            throw error;
         }
     }
     throw new Error('RapidAPI timeout');
@@ -399,15 +581,16 @@ app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, username, password } = req.body;
         if (!email || !username || !password) return res.status(400).json({ error: 'All fields required' });
-        if (getUserByEmail.get(email)) return res.status(409).json({ error: 'Email already registered' });
+        const existing = await getUserByEmail(email);
+        if (existing) return res.status(409).json({ error: 'Email already registered' });
 
         const hashed = await bcrypt.hash(password, 10);
         const id = generateId();
-        insertUser.run(id, email, username, hashed, null, 'email');
+        const user = await createUser(id, email, username, hashed, null, 'email');
 
-        const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '90d' });
+        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '90d' });
         console.log(`[AUTH] Registered: ${email}`);
-        res.json({ id, email, username, picture: null, token });
+        res.json({ id: user.id, email: user.email, username: user.username, picture: null, token });
     } catch (error) {
         console.error('[AUTH] Register Error:', error);
         res.status(500).json({ error: 'Registration failed' });
@@ -420,7 +603,7 @@ app.post('/api/auth/login', async (req, res) => {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-        const row = getUserByEmail.get(email);
+        const row = await getUserByEmail(email);
         if (!row) return res.status(401).json({ error: 'Invalid email or password' });
         if (!row.password) return res.status(401).json({ error: 'Please sign in with Google' });
 
@@ -462,8 +645,7 @@ app.post('/api/auth/google', async (req, res) => {
 
         if (!payload.sub || !payload.email) return res.status(400).json({ error: 'Missing user info from Google' });
 
-        // Upsert into DB — same Google user across devices stays consistent
-        const row = upsertGoogleUser.get(payload.sub, payload.email,
+        const row = await upsertGoogleUser(payload.sub, payload.email,
             payload.name || payload.email.split('@')[0], payload.picture || null);
 
         const token = jwt.sign({ id: row.id, email: row.email }, JWT_SECRET, { expiresIn: '90d' });
@@ -475,11 +657,40 @@ app.post('/api/auth/google', async (req, res) => {
     }
 });
 
-// ─── User Tracks: GET (merged unique tracks from DB) ──────────────────────
-app.get('/api/users/:uid/tracks', (req, res) => {
+// ─── Profile: GET ──────────────────────────────────────────────────────────
+app.get('/api/profile', authenticateToken, async (req, res) => {
     try {
-        const rows = getUserTracksStmt.all(req.params.uid);
-        const tracks = rows.map(r => { try { return JSON.parse(r.track_data); } catch { return null; } }).filter(Boolean);
+        const profile = await getProfile(req.user.id);
+        if (!profile) return res.status(404).json({ error: 'Profile not found' });
+        res.json(profile);
+    } catch (error) {
+        console.error('[PROFILE] Error fetching profile:', error);
+        res.status(500).json({ error: 'Failed to fetch profile' });
+    }
+});
+
+// ─── Profile: PUT (update) ─────────────────────────────────────────────────
+app.put('/api/profile', authenticateToken, async (req, res) => {
+    try {
+        const { display_name, bio, avatar_url } = req.body;
+        if (!display_name && !bio && !avatar_url) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+        const updated = await updateProfile(req.user.id, { display_name, bio, avatar_url });
+        if (!updated) return res.status(400).json({ error: 'No changes applied' });
+        console.log(`[PROFILE] Updated profile for ${req.user.id}`);
+        res.json(updated);
+    } catch (error) {
+        console.error('[PROFILE] Error updating profile:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// ─── User Tracks: GET (authenticated) ──────────────────────────────────────
+app.get('/api/users/:uid/tracks', authenticateToken, async (req, res) => {
+    try {
+        if (req.params.uid !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+        const tracks = await getUserTracks(req.user.id);
         res.json(tracks);
     } catch (error) {
         console.error('[USER_TRACKS] Error reading tracks:', error);
@@ -487,14 +698,14 @@ app.get('/api/users/:uid/tracks', (req, res) => {
     }
 });
 
-// ─── User Tracks: POST (upsert unique by track id) ─────────────────────────
-app.post('/api/users/:uid/tracks', (req, res) => {
+// ─── User Tracks: POST (upsert) ────────────────────────────────────────────
+app.post('/api/users/:uid/tracks', authenticateToken, async (req, res) => {
     try {
-        const uid = req.params.uid;
+        if (req.params.uid !== req.user.id) return res.status(403).json({ error: 'Access denied' });
         const { tracks } = req.body;
         if (!tracks || !Array.isArray(tracks)) return res.status(400).json({ error: 'Invalid tracks data' });
-        saveAllTracks(uid, tracks.filter(t => t.id));
-        console.log(`[USER_TRACKS] Saved ${tracks.length} tracks for user ${uid}`);
+        await saveAllTracks(req.user.id, tracks.filter(t => t.id));
+        console.log(`[USER_TRACKS] Saved ${tracks.length} tracks for user ${req.user.id}`);
         res.json({ success: true });
     } catch (error) {
         console.error('[USER_TRACKS] Error saving tracks:', error);
@@ -502,13 +713,12 @@ app.post('/api/users/:uid/tracks', (req, res) => {
     }
 });
 
-app.delete('/api/users/:uid/tracks/:trackId', (req, res) => {
+// ─── User Tracks: DELETE ───────────────────────────────────────────────────
+app.delete('/api/users/:uid/tracks/:trackId', authenticateToken, async (req, res) => {
     try {
-        const uid = req.params.uid;
-        const trackId = req.params.trackId;
-        const delStmt = db.prepare('DELETE FROM user_tracks WHERE user_id = ? AND track_id = ?');
-        delStmt.run(uid, trackId);
-        console.log(`[USER_TRACKS] Deleted track ${trackId} for user ${uid}`);
+        if (req.params.uid !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+        await deleteUserTrack(req.user.id, req.params.trackId);
+        console.log(`[USER_TRACKS] Deleted track ${req.params.trackId} for user ${req.user.id}`);
         res.json({ success: true });
     } catch (error) {
         console.error('[USER_TRACKS] Error deleting track:', error);
@@ -532,14 +742,12 @@ app.get('/api/logs', (req, res) => {
 app.get('/api/search', async (req, res) => {
     try {
         const query = req.query.q;
-        const source = req.query.source; // 'spotify' or 'youtube' (default)
+        const source = req.query.source;
 
         if (!query) return res.status(400).json({ error: 'Query required' });
 
         console.log(`[SEARCH] Query: "${query}" | Source: ${source || 'youtube'}`);
 
-        // STRATEGY 1: Skysound Scraping (Spotify Source or specific request)
-        // Best for Spotify flow as it returns skysound IDs that are reliable on restricted networks
         if (source === 'spotify') {
             try {
                 const searchApiUrl = `https://skysound7.com/api/search?query=${encodeURIComponent(query)}`;
@@ -601,12 +809,9 @@ app.get('/api/search', async (req, res) => {
                 }
             } catch (err) {
                 console.warn(`[SEARCH] Spotify/Skysound strategy failed: ${err.message}. Falling back to YouTube.`);
-                // Fall through to YouTube search
             }
         }
 
-        // STRATEGY 2: Official YouTube Search (Default / YouTube Modal)
-        // Returns real YouTube Video IDs
         const r = await yts(query);
         const videos = r.videos.slice(0, 15).map(v => {
             const parsed = parseTrackMetadata(v.title, v.author?.name);
@@ -1181,22 +1386,16 @@ app.get('/api/stream', async (req, res) => {
         let videoId = req.query.videoId;
         if (!videoId) return res.status(400).json({ error: 'videoId required' });
 
-        // Check if it is a Skysound ID (Base64) or YouTube ID
         let isSkysound = false;
         try {
-            // Skysound IDs are base64 encoded URLs
             const decoded = Buffer.from(videoId, 'base64').toString('utf-8');
             if (decoded.startsWith('http')) {
                 isSkysound = true;
             }
         } catch (e) {
-            // Not base64 or not a URL, assume YouTube ID
         }
 
         if (isSkysound) {
-            // ==========================================
-            // SKYSOUND PROXY LOGIC
-            // ==========================================
             const targetUrl = Buffer.from(videoId, 'base64').toString('utf-8');
             console.log(`[STREAM] Proxying Skysound: ${targetUrl}`);
 
@@ -1223,19 +1422,14 @@ app.get('/api/stream', async (req, res) => {
             }
 
         } else {
-            // ==========================================
-            // YOUTUBE DOWNLOAD LOGIC
-            // ==========================================
             console.log(`[STREAM] YouTube ID detected: ${videoId} | Prod: ${IS_PRODUCTION}`);
 
-            // Strategy: Production -> RapidAPI, Local -> yt-dlp
             if (IS_PRODUCTION) {
                 try {
                     console.log(`[STREAM] Using RapidAPI for ${videoId}`);
                     const downloadUrl = await fetchRapidAPI(videoId);
                     console.log(`[STREAM] RapidAPI Success: ${downloadUrl}`);
 
-                    // Store metadata even in RapidAPI mode if we can (Background check)
                     const metadataPath = path.join(cacheDir, 'metadata.json');
                     if (!fs.existsSync(metadataPath) || !JSON.parse(fs.readFileSync(metadataPath, 'utf8'))[videoId]) {
                         console.log(`[METADATA] Background fetching missing info for ${videoId}...`);
@@ -1260,19 +1454,15 @@ app.get('/api/stream', async (req, res) => {
                         }).catch(e => console.error(`[METADATA] Background error: ${e.message}`));
                     }
 
-                    // Redirect to the final URL for efficiency
                     return res.redirect(downloadUrl);
                 } catch (err) {
                     console.error(`[STREAM] RapidAPI failed: ${err.message}. Falling back to yt-dlp.`);
-                    // Fallback to youtube-dl if RapidAPI fails (or quota exceeded)
                 }
             }
 
-            // FALLBACK / LOCALHOST: yt-dlp
             const cacheFilePath = path.join(cacheDir, `${videoId}.mp3`);
             const metadataPath = path.join(cacheDir, 'metadata.json');
 
-            // 1. Ensure metadata is present
             try {
                 let metadata = {};
                 let metadataChanged = false;
@@ -1311,7 +1501,6 @@ app.get('/api/stream', async (req, res) => {
                 console.warn(`[METADATA] Error handling metadata for ${videoId}: ${err.message}`);
             }
 
-            // 2. Serve cache if exists
             if (fs.existsSync(cacheFilePath) && fs.statSync(cacheFilePath).size > 0) {
                 const stat = fs.statSync(cacheFilePath);
                 console.log(`[STREAM] Serving cached: ${videoId}`);
@@ -1323,7 +1512,6 @@ app.get('/api/stream', async (req, res) => {
                 return;
             }
 
-            // 3. Download if not exists
             console.log(`[STREAM] Using yt-dlp for ${videoId}`);
             const url = `https://www.youtube.com/watch?v=${videoId}`;
 
@@ -1344,7 +1532,6 @@ app.get('/api/stream', async (req, res) => {
             fs.createReadStream(cacheFilePath).pipe(res);
         }
 
-
     } catch (error) {
         console.error('[STREAM] Error:', error);
         if (!res.headersSent) {
@@ -1352,9 +1539,6 @@ app.get('/api/stream', async (req, res) => {
         }
     }
 });
-
-// Global cache APIs removed (users now have their own synced profiles)
-
 
 // Version check endpoint for PWA updates
 app.get('/api/version', (req, res) => {
@@ -1365,12 +1549,9 @@ app.get('/api/version', (req, res) => {
         if (!fs.existsSync(assetsDir)) return res.json({ version: 'dev' });
 
         const files = fs.readdirSync(assetsDir);
-        // Find index-*.js
         const indexJs = files.find(f => f.startsWith('index-') && f.endsWith('.js'));
 
         if (indexJs) {
-            // Extract hash part "index-HASH.js" -> "HASH"
-            // Start after "index-" (length 6) and remove ".js" (length 3)
             const version = indexJs.substring(6, indexJs.length - 3);
             res.json({ version: version, filename: indexJs });
         } else {
@@ -1398,9 +1579,10 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`\n============================================`);
-    console.log(`   🚀 SKYSOUND PROXY v5 - HYBRID MODE`);
+    console.log(`   🚀 SKYSOUND PROXY v6 - HYBRID MODE`);
     console.log(`   Mode: ${IS_PRODUCTION ? 'PRODUCTION (RapidAPI)' : 'DEVELOPMENT (Local DL)'}`);
     console.log(`   Serving static from: ${staticDir || 'NONE'}`);
     console.log(`   Server running on port ${PORT}`);
+    console.log(`   Database: PostgreSQL`);
     console.log(`============================================\n`);
 });

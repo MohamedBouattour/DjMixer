@@ -3,20 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "all": "node backend/proxy.js",
     "build": "tsc -b && vite build",
     "deploy": "node deploy.js",
-    "deploy:prep": "node prepare-deploy.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:5173 && electron .\"",
-    "electron:build": "npm run deploy:prep && electron-builder",
-    "precommit": "vitest run && npm run deploy:prep && git add ."
+    "precommit": "git add ."
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
@@ -27,6 +23,7 @@
     "react-dom": "^19.2.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.4",
+    "vite-plugin-pwa": "^1.2.0",
     "wavesurfer.js": "^7.12.1"
   },
   "devDependencies": {
@@ -35,10 +32,6 @@
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "concurrently": "^9.2.1",
-    "cross-env": "^10.1.0",
-    "electron": "^40.0.0",
-    "electron-builder": "^26.4.0",
     "esbuild": "^0.21.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -48,32 +41,6 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
-    "vitest": "^4.1.7",
-    "wait-on": "^9.0.3"
-  },
-  "build": {
-    "appId": "com.djmixer.app",
-    "productName": "DJ Mixer",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "electron/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "backend",
-        "to": "backend",
-        "filter": [
-          "**/*",
-          "!node_modules/**/*.map",
-          "!node_modules/**/*.md"
-        ]
-      }
-    ],
-    "win": {
-      "target": "nsis"
-    }
+    "vitest": "^4.1.7"
   }
 }

@@ -1,0 +1,16 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# Install OS dependencies for youtube-dl-exec (Python) and postgresql-client (debugging)
+RUN apk add --no-cache python3 make g++ postgresql-client
+
+COPY backend/package*.json ./
+RUN npm install
+
+COPY backend/ ./
+
+# Expose backend port
+EXPOSE 3002
+
+# Start the application
+CMD ["node", "proxy.js"]
