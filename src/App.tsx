@@ -498,34 +498,7 @@ function App() {
         </div>
       </header>
 
-      {/* Audio Unlock Overlay */}
-      {audioContextState !== "running" && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[5000] flex items-center justify-center cursor-pointer" onClick={unlockAudio}>
-          <div className="bg-bg-panel border border-white/10 p-10 rounded-2xl max-w-sm w-full text-center shadow-2xl scale-100 active:scale-95 transition-transform">
-            <div className="text-deck-a flex justify-center mb-6 drop-shadow-[0_0_15px_rgba(255,0,128,0.5)]">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold mb-3 tracking-tight">
-              {audioContextState === "uninitialized"
-                ? "Ready to Mix?"
-                : `Audio is currently ${audioContextState}. Tap to retry.`}
-            </h2>
-            <p className="text-text-secondary mb-8 text-sm">Tap anywhere to start your DJ session.</p>
-            <button className="w-full py-4 bg-deck-a text-white font-bold rounded-xl shadow-[0_4px_15px_rgba(255,0,128,0.4)] hover:brightness-110 active:scale-98 transition-all">
-              {audioContextState === "uninitialized"
-                ? "START SESSION"
-                : "RESUME AUDIO"}
-            </button>
-            {audioContextState !== "uninitialized" && (
-              <div className="mt-4 text-[10px] text-text-muted uppercase tracking-widest">
-                Status: {audioContextState}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+
 
       {/* Floating Action Buttons (Mobile Overlay) */}
       {isMobile && (
