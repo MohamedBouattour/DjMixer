@@ -160,12 +160,14 @@ export const useSmartMix = ({
         animRef.current = requestAnimationFrame(animate);
     }, []);
 
-    const fetchSuggestions = useCallback(async (customSeedTrack?: Track) => {
+    const fetchSuggestions = useCallback(async (customSeedTrack?: Track, background = false) => {
         if (isFetchingRef.current) return;
         isFetchingRef.current = true;
-        setPhase('FETCHING');
-        setStatusText('AI is finding your next tracks...');
-        setIsAiPowered(false);
+        if (!background) {
+            setPhase('FETCHING');
+            setStatusText('AI is finding your next tracks...');
+            setIsAiPowered(false);
+        }
 
         const searchId = ++currentSearchIdRef.current;
 
@@ -208,14 +210,16 @@ export const useSmartMix = ({
 
             setSuggestions(newSuggestions);
             setIsAiPowered(data.ai === true);
-            setStatusText(newSuggestions.length > 0
-                ? 'Choose your next track'
-                : 'No suggestions found — retrying...'
-            );
-            setPhase('AWAITING_CHOICE');
+            if (!background) {
+                setStatusText(newSuggestions.length > 0
+                    ? 'Choose your next track'
+                    : 'No suggestions found — retrying...'
+                );
+                setPhase('AWAITING_CHOICE');
+            }
         } catch (e) {
             console.warn('[SmartMix] Fetch suggestions failed:', e);
-            if (searchId === currentSearchIdRef.current && isActiveRef.current) {
+            if (!background && searchId === currentSearchIdRef.current && isActiveRef.current) {
                 setStatusText('Failed to get AI suggestions — check your connection');
                 setTimeout(() => {
                     if (isActiveRef.current && searchId === currentSearchIdRef.current) {
@@ -367,7 +371,7 @@ export const useSmartMix = ({
             const { start, end } = getLoopBounds(bpm);
 
             idleControls.setVolume(LOOP_VOLUME);
-            idleControls.setEQ('low', 30); // Keep bass low while looping
+            // idleControls.setEQ('low', 30); // Keep bass low while looping
             idleControls.seek(start);
             idleControls.setLoop(start, end);
             idleControls.play();
@@ -392,22 +396,18 @@ export const useSmartMix = ({
         const activeState = activeDeckRef.current === 'A' ? deckAState : deckBState;
 
         idleControls.clearLoop();
+        idleControls.play();
 
-        // Crossover volume and EQ:
-        // Fade incoming track from LOOP_VOLUME (60) to 150 (max volume), and low EQ from 30 to 50
+        // Crossover volume:
+        // Fade incoming track from LOOP_VOLUME (60) to 150 (max volume)
         fadeVolume(idleControls, LOOP_VOLUME, 150, FADE_DURATION_MS, true);
-        fadeEQ(idleControls, 'low', 30, 50, FADE_DURATION_MS, true);
 
-        // Fade outgoing track volume to 0, and Low EQ from current to 0 (bass cut)
-        fadeEQ(activeControls, 'low', activeState.eq.low, 0, FADE_DURATION_MS, false);
+        // Fade outgoing track volume to 0
         fadeVolume(activeControls, activeState.volume, 0, FADE_DURATION_MS, false, () => {
             if (!isActiveRef.current) return;
 
             activeControls.pause();
             activeControls.setVolume(150); // Reset volume to max
-            activeControls.setEQ('low', 50); // Reset EQs to flat
-            activeControls.setEQ('mid', 50);
-            activeControls.setEQ('high', 50);
 
             const newActiveDeck = getIdleDeckId();
             setActiveDeck(newActiveDeck);
@@ -474,14 +474,20 @@ export const useSmartMix = ({
         });
 
         const remainingCount = suggestionsRef.current.length;
-        setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+        setSuggestions(prev => {
+            const filtered = prev.filter(s => s.id !== suggestion.id);
+            if (filtered.length <= 3 && isActiveRef.current) {
+                setTimeout(() => fetchSuggestions(undefined, true), 500);
+            }
+            return filtered;
+        });
         setStatusText('Added to queue');
         setTimeout(() => {
             if (isActiveRef.current) {
                 setStatusText(remainingCount > 1 ? 'Choose more or start mixing' : 'Queue ready — mixing!');
             }
         }, 1500);
-    }, []);
+    }, [fetchSuggestions]);
 
     const queueAll = useCallback(() => {
         const found = suggestionsRef.current.filter(s => s.status === 'found' && s.videoId);
@@ -540,8 +546,14 @@ export const useSmartMix = ({
             queueRef.current = nextQueue;
             return nextQueue;
         });
-        setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
-    }, []);
+        setSuggestions(prev => {
+            const filtered = prev.filter(s => s.id !== suggestion.id);
+            if (filtered.length <= 3 && isActiveRef.current) {
+                setTimeout(() => fetchSuggestions(undefined, true), 500);
+            }
+            return filtered;
+        });
+    }, [fetchSuggestions]);
 
     const removeFromQueue = useCallback((itemId: string) => {
         const currentIdx = queueIndexRef.current;
@@ -654,14 +666,17 @@ export const useSmartMix = ({
                 const bpm = idleState.track.bpm || 120;
                 const { start, end } = getLoopBounds(bpm);
                 idleControls.setVolume(LOOP_VOLUME);
-                idleControls.setEQ('low', 30); // Keep bass low while looping
+                // idleControls.setEQ('low', 30); // Keep bass low while looping
                 idleControls.seek(start);
                 idleControls.setLoop(start, end);
                 idleControls.play();
+
+                // Fetch suggestions based on this new manual track
+                fetchSuggestions(idleState.track, true);
             }
         }
         lastIdleTrackIdRef.current = currentIdleTrackId;
-    }, [isActive, phase, activeDeck, deckAState.track?.id, deckBState.track?.id, deckAState.isPlaying, deckBState.isPlaying, getLoopBounds, deckAControls, deckBControls]);
+    }, [isActive, phase, activeDeck, deckAState.track?.id, deckBState.track?.id, deckAState.isPlaying, deckBState.isPlaying, getLoopBounds, deckAControls, deckBControls, fetchSuggestions]);
 
     const toggle = useCallback(() => {
         if (isActive) {
@@ -769,7 +784,7 @@ export const useSmartMix = ({
             return nextQueue;
         });
 
-        fetchSuggestions(track);
+        fetchSuggestions(track, true);
     }, [fetchSuggestions]);
 
     return {

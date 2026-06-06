@@ -465,9 +465,6 @@ function getNormalizedString(str) {
         .replace(/lyrics/g, '')
         .replace(/lyric/g, '')
         .replace(/original/g, '')
-        .replace(/mix/g, '')
-        .replace(/remix/g, '')
-        .replace(/cover/g, '')
         .replace(/full/g, '')
         .replace(/song/g, '')
         .trim();
@@ -926,35 +923,55 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
         const genres = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop', 'remix'];
         const currentGenre = genre || genres[Math.floor(Math.random() * genres.length)];
         
-        let fallbackQuery = '';
-        if (cleanArtist && cleanName) {
-            fallbackQuery = `${cleanArtist} similar tracks`;
-        } else if (cleanArtist) {
-            fallbackQuery = `${cleanArtist} ${currentGenre} mix`;
-        } else if (cleanName) {
-            fallbackQuery = `${cleanName} ${currentGenre} similar`;
+        let remixQuery = '';
+        let similarQuery = '';
+
+        if (cleanName) {
+            remixQuery = `${cleanName} remix`;
         } else {
-            fallbackQuery = `${currentGenre} dj mix radio edit`;
+            remixQuery = `${currentGenre} club remix`;
         }
 
-        console.log(`[SMART-SUGGEST] Query: "${fallbackQuery}"`);
-        const r = await yts(fallbackQuery);
-        const rawVideos = r.videos || [];
+        if (cleanArtist) {
+            similarQuery = `${cleanArtist} similar`;
+        } else if (cleanName) {
+            similarQuery = `${cleanName} similar`;
+        } else {
+            similarQuery = `${currentGenre} classic hit`;
+        }
+
+        console.log(`[SMART-SUGGEST] Run fallback queries: "${remixQuery}" AND "${similarQuery}"`);
+        
+        let rawVideos = [];
+        try {
+            const [remixRes, similarRes] = await Promise.all([
+                yts(remixQuery).catch(err => { console.warn('[SMART-SUGGEST] remix query failed:', err.message); return { videos: [] }; }),
+                yts(similarQuery).catch(err => { console.warn('[SMART-SUGGEST] similar query failed:', err.message); return { videos: [] }; })
+            ]);
+
+            const remixVideos = remixRes.videos || [];
+            const similarVideos = similarRes.videos || [];
+
+            // Alternating merge to keep suggestions diverse
+            const maxLen = Math.max(remixVideos.length, similarVideos.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (i < remixVideos.length) rawVideos.push(remixVideos[i]);
+                if (i < similarVideos.length) rawVideos.push(similarVideos[i]);
+            }
+        } catch (e) {
+            console.error('[SMART-SUGGEST] Fallback query execution failed:', e.message);
+        }
+
         console.log(`[SMART-SUGGEST] YouTube returned ${rawVideos.length} raw results`);
 
         const seedNormTitle = getNormalizedString(cleanName);
-        const seedKeywords = getUniqueSongKeywords(name || cleanName, artist || cleanArtist);
-        console.log(`[SMART-SUGGEST] Seed unique keywords:`, seedKeywords);
         
         const fbVideos = [];
         const seenNormalizedTitles = new Set();
-        if (seedNormTitle) {
-            seenNormalizedTitles.add(seedNormTitle);
-        }
 
-        // Pass 1: Strict duplicate checking (filters out covers, tutorials, and remixes of the seed track name)
+        // Pass 1: Strict duplicate checking (filters out exact duplicate of the seed track name and duplicates among suggestions)
         for (const v of rawVideos) {
-            if (fbVideos.length >= 4) break;
+            if (fbVideos.length >= 8) break;
 
             if (excludeSet.has(v.videoId)) continue;
             if (v.seconds <= 60 || v.seconds >= 600) continue;
@@ -962,48 +979,24 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
             const parsed = parseTrackMetadata(v.title, v.author?.name);
             const normTitle = getNormalizedString(parsed.title);
 
+            // Skip exact seed track title match
+            if (normTitle === seedNormTitle) {
+                console.log(`[SMART-SUGGEST] Skipping seed track match: "${v.title}"`);
+                continue;
+            }
+
+            // Check standard similarity against already added items in suggestions list
             let isDuplicate = false;
-
-            // 1. Keyword check against the seed track
-            const normCandidateTitle = getNormalizedString(v.title);
-            const candidateWords = new Set(
-                v.title.toLowerCase()
-                    .replace(/[^a-z0-9\u0600-\u06FF\s]/g, ' ')
-                    .split(/\s+/)
-            );
-
-            for (const kw of seedKeywords) {
-                const normKw = getNormalizedString(kw);
-                if (!normKw) continue;
-
-                if (normCandidateTitle.includes(normKw)) {
+            for (const seenTitle of seenNormalizedTitles) {
+                if (areTitlesSimilar(parsed.title, seenTitle)) {
                     isDuplicate = true;
                     break;
                 }
-
-                for (const cw of candidateWords) {
-                    const normCw = getNormalizedString(cw);
-                    if (normCw.length >= 4 && areTitlesSimilar(normKw, normCw)) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if (isDuplicate) break;
-            }
-
-            // 2. Check standard similarity against already added items
-            if (!isDuplicate) {
-                for (const seenTitle of seenNormalizedTitles) {
-                    if (areTitlesSimilar(parsed.title, seenTitle)) {
-                        isDuplicate = true;
-                        break;
-                    }
-                    const n1 = normTitle;
-                    const n2 = getNormalizedString(seenTitle);
-                    if (n1.includes(n2) || n2.includes(n1)) {
-                        isDuplicate = true;
-                        break;
-                    }
+                const n1 = normTitle;
+                const n2 = getNormalizedString(seenTitle);
+                if (n1.includes(n2) || n2.includes(n1)) {
+                    isDuplicate = true;
+                    break;
                 }
             }
 
@@ -1031,11 +1024,11 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
             });
         }
 
-        // Pass 2: Relaxed pass if we have fewer than 4 suggestions (blocks duplicates of suggestions but relaxes the seed keyword check)
-        if (fbVideos.length < 4) {
+        // Pass 2: Relaxed pass if we have fewer than 8 suggestions (blocks duplicates of suggestions but relaxes the seed keyword check)
+        if (fbVideos.length < 8) {
             console.log(`[SMART-SUGGEST] Strict pass returned only ${fbVideos.length} tracks. Running relaxed pass...`);
             for (const v of rawVideos) {
-                if (fbVideos.length >= 4) break;
+                if (fbVideos.length >= 8) break;
 
                 if (excludeSet.has(v.videoId)) continue;
                 if (v.seconds <= 60 || v.seconds >= 600) continue;
@@ -1045,6 +1038,12 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
 
                 const parsed = parseTrackMetadata(v.title, v.author?.name);
                 const normTitle = getNormalizedString(parsed.title);
+
+                // Skip exact seed track title match
+                if (normTitle === seedNormTitle) {
+                    console.log(`[SMART-SUGGEST] Skipping seed track match (relaxed): "${v.title}"`);
+                    continue;
+                }
 
                 let isDuplicate = false;
                 for (const seenTitle of seenNormalizedTitles) {
@@ -1091,7 +1090,7 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
         // Diverse Suggestions Fallback
         const otherGenres = genres.filter(g => g !== currentGenre);
         const randomOtherGenre = otherGenres[Math.floor(Math.random() * otherGenres.length)] || 'dance';
-        const diverseQuery = `${randomOtherGenre} hit radio edit classic`;
+        const diverseQuery = `${randomOtherGenre} hit`;
         console.log(`[SMART-SUGGEST] Diverse fallback query: "${diverseQuery}"`);
         
         try {
@@ -1100,7 +1099,7 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
             let addedDiverse = 0;
             
             for (const v of rawDivVideos) {
-                if (addedDiverse >= 2) break;
+                if (addedDiverse >= 4) break;
                 if (excludeSet.has(v.videoId)) continue;
                 if (fbVideos.some(fv => fv.id === v.videoId)) continue;
                 if (v.seconds <= 60 || v.seconds >= 600) continue;
@@ -1108,6 +1107,11 @@ app.post('/api/smart-suggest', express.json(), async (req, res) => {
                 const parsed = parseTrackMetadata(v.title, v.author?.name);
                 const normTitle = getNormalizedString(parsed.title);
                 
+                // Skip exact seed track title match
+                if (normTitle === seedNormTitle) {
+                    continue;
+                }
+
                 // Duplicate checks
                 let isDuplicate = false;
                 for (const seenTitle of seenNormalizedTitles) {
@@ -1180,7 +1184,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
         console.log(`[AI-SUGGEST] Trying OpenRouter model: ${model}...`);
         try {
             const prompt = [
-                `You are a professional DJ music recommendation engine. Given the current track, suggest exactly 6 real, well-known songs that would mix well after it.`,
+                `You are a professional DJ music recommendation engine. Given the current track, suggest exactly 10 real, well-known songs that would mix well after it.`,
                 ``,
                 `Current track:`,
                 `  Title: ${name || 'Unknown'}`,
@@ -1189,17 +1193,17 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
                 `  Genre: ${genre || 'Unknown'}`,
                 ``,
                 `Requirements:`,
-                `- The first 4 songs (index 0-3) MUST be standard matching tracks: similar genre, vibe, energy level, and BPM (within ±10%).`,
-                `- The next 2 songs (index 4-5) MUST be diverse choices: tracks from different genres, unexpected tempo/energy transitions, throwback classics, or surprising stylistic variations that would still dynamically mix well or create a unique transition.`,
+                `- The first 7 songs (index 0-6) MUST be standard matching tracks: similar genre, vibe, energy level, and BPM (within ±10%).`,
+                `- The next 3 songs (index 7-9) MUST be diverse choices: tracks from different genres, unexpected tempo/energy transitions, throwback classics, or surprising stylistic variations that would still dynamically mix well or create a transition.`,
                 `- Each song MUST be a real, existing track by a real artist.`,
                 `- DO NOT make up songs or artists.`,
                 `- DO NOT use generic placeholders — provide the actual song title and artist.`,
                 ``,
-                `Return ONLY a valid JSON object with a single key "recommendations" containing an array of exactly 6 objects with these fields:`,
+                `Return ONLY a valid JSON object with a single key "recommendations" containing an array of exactly 10 objects with these fields:`,
                 `  title: string (the full song title)`,
                 `  artist: string (the full artist name)`,
                 `  reason: string (1 sentence explaining why it mixes well)`,
-                `  isDiverse: boolean (false for the first 4 standard recommendations, true for the 2 diverse recommendations)`,
+                `  isDiverse: boolean (false for the first 7 standard recommendations, true for the 3 diverse recommendations)`,
                 ``,
                 `Example:`,
                 `{`,
@@ -1282,11 +1286,11 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
 
     console.log(`[AI-SUGGEST] Success with model: ${usedModel}`);
     console.log(`[AI-SUGGEST] AI suggested ${aiSongs.length} songs:`);
-    aiSongs.slice(0, 6).forEach((s, i) => console.log(`  ${i+1}. "${s.title}" by ${s.artist} [Diverse: ${s.isDiverse}] — ${(s.reason || '').substring(0, 80)}`));
+    aiSongs.slice(0, 10).forEach((s, i) => console.log(`  ${i+1}. "${s.title}" by ${s.artist} [Diverse: ${s.isDiverse}] — ${(s.reason || '').substring(0, 80)}`));
 
     // For each AI suggestion, search YouTube to find the real video
     const results = [];
-    for (const song of aiSongs.slice(0, 6)) {
+    for (const song of aiSongs.slice(0, 10)) {
         const songTitle = (song.title || '').trim();
         const songArtist = (song.artist || '').trim();
         const reason = (song.reason || `Matches the vibe of "${name}"`).trim();
@@ -1334,7 +1338,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
     if (results.length === 0) {
         console.log(`[AI-SUGGEST] No results from primary search, trying broader queries...`);
         // Try broader search for each song
-        for (const song of aiSongs.slice(0, 6)) {
+        for (const song of aiSongs.slice(0, 10)) {
             const songTitle = (song.title || '').trim();
             const songArtist = (song.artist || '').trim();
             const reason = (song.reason || `Matches the vibe of "${name}"`).trim();

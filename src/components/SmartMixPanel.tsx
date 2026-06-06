@@ -405,7 +405,7 @@ export const SmartMixPanel = ({
                     )}
 
                     {/* Suggestions section */}
-                    {phase === 'AWAITING_CHOICE' && suggestions.length > 0 && (
+                    {(phase === 'AWAITING_CHOICE' || phase === 'LOOPING') && suggestions.length > 0 && (
                         <div className="px-4 py-3">
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-[9px] uppercase tracking-widest text-white/30">

@@ -35,7 +35,7 @@ export const detectBPM = async (audioBuffer: AudioBuffer): Promise<number> => {
         const channel = audioBuffer.getChannelData(0);
 
         // Step 1: Downsample for faster processing (target ~11kHz)
-        const downsampleFactor = Math.floor(sampleRate / 11025);
+        const downsampleFactor = Math.max(1, Math.floor(sampleRate / 11025));
         const downsampled = downsample(channel, downsampleFactor);
         const effectiveSampleRate = sampleRate / downsampleFactor;
 
@@ -132,7 +132,7 @@ function lowPassFilter(samples: Float32Array, sampleRate: number, cutoffHz: numb
  * Calculate onset strength (spectral flux approximation)
  */
 function calculateOnsetStrength(samples: Float32Array, frameSize: number, hopSize: number): Float32Array {
-    const numFrames = Math.floor((samples.length - frameSize) / hopSize);
+    const numFrames = Math.max(0, Math.floor((samples.length - frameSize) / hopSize));
     const onsets = new Float32Array(numFrames);
 
     let prevEnergy = 0;

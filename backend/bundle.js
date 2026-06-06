@@ -202,7 +202,7 @@ function parseTrackMetadata(videoTitle, channelName) {
 }
 function getNormalizedString(str) {
   if (!str) return "";
-  return str.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, "").replace(/official/g, "").replace(/video/g, "").replace(/audio/g, "").replace(/lyrics/g, "").replace(/lyric/g, "").replace(/original/g, "").replace(/mix/g, "").replace(/remix/g, "").replace(/cover/g, "").replace(/full/g, "").replace(/song/g, "").trim();
+  return str.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, "").replace(/official/g, "").replace(/video/g, "").replace(/audio/g, "").replace(/lyrics/g, "").replace(/lyric/g, "").replace(/original/g, "").replace(/full/g, "").replace(/song/g, "").trim();
 }
 function getLcs(s1, s2) {
   const m = s1.length;
@@ -228,71 +228,6 @@ function areTitlesSimilar(t1, t2) {
   const minLen = Math.min(n1.length, n2.length);
   if (minLen === 0) return false;
   return lcs / minLen > 0.75;
-}
-function getUniqueSongKeywords(songName, artistName) {
-  const stopWords = /* @__PURE__ */ new Set([
-    "official",
-    "video",
-    "audio",
-    "lyrics",
-    "lyric",
-    "music",
-    "song",
-    "full",
-    "clip",
-    "remix",
-    "mix",
-    "edit",
-    "radio",
-    "cover",
-    "instrumental",
-    "karaoke",
-    "version",
-    "ft",
-    "feat",
-    "prod",
-    "by",
-    "similar",
-    "tracks",
-    "track",
-    "live",
-    "concert",
-    "remixby",
-    "\u0623\u062D\u0645\u062F",
-    "\u0627\u062D\u0645\u062F",
-    "\u0633\u0639\u062F",
-    "\u0645\u062D\u0645\u062F",
-    "\u0645\u062D\u0645\u0648\u062F",
-    "\u062D\u0633\u0646",
-    "\u0639\u0644\u064A",
-    "\u0639\u0644\u0649",
-    "\u062D\u0633\u064A\u0646",
-    "\u0639\u0628\u062F",
-    "\u0627\u0644\u0644\u0647",
-    "\u062F\u064A\u0627\u0628",
-    "\u062A\u0627\u0645\u0631",
-    "\u0639\u0645\u0631\u0648",
-    "\u062E\u0627\u0644\u062F",
-    "\u062C\u0645\u0627\u0644",
-    "\u064A\u0627\u0633\u0631",
-    "\u0643\u0631\u064A\u0645",
-    "\u0645\u0635\u0637\u0641\u0649",
-    "\u0645\u0635\u0637\u0641\u064A",
-    "\u064A\u0648\u0633\u0641"
-  ]);
-  const artistWords = new Set(
-    (artistName || "").toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, "").split(/\s+/).filter((w) => w.length > 2 || /[\u0600-\u06FF]/.test(w))
-  );
-  const allWords = songName.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 || /[\u0600-\u06FF]/.test(w));
-  const uniqueKeywords = allWords.filter((w) => {
-    if (stopWords.has(w)) return false;
-    if (artistWords.has(w)) return false;
-    for (const aw of artistWords) {
-      if (aw.includes(w) || w.includes(aw)) return false;
-    }
-    return true;
-  });
-  return uniqueKeywords;
 }
 async function fetchRapidAPI(videoId) {
   const url = `https://youtube-mp36.p.rapidapi.com/dl?id=${videoId}`;
@@ -600,67 +535,68 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
     console.log(`[SMART-SUGGEST] FALLBACK: context-aware query search`);
     const genres = ["house", "techno", "edm", "dance", "electronic", "hip hop", "pop", "remix"];
     const currentGenre = genre || genres[Math.floor(Math.random() * genres.length)];
-    let fallbackQuery = "";
-    if (cleanArtist && cleanName) {
-      fallbackQuery = `${cleanArtist} similar tracks`;
-    } else if (cleanArtist) {
-      fallbackQuery = `${cleanArtist} ${currentGenre} mix`;
-    } else if (cleanName) {
-      fallbackQuery = `${cleanName} ${currentGenre} similar`;
+    let remixQuery = "";
+    let similarQuery = "";
+    if (cleanName) {
+      remixQuery = `${cleanName} remix`;
     } else {
-      fallbackQuery = `${currentGenre} dj mix radio edit`;
+      remixQuery = `${currentGenre} club remix`;
     }
-    console.log(`[SMART-SUGGEST] Query: "${fallbackQuery}"`);
-    const r = await yts(fallbackQuery);
-    const rawVideos = r.videos || [];
+    if (cleanArtist) {
+      similarQuery = `${cleanArtist} similar`;
+    } else if (cleanName) {
+      similarQuery = `${cleanName} similar`;
+    } else {
+      similarQuery = `${currentGenre} classic hit`;
+    }
+    console.log(`[SMART-SUGGEST] Run fallback queries: "${remixQuery}" AND "${similarQuery}"`);
+    let rawVideos = [];
+    try {
+      const [remixRes, similarRes] = await Promise.all([
+        yts(remixQuery).catch((err) => {
+          console.warn("[SMART-SUGGEST] remix query failed:", err.message);
+          return { videos: [] };
+        }),
+        yts(similarQuery).catch((err) => {
+          console.warn("[SMART-SUGGEST] similar query failed:", err.message);
+          return { videos: [] };
+        })
+      ]);
+      const remixVideos = remixRes.videos || [];
+      const similarVideos = similarRes.videos || [];
+      const maxLen = Math.max(remixVideos.length, similarVideos.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < remixVideos.length) rawVideos.push(remixVideos[i]);
+        if (i < similarVideos.length) rawVideos.push(similarVideos[i]);
+      }
+    } catch (e) {
+      console.error("[SMART-SUGGEST] Fallback query execution failed:", e.message);
+    }
     console.log(`[SMART-SUGGEST] YouTube returned ${rawVideos.length} raw results`);
     const seedNormTitle = getNormalizedString(cleanName);
-    const seedKeywords = getUniqueSongKeywords(name || cleanName, artist || cleanArtist);
-    console.log(`[SMART-SUGGEST] Seed unique keywords:`, seedKeywords);
     const fbVideos = [];
     const seenNormalizedTitles = /* @__PURE__ */ new Set();
-    if (seedNormTitle) {
-      seenNormalizedTitles.add(seedNormTitle);
-    }
     for (const v of rawVideos) {
-      if (fbVideos.length >= 4) break;
+      if (fbVideos.length >= 8) break;
       if (excludeSet.has(v.videoId)) continue;
       if (v.seconds <= 60 || v.seconds >= 600) continue;
       const parsed = parseTrackMetadata(v.title, v.author?.name);
       const normTitle = getNormalizedString(parsed.title);
+      if (normTitle === seedNormTitle) {
+        console.log(`[SMART-SUGGEST] Skipping seed track match: "${v.title}"`);
+        continue;
+      }
       let isDuplicate = false;
-      const normCandidateTitle = getNormalizedString(v.title);
-      const candidateWords = new Set(
-        v.title.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF\s]/g, " ").split(/\s+/)
-      );
-      for (const kw of seedKeywords) {
-        const normKw = getNormalizedString(kw);
-        if (!normKw) continue;
-        if (normCandidateTitle.includes(normKw)) {
+      for (const seenTitle of seenNormalizedTitles) {
+        if (areTitlesSimilar(parsed.title, seenTitle)) {
           isDuplicate = true;
           break;
         }
-        for (const cw of candidateWords) {
-          const normCw = getNormalizedString(cw);
-          if (normCw.length >= 4 && areTitlesSimilar(normKw, normCw)) {
-            isDuplicate = true;
-            break;
-          }
-        }
-        if (isDuplicate) break;
-      }
-      if (!isDuplicate) {
-        for (const seenTitle of seenNormalizedTitles) {
-          if (areTitlesSimilar(parsed.title, seenTitle)) {
-            isDuplicate = true;
-            break;
-          }
-          const n1 = normTitle;
-          const n2 = getNormalizedString(seenTitle);
-          if (n1.includes(n2) || n2.includes(n1)) {
-            isDuplicate = true;
-            break;
-          }
+        const n1 = normTitle;
+        const n2 = getNormalizedString(seenTitle);
+        if (n1.includes(n2) || n2.includes(n1)) {
+          isDuplicate = true;
+          break;
         }
       }
       if (isDuplicate) {
@@ -674,6 +610,7 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
         artist: parsed.artist || cleanArtist || "Unknown",
         genre: currentGenre,
         bpm: currentBpm,
+        isDiverse: false,
         reason: parsed.artist && parsed.artist !== "Unknown Artist" ? `Matches energy and style of ${parsed.artist}` : `Good match for ${currentGenre} style at ${currentBpm} BPM`,
         status: "found",
         thumbnail: v.thumbnail,
@@ -681,15 +618,19 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
         videoId: v.videoId
       });
     }
-    if (fbVideos.length < 4) {
+    if (fbVideos.length < 8) {
       console.log(`[SMART-SUGGEST] Strict pass returned only ${fbVideos.length} tracks. Running relaxed pass...`);
       for (const v of rawVideos) {
-        if (fbVideos.length >= 4) break;
+        if (fbVideos.length >= 8) break;
         if (excludeSet.has(v.videoId)) continue;
         if (v.seconds <= 60 || v.seconds >= 600) continue;
         if (fbVideos.some((fv) => fv.id === v.videoId)) continue;
         const parsed = parseTrackMetadata(v.title, v.author?.name);
         const normTitle = getNormalizedString(parsed.title);
+        if (normTitle === seedNormTitle) {
+          console.log(`[SMART-SUGGEST] Skipping seed track match (relaxed): "${v.title}"`);
+          continue;
+        }
         let isDuplicate = false;
         for (const seenTitle of seenNormalizedTitles) {
           if (areTitlesSimilar(parsed.title, seenTitle)) {
@@ -714,6 +655,7 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
           artist: parsed.artist || cleanArtist || "Unknown",
           genre: currentGenre,
           bpm: currentBpm,
+          isDiverse: false,
           reason: parsed.artist && parsed.artist !== "Unknown Artist" ? `Matches energy and style of ${parsed.artist}` : `Good match for ${currentGenre} style at ${currentBpm} BPM`,
           status: "found",
           thumbnail: v.thumbnail,
@@ -722,8 +664,62 @@ app.post("/api/smart-suggest", express.json(), async (req, res) => {
         });
       }
     }
+    fbVideos.forEach((fv) => {
+      fv.isDiverse = false;
+    });
+    const otherGenres = genres.filter((g) => g !== currentGenre);
+    const randomOtherGenre = otherGenres[Math.floor(Math.random() * otherGenres.length)] || "dance";
+    const diverseQuery = `${randomOtherGenre} hit`;
+    console.log(`[SMART-SUGGEST] Diverse fallback query: "${diverseQuery}"`);
+    try {
+      const divR = await yts(diverseQuery);
+      const rawDivVideos = divR.videos || [];
+      let addedDiverse = 0;
+      for (const v of rawDivVideos) {
+        if (addedDiverse >= 4) break;
+        if (excludeSet.has(v.videoId)) continue;
+        if (fbVideos.some((fv) => fv.id === v.videoId)) continue;
+        if (v.seconds <= 60 || v.seconds >= 600) continue;
+        const parsed = parseTrackMetadata(v.title, v.author?.name);
+        const normTitle = getNormalizedString(parsed.title);
+        if (normTitle === seedNormTitle) {
+          continue;
+        }
+        let isDuplicate = false;
+        for (const seenTitle of seenNormalizedTitles) {
+          if (areTitlesSimilar(parsed.title, seenTitle)) {
+            isDuplicate = true;
+            break;
+          }
+          const n1 = normTitle;
+          const n2 = getNormalizedString(seenTitle);
+          if (n1.includes(n2) || n2.includes(n1)) {
+            isDuplicate = true;
+            break;
+          }
+        }
+        if (isDuplicate) continue;
+        seenNormalizedTitles.add(normTitle);
+        fbVideos.push({
+          id: v.videoId,
+          title: parsed.title,
+          artist: parsed.artist || "Unknown",
+          genre: randomOtherGenre,
+          bpm: currentBpm,
+          isDiverse: true,
+          reason: `Diverse choice: A unique ${randomOtherGenre} track for a surprising transition`,
+          status: "found",
+          thumbnail: v.thumbnail,
+          duration: v.seconds,
+          videoId: v.videoId
+        });
+        addedDiverse++;
+      }
+    } catch (e) {
+      console.warn(`[SMART-SUGGEST] Diverse fallback failed:`, e.message);
+    }
     console.log(`[SMART-SUGGEST] Fallback returning ${fbVideos.length} tracks`);
-    fbVideos.forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" - ${s.artist} (yt:${s.videoId})`));
+    fbVideos.forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" - ${s.artist} (yt:${s.videoId}) [Diverse: ${s.isDiverse}]`));
     console.log(`============================================
 `);
     res.json({ suggestions: fbVideos, ai: false });
@@ -754,7 +750,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
     console.log(`[AI-SUGGEST] Trying OpenRouter model: ${model}...`);
     try {
       const prompt = [
-        `You are a professional DJ music recommendation engine. Given the current track, suggest exactly 4 real, well-known songs that would mix well after it.`,
+        `You are a professional DJ music recommendation engine. Given the current track, suggest exactly 10 real, well-known songs that would mix well after it.`,
         ``,
         `Current track:`,
         `  Title: ${name || "Unknown"}`,
@@ -763,22 +759,22 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
         `  Genre: ${genre || "Unknown"}`,
         ``,
         `Requirements:`,
+        `- The first 7 songs (index 0-6) MUST be standard matching tracks: similar genre, vibe, energy level, and BPM (within \xB110%).`,
+        `- The next 3 songs (index 7-9) MUST be diverse choices: tracks from different genres, unexpected tempo/energy transitions, throwback classics, or surprising stylistic variations that would still dynamically mix well or create a transition.`,
         `- Each song MUST be a real, existing track by a real artist.`,
-        `- Songs must match the energy, style, key compatibility, or genre of the current track.`,
-        `- Prefer songs with similar BPM (within \xB115%).`,
-        `- Include a mix of known hits and deeper cuts that fit the vibe.`,
         `- DO NOT make up songs or artists.`,
         `- DO NOT use generic placeholders \u2014 provide the actual song title and artist.`,
         ``,
-        `Return ONLY a valid JSON object with a single key "recommendations" containing an array of exactly 4 objects with these fields:`,
+        `Return ONLY a valid JSON object with a single key "recommendations" containing an array of exactly 10 objects with these fields:`,
         `  title: string (the full song title)`,
         `  artist: string (the full artist name)`,
         `  reason: string (1 sentence explaining why it mixes well)`,
+        `  isDiverse: boolean (false for the first 7 standard recommendations, true for the 3 diverse recommendations)`,
         ``,
         `Example:`,
         `{`,
         `  "recommendations": [`,
-        `    {"title": "Strobe", "artist": "deadmau5", "reason": "Progressive house with a similar build-up energy and key compatibility"}`,
+        `    {"title": "Strobe", "artist": "deadmau5", "reason": "Progressive house with a similar build-up energy and key compatibility", "isDiverse": false}`,
         `  ]`,
         `}`,
         ``,
@@ -797,7 +793,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" },
           temperature: 0.7,
-          max_tokens: 800
+          max_tokens: 1500
         })
       });
       if (!response.ok) {
@@ -847,12 +843,13 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
   }
   console.log(`[AI-SUGGEST] Success with model: ${usedModel}`);
   console.log(`[AI-SUGGEST] AI suggested ${aiSongs.length} songs:`);
-  aiSongs.slice(0, 4).forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" by ${s.artist} \u2014 ${(s.reason || "").substring(0, 80)}`));
+  aiSongs.slice(0, 10).forEach((s, i) => console.log(`  ${i + 1}. "${s.title}" by ${s.artist} [Diverse: ${s.isDiverse}] \u2014 ${(s.reason || "").substring(0, 80)}`));
   const results = [];
-  for (const song of aiSongs.slice(0, 4)) {
+  for (const song of aiSongs.slice(0, 10)) {
     const songTitle = (song.title || "").trim();
     const songArtist = (song.artist || "").trim();
     const reason = (song.reason || `Matches the vibe of "${name}"`).trim();
+    const isDiverse = song.isDiverse === true;
     if (!songTitle) {
       console.log(`[AI-SUGGEST] Skipping song with no title`);
       continue;
@@ -875,6 +872,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
           artist: parsed.artist || songArtist,
           genre: genre || "Music",
           bpm,
+          isDiverse,
           reason,
           status: "found",
           thumbnail: video.thumbnail,
@@ -890,10 +888,11 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
   }
   if (results.length === 0) {
     console.log(`[AI-SUGGEST] No results from primary search, trying broader queries...`);
-    for (const song of aiSongs.slice(0, 4)) {
+    for (const song of aiSongs.slice(0, 10)) {
       const songTitle = (song.title || "").trim();
       const songArtist = (song.artist || "").trim();
       const reason = (song.reason || `Matches the vibe of "${name}"`).trim();
+      const isDiverse = song.isDiverse === true;
       if (!songTitle) continue;
       const searchQuery = songArtist ? `${songArtist} ${songTitle}` : songTitle;
       console.log(`[AI-SUGGEST] YouTube search #2: "${searchQuery}"`);
@@ -913,6 +912,7 @@ async function aiSuggest(name, artist, bpm, genre, excludeSet, trackLabel) {
             artist: parsed.artist || songArtist,
             genre: genre || "Music",
             bpm,
+            isDiverse,
             reason,
             status: "found",
             thumbnail: video.thumbnail,

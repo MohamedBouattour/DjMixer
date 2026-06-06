@@ -25,7 +25,7 @@ const loadWorklets = async () => {
   if (workletLoaded) return;
   try {
     await globalAudioContext.audioWorklet.addModule('/worklets/scratch-processor.js');
-    console.log('[AudioWorklet] scratch-processor loaded');
+    // scratch-processor loaded
     workletLoaded = true;
   } catch (e) {
     console.error('[AudioWorklet] failed to load:', e);
@@ -174,8 +174,9 @@ function App() {
 
   useEffect(() => {
     let wakeLock: WakeLockSentinel | null = null;
-    const isPlaying = deckAState.isPlaying || deckBState.isPlaying;
+    const isPlayingRef = { current: deckAState.isPlaying || deckBState.isPlaying };
     const requestWakeLock = async () => {
+      if (document.visibilityState !== "visible") return;
       if (typeof navigator !== "undefined" && "wakeLock" in navigator) {
         try {
           wakeLock = await navigator.wakeLock.request("screen");
@@ -184,9 +185,9 @@ function App() {
         }
       }
     };
-    if (isPlaying) requestWakeLock();
+    if (isPlayingRef.current) requestWakeLock();
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && isPlaying) requestWakeLock();
+      if (document.visibilityState === "visible" && isPlayingRef.current) requestWakeLock();
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
@@ -374,11 +375,11 @@ function App() {
       if (isSettingsOpen || isTrackSelectorOpen) return;
       if (e.target instanceof HTMLInputElement) return;
 
-      if (e.code === 'Escape') {
+      if (e.code === 'Escape' || e.code === 'Space') {
         e.preventDefault();
         deckA.clearLoop();
         deckB.clearLoop();
-        console.log('[Shortcuts] Cleared all deck loops via Escape key');
+        console.log(`[Shortcuts] Cleared all deck loops via ${e.code} key`);
         return;
       }
 
@@ -525,7 +526,7 @@ function App() {
         </div>
       )}
 
-      <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))]">
+      <main className={`flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))] ${smartMix.isActive ? 'pb-12' : ''}`}>
         <div className="flex-1 flex gap-0 min-h-0 w-full max-md:flex-col">
           <Deck
             deckId="A"
