@@ -202,6 +202,34 @@ export const Mixer: React.FC<MixerProps> = ({
                         showCenterLine={true}
                     />
                 </div>
+
+                {/* Inline EQ - visible on md+ screens */}
+                <div className="hidden md:flex flex-col w-full gap-1.5 px-2 py-2 bg-black/30 rounded-lg shrink-0">
+                    <div className="text-[9px] font-bold text-white/40 tracking-widest text-center uppercase">EQ</div>
+                    <div className="flex gap-2">
+                        {[
+                            { deckId: 'A' as const, state: deckAState, color: '#ff0080' },
+                            { deckId: 'B' as const, state: deckBState, color: '#00d4ff' },
+                        ].map(({ deckId, state, color }) => (
+                            <div key={deckId} className="flex-1 flex flex-col gap-0.5">
+                                <div className="text-[8px] font-bold text-center" style={{ color }}>D{deckId}</div>
+                                {(['low', 'mid', 'high'] as const).map(band => (
+                                    <HorizontalSlider
+                                        key={band}
+                                        value={state.eq[band]}
+                                        min={0}
+                                        max={100}
+                                        onChange={(val) => onEQChange(deckId, band, val)}
+                                        height={8}
+                                        thumbWidth={14}
+                                        showValue={false}
+                                        color={color}
+                                    />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* Mixer & EQ Popup Modal */}

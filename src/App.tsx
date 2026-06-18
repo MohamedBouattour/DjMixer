@@ -1,17 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Deck } from "./components/Deck";
 import { Mixer } from "./components/Mixer";
-import { SmartMixPanel } from "./components/SmartMixPanel";
-import { UnifiedTrackSelector } from "./components/UnifiedTrackSelector";
 import { SettingsModal } from "./components/SettingsModal";
-import { AuthModal } from "./components/AuthModal";
+import { SmartPanel } from "./components/SmartPanel";
 
 import { useDeck } from "./hooks/useDeck";
-import { useSmartMix } from "./hooks/useSmartMix";
+import { useApiCounter } from "./hooks/useApiCounter";
 import type { Track } from "./types";
 import { getAllTracksFromDB, saveTrackToDB, deleteTrackFromDB } from "./utils/storage";
 import { useSettings } from "./contexts/SettingsContext";
-import { useAuth } from "./contexts/AuthContext";
 import { getKeyLabel } from "./utils/keyHelpers";
 import { API_ENDPOINTS } from "./config";
 
@@ -25,7 +22,6 @@ const loadWorklets = async () => {
   if (workletLoaded) return;
   try {
     await globalAudioContext.audioWorklet.addModule('/worklets/scratch-processor.js');
-    // scratch-processor loaded
     workletLoaded = true;
   } catch (e) {
     console.error('[AudioWorklet] failed to load:', e);
@@ -45,12 +41,12 @@ function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [crossfader, setCrossfader] = useState(50);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isTrackSelectorOpen, setIsTrackSelectorOpen] = useState(false);
   const [isWorkletReady, setIsWorkletReady] = useState(false);
   const { keyMap, layout } = useSettings();
-  const { user, isAuthenticated, logout } = useAuth();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [queue, setQueue] = useState<Track[]>([]);
+  const [smartPanelKey, setSmartPanelKey] = useState(0);
+  const { count: apiCount, increment: incrementApiCount } = useApiCounter();
 
   useEffect(() => {
     const checkVersion = async () => {
@@ -58,12 +54,7 @@ function App() {
         const res = await fetch(API_ENDPOINTS.VERSION);
         if (!res.ok) return;
         const data = await res.json();
-        if (
-          data &&
-          data.version &&
-          data.version !== "dev" &&
-          data.version !== "unknown"
-        ) {
+        if (data && data.version && data.version !== "dev" && data.version !== "unknown") {
           const remoteVersion = data.version;
           const localVersion = localStorage.getItem("app_version");
           if (!localVersion) {
@@ -203,56 +194,18 @@ function App() {
     deckBGain.gain.value = deckBVolume;
   }, [crossfader]);
 
-  const downloadingTracksRef = useRef<Set<string>>(new Set());
+  const downloadingTracksRef = new Set<string>();
 
-  const authHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (user?.token) headers['Authorization'] = `Bearer ${user.token}`;
-    return headers;
-  };
-
-  // Load tracks from DB and User Sync
+  // Load tracks from local DB
   useEffect(() => {
     const loadTracks = async () => {
       try {
         const storedTracks = await getAllTracksFromDB();
-        let userTracks: any[] = [];
-        if (isAuthenticated && user?.id) {
-          try {
-            const res = await fetch(API_ENDPOINTS.USER_TRACKS(user.id), {
-              headers: authHeaders()
-            });
-            if (res.ok) userTracks = await res.json();
-          } catch (e) { console.warn("Failed to fetch user tracks", e); }
-        }
-        const combined = [...storedTracks];
-        userTracks.forEach(ut => {
-          if (!combined.find(t => t.id === ut.id)) {
-            combined.push({
-              ...ut,
-              url: `${API_ENDPOINTS.STREAM}?videoId=${ut.id}`
-            } as Track);
-          }
-        });
-        setTracks(combined);
+        setTracks(storedTracks);
       } catch (err) { console.error("Failed to load tracks", err); }
     };
     loadTracks();
-  }, [isAuthenticated, user?.id]);
-
-  const syncTracksToBackend = async (updatedTracks: Track[]) => {
-    if (!isAuthenticated || !user?.id) return;
-    try {
-      const serializableTracks = updatedTracks.map(({ file, ...track }) => track);
-      await fetch(API_ENDPOINTS.USER_TRACKS(user.id), {
-        method: 'POST',
-        headers: { ...authHeaders() },
-        body: JSON.stringify({ tracks: serializableTracks })
-      });
-    } catch (e) {
-      console.warn("Failed to sync tracks to backend", e);
-    }
-  };
+  }, []);
 
   const handleDeleteTrack = async (track: Track) => {
     try {
@@ -260,23 +213,7 @@ function App() {
     } catch (e) {
       console.warn("Failed to delete track from local DB", e);
     }
-    if (isAuthenticated && user?.id) {
-      try {
-        await fetch(`${API_ENDPOINTS.USER_TRACKS(user.id)}/${track.id}`, {
-          method: 'DELETE',
-          headers: { ...authHeaders() }
-        });
-      } catch (e) {
-        console.warn("Failed to delete track from backend", e);
-      }
-    }
-    const newTracks = tracks.filter(t => t.id !== track.id);
-    setTracks(newTracks);
-  };
-
-  const handleTracksChange = (newTracks: Track[]) => {
-    setTracks(newTracks);
-    syncTracksToBackend(newTracks);
+    setTracks(prev => prev.filter(t => t.id !== track.id));
   };
 
   const handleImportTrack = async (track: Track, deckId: 'A' | 'B', silent = false) => {
@@ -285,101 +222,121 @@ function App() {
       await deck.loadTrack(track);
       if (!tracks.find(t => t.id === track.id)) {
         await saveTrackToDB(track);
-        const newTracks = [track, ...tracks];
-        setTracks(newTracks);
-        syncTracksToBackend(newTracks);
+        setTracks(prev => [track, ...prev]);
       }
     } else {
-      if (downloadingTracksRef.current.has(track.id)) return;
-      downloadingTracksRef.current.add(track.id);
+      if (downloadingTracksRef.has(track.id)) return;
+      downloadingTracksRef.add(track.id);
       deck.setIsLoading(true);
       try {
-        const res = await fetch(`${API_ENDPOINTS.DOWNLOAD}?videoId=${track.id}`);
+        const res = await fetch(`${API_ENDPOINTS.STREAM}?videoId=${track.id}`);
+        incrementApiCount();
         if (!res.ok) throw new Error('Download failed');
         const blob = await res.blob();
         const file = new File([blob], `${track.name}.mp3`, { type: 'audio/mpeg' });
         const localTrack = { ...track, file, url: URL.createObjectURL(file) };
         await deck.loadTrack(localTrack);
         await saveTrackToDB(localTrack);
-        const newTracks = [localTrack, ...tracks.filter(t => t.id !== track.id)];
-        setTracks(newTracks);
-        syncTracksToBackend(newTracks);
+        setTracks(prev => [localTrack, ...prev.filter(t => t.id !== track.id)]);
       } catch (err) {
         console.error("Track download failed", err);
-        if (!silent) {
-          alert("Failed to download track for mixing.");
-        }
-        if (silent) {
-          throw err;
-        }
+        if (!silent) alert("Failed to download track for mixing.");
+        if (silent) throw err;
       } finally {
-        downloadingTracksRef.current.delete(track.id);
+        downloadingTracksRef.delete(track.id);
         deck.setIsLoading(false);
       }
     }
   };
 
-  // Smart Mix V2
-  const smartMix = useSmartMix({
-    deckAState,
-    deckBState,
-    deckAControls: deckA,
-    deckBControls: deckB,
-    tracks,
-    onImportTrack: handleImportTrack,
-  });
-
-  const handleDoubleClickQueueTrack = async (track: Track) => {
-    // Determine the free deck:
-    // The free deck is the one not playing, or if both/neither are, the one with lower volume.
-    let freeDeckId: 'A' | 'B' = 'B';
-    
-    const volA = deckAState.volume;
-    const volB = deckBState.volume;
-    const isPlayingA = deckAState.isPlaying;
-    const isPlayingB = deckBState.isPlaying;
-    
-    if (isPlayingA && !isPlayingB) {
-      freeDeckId = 'B';
-    } else if (isPlayingB && !isPlayingA) {
-      freeDeckId = 'A';
-    } else {
-      freeDeckId = volA <= volB ? 'A' : 'B';
-    }
-
-    console.log(`[Queue] Double-clicked to load ${track.name} to free deck ${freeDeckId}`);
-    
-    // Load it
-    await handleImportTrack(track, freeDeckId, true);
-    
-    // Set its volume lower (40%)
-    const freeDeckControls = freeDeckId === 'A' ? deckA : deckB;
-    freeDeckControls.setVolume(40);
+  const handleAddToQueue = (track: Track) => {
+    setQueue(prev => [...prev, track]);
   };
+
+  const handleRemoveFromQueue = (trackId: string) => {
+    setQueue(prev => prev.filter(t => t.id !== trackId));
+  };
+
+  const handleClearQueue = () => {
+    setQueue([]);
+  };
+
+  const prevPlayingARef = useRef(deckAState.isPlaying);
+  const prevPlayingBRef = useRef(deckBState.isPlaying);
+  const deckARef = useRef(deckA);
+  const deckBRef = useRef(deckB);
+  const deckAStateRef = useRef(deckAState);
+  const deckBStateRef = useRef(deckBState);
+  const importTrackRef = useRef(handleImportTrack);
+  const queueRef = useRef(queue);
+
+  deckARef.current = deckA;
+  deckBRef.current = deckB;
+  deckAStateRef.current = deckAState;
+  deckBStateRef.current = deckBState;
+  importTrackRef.current = handleImportTrack;
+  queueRef.current = queue;
+
+  useEffect(() => {
+    const wasA = prevPlayingARef.current;
+    const wasB = prevPlayingBRef.current;
+    const isA = deckAState.isPlaying;
+    const isB = deckBState.isPlaying;
+    prevPlayingARef.current = isA;
+    prevPlayingBRef.current = isB;
+
+    const currentQueue = queueRef.current;
+    if (currentQueue.length === 0) return;
+
+    const tryPlayNext = async (deckId: 'A' | 'B') => {
+      const nextTrack = currentQueue[0];
+      if (!nextTrack) return;
+      setQueue(prev => prev.slice(1));
+      const deck = deckId === 'A' ? deckARef.current : deckBRef.current;
+      const state = deckId === 'A' ? deckAStateRef.current : deckBStateRef.current;
+      if (state.track && state.track.id === nextTrack.id) return;
+      await importTrackRef.current(nextTrack, deckId, true);
+      deck.setVolume(85);
+      setTimeout(() => deck.play(), 100);
+    };
+
+    if (wasA && !isA && deckAState.track) {
+      tryPlayNext('A');
+    } else if (wasB && !isB && deckBState.track) {
+      tryPlayNext('B');
+    } else if (!isA && !isB) {
+      const deckAIdle = !deckAState.track || !isA;
+      const deckBIdle = !deckBState.track || !isB;
+      if (deckAIdle && !deckBIdle) {
+        tryPlayNext('A');
+      } else if (deckBIdle && !deckAIdle) {
+        tryPlayNext('B');
+      } else if (deckAIdle && deckBIdle) {
+        tryPlayNext('A');
+      }
+    }
+  }, [deckAState.isPlaying, deckBState.isPlaying, deckAState.track, deckBState.track]);
 
   const handleCrossfaderChange = (val: number) => setCrossfader(val);
   const handleVolumeChange = (deckId: 'A' | 'B', val: number) => {
-    const deck = deckId === 'A' ? deckA : deckB;
-    deck.setVolume(val);
+    (deckId === 'A' ? deckA : deckB).setVolume(val);
   };
   const handleEQChange = (deckId: 'A' | 'B', band: 'low' | 'mid' | 'high', val: number) => {
-    const deck = deckId === 'A' ? deckA : deckB;
-    deck.setEQ(band, val);
+    (deckId === 'A' ? deckA : deckB).setEQ(band, val);
   };
 
-  const activeTrack = smartMix.activeDeck === 'A' ? deckAState.track : deckBState.track;
+  const activeTrack = deckAState.isPlaying ? deckAState.track : deckBState.isPlaying ? deckBState.track : null;
 
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isSettingsOpen || isTrackSelectorOpen) return;
+      if (isSettingsOpen) return;
       if (e.target instanceof HTMLInputElement) return;
 
       if (e.code === 'Escape' || e.code === 'Space') {
         e.preventDefault();
         deckA.clearLoop();
         deckB.clearLoop();
-        console.log(`[Shortcuts] Cleared all deck loops via ${e.code} key`);
         return;
       }
 
@@ -405,11 +362,10 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [keyMap, deckA, deckB, deckAState.isPlaying, deckBState.isPlaying, isSettingsOpen, isTrackSelectorOpen]);
+  }, [keyMap, deckA, deckB, deckAState.isPlaying, deckBState.isPlaying, isSettingsOpen]);
 
   return (
     <div className="w-full h-dvh flex flex-col overflow-hidden relative pt-[env(safe-area-inset-top,5px)] pb-[env(safe-area-inset-bottom,5px)] pl-[env(safe-area-inset-left,5px)] pr-[env(safe-area-inset-right,5px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_1px,rgba(255,255,255,0.01)_1px,rgba(255,255,255,0.01)_2px)] bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d]">
-      {/* Custom Orientation Warning UI */}
       <div className="hidden portrait-mobile:flex fixed inset-0 bg-bg-darkest z-[9999] flex-col items-center justify-center text-center p-8 text-white">
         <div className="w-16 h-16 mb-5 animate-[rotate-phone_2s_infinite_ease-in-out]">
           <svg viewBox="0 0 24 24" fill="currentColor">
@@ -420,78 +376,34 @@ function App() {
         <p className="text-text-secondary">This DJ interface is optimized for landscape mode.</p>
       </div>
 
-      <header className="flex items-center justify-between px-5 py-2.5 bg-black/80 backdrop-blur-lg border-b border-white/10 z-[1000] h-15">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between px-2 py-0.5 bg-black/80 backdrop-blur-lg border-b border-white/10 z-[1000] h-7">
+        <div className="flex items-center gap-1.5">
           <div className="text-deck-a flex items-center">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
             </svg>
           </div>
-          <div className="flex flex-col justify-center">
-            <h1 className="text-[1.2rem] font-bold tracking-widest text-white m-0 uppercase leading-tight">DJ PRO MASTER</h1>
-            <span className="text-[10px] text-white/40 tracking-widest leading-tight">v.{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : 'dev'}</span>
+          <div className="flex flex-col justify-center leading-none">
+            <h1 className="text-[0.7rem] font-bold tracking-widest text-white m-0 uppercase leading-none">DJ PRO MASTER</h1>
+            <span className="text-[7px] text-white/40 tracking-widest leading-none">v.{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : 'dev'}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-[15px]">
-
-          {/* Auth Button / User Avatar */}
-          {isAuthenticated && user ? (
-            <div className="flex items-center gap-2 group relative">
-              <button
-                title={`${user.username} — click to sign out`}
-                onClick={logout}
-                className="w-9 h-9 rounded-full border-2 border-deck-a/60 overflow-hidden flex items-center justify-center bg-bg-header hover:border-deck-a transition-all duration-200"
-              >
-                {user.picture ? (
-                  <img src={user.picture} alt={user.username} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[13px] font-bold text-deck-a uppercase">
-                    {user.username.slice(0, 2)}
-                  </span>
-                )}
-              </button>
-            </div>
-          ) : (
-            <button
-              className="bg-[rgba(40,40,40,0.6)] border border-deck-a/30 text-deck-a w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-deck-a/10 hover:border-deck-a hover:-translate-y-0.5 text-xs font-bold"
-              onClick={() => setIsAuthOpen(true)}
-              title="Sign In"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-              </svg>
-            </button>
-          )}
-
-          {/* Smart Mix Toggle */}
-          <button
-            className={`relative flex items-center gap-1.5 h-10 px-3 rounded-lg font-bold text-[11px] tracking-wider uppercase transition-all duration-300 ${
-              smartMix.isActive
-                ? 'bg-gradient-to-r from-deck-a to-deck-b text-white border border-white/20 shadow-[0_0_20px_rgba(255,0,128,0.4),0_0_20px_rgba(0,212,255,0.4)] animate-[auto-mix-pulse_2s_ease-in-out_infinite]'
-                : 'bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30 hover:-translate-y-0.5'
-            }`}
-            onClick={smartMix.toggle}
-            title={smartMix.isActive ? 'Stop Smart Mix' : 'Start Smart Mix'}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.6 6.62c-1.44 0-2.8.56-3.77 1.53L7.8 14.39c-.64.64-1.49.99-2.4.99-1.87 0-3.39-1.51-3.39-3.38S3.53 8.62 5.4 8.62c.91 0 1.76.35 2.44 1.03l1.13 1 1.51-1.34L9.22 8.2C8.2 7.18 6.84 6.62 5.4 6.62 2.42 6.62 0 9.04 0 12s2.42 5.38 5.4 5.38c1.44 0 2.8-.56 3.77-1.53l7.03-6.24c.64-.64 1.49-.99 2.4-.99 1.87 0 3.39 1.51 3.39 3.38s-1.52 3.38-3.39 3.38c-.9 0-1.76-.35-2.44-1.03l-1.14-1.01-1.51 1.34 1.27 1.12c1.02 1.01 2.37 1.57 3.82 1.57 2.98 0 5.4-2.41 5.4-5.38s-2.42-5.37-5.4-5.37z" />
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/50">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
             </svg>
-            <span>SMART</span>
-            {smartMix.isActive && smartMix.statusText && (
-              <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[8px] text-white/70 whitespace-nowrap font-normal tracking-normal normal-case">
-                {smartMix.statusText}
-              </span>
-            )}
-          </button>
+            <span className="text-[8px] font-mono font-bold">{apiCount}</span>
+          </div>
 
-          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30 hover:-translate-y-0.5" onClick={() => setIsTrackSelectorOpen(true)} title="Open Library">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30" onClick={() => setSmartPanelKey(s => s + 1)} title="Open Library & Queue">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
             </svg>
           </button>
-          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-deck-a hover:border-deck-a/40 hover:-translate-y-0.5" onClick={() => setIsSettingsOpen(true)} title="Settings">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-deck-a hover:border-deck-a/40" onClick={() => setIsSettingsOpen(true)} title="Settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
@@ -499,15 +411,13 @@ function App() {
         </div>
       </header>
 
-
-
       {/* Floating Action Buttons (Mobile Overlay) */}
       {isMobile && (
         <div className="fixed top-[max(8px,env(safe-area-inset-top))] right-[87%] flex flex-row gap-[10px] z-[2000] landscape:top-[max(10px,env(safe-area-inset-top))] landscape:right-1/2 landscape:translate-x-1/2 landscape:gap-3 landscape-sm:top-[5px] landscape-sm:gap-2">
           <button
             className="w-[98px] h-[98px] rounded-full bg-[rgba(30,30,30,0.95)] border-[3px] border-white/20 text-[#aaa] flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-xl shadow-[0_2px_10px_rgba(0,0,0,0.5)] hover:bg-[rgba(50,50,50,0.98)] hover:text-white hover:border-white/40 hover:scale-105 border-deck-b/50 text-deck-b hover:border-deck-b hover:shadow-[0_2px_15px_rgba(0,212,255,0.4)] landscape:w-[85px] landscape:h-[85px] landscape-sm:w-[78px] landscape-sm:h-[78px]"
-            onClick={() => setIsTrackSelectorOpen(true)}
-            title="Open Library"
+            onClick={() => setSmartPanelKey(s => s + 1)}
+            title="Open Library & Queue"
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="landscape:w-[42px] landscape:h-[42px] landscape-sm:w-[36px] landscape-sm:h-[36px]">
               <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
@@ -526,18 +436,13 @@ function App() {
         </div>
       )}
 
-      <main className={`flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))] ${smartMix.isActive ? 'pb-12' : ''}`}>
+      <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))]">
         <div className="flex-1 flex gap-0 min-h-0 w-full max-md:flex-col">
           <Deck
             deckId="A"
             state={deckAState}
             controls={deckA}
             color="#ff0080"
-            isAutoMixActive={smartMix.isActive}
-            isAutoMixIdle={smartMix.activeDeck === 'B'}
-            onAutoMixRefetch={smartMix.refreshSuggestions}
-            onAutoMixTrigger={smartMix.triggerTransition}
-            autoMixPhase={smartMix.phase}
             shortcuts={
               !isMobile
                 ? {
@@ -557,9 +462,6 @@ function App() {
               deckBState={deckBState}
               onVolumeChange={handleVolumeChange}
               onEQChange={handleEQChange}
-              isAutoMixActive={smartMix.isActive}
-              activeDeck={smartMix.activeDeck}
-              onTriggerTransition={smartMix.triggerTransition}
             />
           </section>
 
@@ -568,11 +470,6 @@ function App() {
             state={deckBState}
             controls={deckB}
             color="#00d4ff"
-            isAutoMixActive={smartMix.isActive}
-            isAutoMixIdle={smartMix.activeDeck === 'A'}
-            onAutoMixRefetch={smartMix.refreshSuggestions}
-            onAutoMixTrigger={smartMix.triggerTransition}
-            autoMixPhase={smartMix.phase}
             shortcuts={
               !isMobile
                 ? {
@@ -585,49 +482,27 @@ function App() {
           />
         </div>
 
-        <SmartMixPanel
-          isActive={smartMix.isActive}
-          phase={smartMix.phase}
-          statusText={smartMix.statusText}
-          suggestions={smartMix.suggestions}
-          queue={smartMix.queue}
-          queueIndex={smartMix.queueIndex}
-          isAiPowered={smartMix.isAiPowered}
-          currentTrackName={activeTrack?.name}
-          currentTrackArtist={activeTrack?.artist}
-          currentTrackBpm={activeTrack?.bpm}
-          onToggle={smartMix.toggle}
-          onSelectSuggestion={smartMix.selectSuggestion}
-          onQueueAll={smartMix.queueAll}
-          onAddToQueue={smartMix.addToQueue}
-          onRemoveFromQueue={smartMix.removeFromQueue}
-          onReorderQueue={smartMix.reorderQueue}
-          onRefreshSuggestions={smartMix.refreshSuggestions}
-          onClearQueue={smartMix.clearQueue}
-          onTriggerTransition={smartMix.triggerTransition}
-          onDoubleClickQueueItem={handleDoubleClickQueueTrack}
-          onAddTrackFromYt={smartMix.addTrackFromYt}
-        />
-
-        <UnifiedTrackSelector
-          isOpen={isTrackSelectorOpen}
-          onClose={() => setIsTrackSelectorOpen(false)}
+        <SmartPanel
+          key={smartPanelKey ? `sp-${smartPanelKey}` : 'sp-default'}
+          queue={queue}
+          onAddToQueue={handleAddToQueue}
+          onRemoveFromQueue={handleRemoveFromQueue}
+          onClearQueue={handleClearQueue}
           tracks={tracks}
-          onTracksChange={handleTracksChange}
+          onTracksChange={setTracks}
           onLoadTrack={handleImportTrack}
           onDeleteTrack={handleDeleteTrack}
+          currentTrackName={activeTrack?.name}
+          currentTrackArtist={activeTrack?.artist}
+          onApiCall={incrementApiCount}
           isPlayingA={deckAState.isPlaying}
           isPlayingB={deckBState.isPlaying}
+          defaultOpen={smartPanelKey > 0}
         />
 
         <SettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
-        />
-
-        <AuthModal
-          isOpen={isAuthOpen}
-          onClose={() => setIsAuthOpen(false)}
         />
       </main>
     </div>

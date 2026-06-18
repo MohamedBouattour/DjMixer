@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "all": "node backend/proxy.js",
+    "all": "cd backend && node proxy.js",
     "build": "tsc -b && vite build",
     "deploy": "node deploy.js",
     "lint": "eslint .",

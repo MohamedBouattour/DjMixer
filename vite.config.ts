@@ -14,27 +14,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // Proxy all API requests to the VPS (VM)
       '/api': {
-        target: 'http://79.137.14.75:3002',
+        target: 'http://localhost:3002',
         changeOrigin: true,
         secure: false
       },
-      '/search': {
-        target: 'http://79.137.14.75:3002',
-        changeOrigin: true,
-        secure: false
-      },
-      '/stream': {
-        target: 'http://79.137.14.75:3002',
-        changeOrigin: true,
-        secure: false
-      },
-      '/auth': {
-        target: 'http://79.137.14.75:3002',
-        changeOrigin: true,
-        secure: false
-      }
     }
   },
   test: {

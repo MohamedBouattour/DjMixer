@@ -80,31 +80,4 @@ export const DEFAULT_KEY_MAP: KeyMap = {
     'EFFECT_B_TOGGLE': 'KeyI',
 };
 
-export interface SmartSuggestion {
-    id: string;
-    title: string;
-    artist: string;
-    genre: string;
-    bpm: number;
-    reason: string;
-    status: 'pending' | 'found' | 'not_found';
-    thumbnail?: string;
-    duration?: number;
-    videoId?: string;
-    isDiverse?: boolean;
-}
 
-export interface SmartMixQueueItem {
-    id: string;
-    track: Track;
-    suggestion?: SmartSuggestion;
-}
-
-export type SmartMixPhase =
-    | 'IDLE'
-    | 'FETCHING'
-    | 'AWAITING_CHOICE'
-    | 'LOADING'
-    | 'LOOPING'
-    | 'TRANSITIONING'
-    | 'COOLDOWN';
