@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node backend/proxy.js & vite",
     "all": "cd backend && node proxy.js",
     "build": "tsc -b && vite build",
     "deploy": "node deploy.js",

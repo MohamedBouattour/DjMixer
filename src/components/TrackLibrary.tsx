@@ -486,6 +486,7 @@ function RecommendationsTabContent({
   onApiCall: () => void;
 }) {
   const [recommendations, setRecommendations] = useState<ShazamTrack[]>([]);
+  const [source, setSource] = useState<'shazam' | 'youtube'>('shazam');
   const [loading, setLoading] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState('');
   const [error, setError] = useState('');
@@ -503,6 +504,7 @@ function RecommendationsTabContent({
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setRecommendations(data.recommendations || []);
+      setSource(data.source || 'shazam');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load recommendations');
     } finally {
@@ -516,9 +518,9 @@ function RecommendationsTabContent({
   };
 
   useEffect(() => {
-    if (recommendations.length === 0) fetchRecommendations(selectedGenre);
+    fetchRecommendations(selectedGenre);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchRecommendations]);
+  }, [currentTrackId, fetchRecommendations]);
 
   return (
     <div>
@@ -560,7 +562,7 @@ function RecommendationsTabContent({
       {/* Refresh */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[9px] uppercase tracking-widest text-white/30">
-          {recommendations.length > 0 ? `Shazam • ${recommendations.length} tracks` : ''}
+          {recommendations.length > 0 ? `${source === 'shazam' ? 'Shazam' : 'YouTube'} • ${recommendations.length} tracks` : ''}
         </span>
         <button
           onClick={() => fetchRecommendations(selectedGenre)}

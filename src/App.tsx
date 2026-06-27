@@ -324,7 +324,17 @@ function App() {
     (deckId === 'A' ? deckA : deckB).setEQ(band, val);
   };
 
-  const activeTrack = deckAState.isPlaying ? deckAState.track : deckBState.isPlaying ? deckBState.track : null;
+  const activeTrack = (() => {
+    if (deckAState.isPlaying && !deckBState.isPlaying) return deckAState.track;
+    if (deckBState.isPlaying && !deckAState.isPlaying) return deckBState.track;
+    if (deckAState.isPlaying && deckBState.isPlaying) {
+      return crossfader <= 50 ? deckAState.track : deckBState.track;
+    }
+    // Neither is playing - look at loaded tracks
+    if (crossfader < 50) return deckAState.track || deckBState.track;
+    if (crossfader > 50) return deckBState.track || deckAState.track;
+    return deckAState.track || deckBState.track;
+  })();
 
   // Global Keyboard Shortcuts
   useEffect(() => {
