@@ -37,6 +37,7 @@ interface Props {
   onDeleteTrack?: (track: Track) => void;
   currentTrackName?: string;
   currentTrackArtist?: string;
+  currentTrackId?: string;
   onApiCall: () => void;
   isPlayingA: boolean;
   isPlayingB: boolean;
@@ -47,7 +48,7 @@ const GENRES = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop
 
 type Tab = 'queue' | 'library' | 'search' | 'recommendations';
 
-export function SmartPanel({
+export function TrackLibrary({
   queue,
   onAddToQueue,
   onRemoveFromQueue,
@@ -58,6 +59,7 @@ export function SmartPanel({
   onDeleteTrack,
   currentTrackName,
   currentTrackArtist,
+  currentTrackId,
   onApiCall,
   isPlayingA,
   isPlayingB,
@@ -82,23 +84,23 @@ export function SmartPanel({
       <div className={`fixed bottom-0 left-0 right-0 z-[5000] transition-transform duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-[calc(100%-36px)]'}`}>
         {/* Collapsed bar — always visible */}
         <div
-          className="h-9 px-3 flex items-center justify-between cursor-pointer bg-[var(--color-bg-panel)]/90 backdrop-blur-xl border-t border-white/10"
+          className="h-9 px-3 flex items-center justify-between cursor-pointer bg-surface-container-low/90 backdrop-blur-xl border-t border-white/10"
           onClick={() => { const next = !isOpen; setIsOpen(next); if (next && activeTab === 'queue' && queue.length === 0) setActiveTab('recommendations'); }}
         >
           <div className="flex items-center gap-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-deck-a shrink-0">
               <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
             </svg>
-            <span className="text-[11px] font-semibold text-white/70">Panel</span>
+            <span className="text-[16px] font-semibold text-white font-display">Track Library</span>
             {queue.length > 0 && (
-              <span className="px-1 py-0.5 text-[8px] font-bold bg-deck-a/20 text-deck-a rounded">{queue.length}</span>
+              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-deck-a/20 text-deck-a rounded font-mono">{queue.length}</span>
             )}
-            <span className="text-[9px] text-white/40 ml-1 capitalize">{activeTab}</span>
+            <span className="text-[11px] text-white/70 ml-1 capitalize font-mono">{activeTab}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={e => { e.stopPropagation(); onOpenSettings(); }}
-              className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white transition-all rounded hover:bg-white/10"
+              className="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all rounded hover:bg-white/10"
               title="Settings"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -106,29 +108,29 @@ export function SmartPanel({
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-on-surface-variant transition-transform ${isOpen ? 'rotate-180' : ''}`}>
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
         </div>
 
         {/* Expanded panel */}
-        <div className={`bg-[var(--color-bg-panel)]/95 backdrop-blur-xl border-t border-white/10 overflow-hidden transition-all ${isOpen ? 'max-h-[60vh]' : 'max-h-0'}`}>
+        <div className={`bg-surface-container-low/95 backdrop-blur-xl border-t border-white/10 overflow-hidden transition-all ${isOpen ? 'h-[60vh]' : 'h-0'}`}>
           {/* Tab bar */}
           <div className="flex items-center border-b border-white/10 px-2">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-all relative ${
+                className={`px-3 py-2.5 text-[14px] font-bold uppercase tracking-wider transition-all relative font-display ${
                   activeTab === tab.id
                     ? 'text-white'
-                    : 'text-white/40 hover:text-white/70'
+                    : 'text-white/50 hover:text-white/80'
                 }`}
               >
                 {tab.label}
                 {tab.id === 'queue' && queue.length > 0 && (
-                  <span className="ml-1 px-1 py-0.5 text-[7px] bg-deck-a/20 text-deck-a rounded">{queue.length}</span>
+                  <span className="ml-1 px-1 py-0.5 text-[7px] bg-deck-a/20 text-deck-a rounded font-mono">{queue.length}</span>
                 )}
                 {activeTab === tab.id && (
                   <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-gradient-to-r from-deck-a to-deck-b rounded-full" />
@@ -138,12 +140,12 @@ export function SmartPanel({
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto max-h-[55vh]">
+          <div className="overflow-y-auto h-[calc(100%-45px)]">
             <div className="p-3 space-y-3">
               {activeTab === 'queue' && <QueueTabContent queue={queue} onRemoveFromQueue={onRemoveFromQueue} onClearQueue={onClearQueue} />}
               {activeTab === 'library' && <LibraryTabContent tracks={tracks} onTracksChange={onTracksChange} onLoadTrack={onLoadTrack} onDeleteTrack={onDeleteTrack} isPlayingA={isPlayingA} isPlayingB={isPlayingB} />}
               {activeTab === 'search' && <SearchTabContent onLoadTrack={onLoadTrack} onApiCall={onApiCall} isPlayingA={isPlayingA} isPlayingB={isPlayingB} />}
-              {activeTab === 'recommendations' && <RecommendationsTabContent onAddToQueue={onAddToQueue} currentTrackName={currentTrackName} currentTrackArtist={currentTrackArtist} onApiCall={onApiCall} />}
+              {activeTab === 'recommendations' && <RecommendationsTabContent onAddToQueue={onAddToQueue} currentTrackName={currentTrackName} currentTrackArtist={currentTrackArtist} currentTrackId={currentTrackId} onApiCall={onApiCall} />}
             </div>
           </div>
         </div>
@@ -272,7 +274,7 @@ function LibraryTabContent({
         <input type="file" ref={fileInputRef} className="hidden" accept="audio/*" multiple onChange={e => handleFileUpload(e.target.files)} />
       </div>
 
-      <div className="flex flex-col gap-1.5 max-h-[40vh] overflow-y-auto">
+      <div className="flex flex-col gap-1.5 max-h-[42vh] overflow-y-auto">
         {tracks.length === 0 ? (
           <div className="text-center py-8 text-white/30 text-sm">No tracks in library. Import audio files or search YouTube.</div>
         ) : (
@@ -410,13 +412,13 @@ function SearchTabContent({
         </button>
       </form>
 
-      <div className="flex flex-col gap-1.5 max-h-[40vh] overflow-y-auto">
+      <div className="flex flex-col gap-1.5 max-h-[42vh] overflow-y-auto">
         {results.length === 0 && !isSearching && (
           <div className="text-center py-8 text-white/30 text-sm">Search for tracks on YouTube</div>
         )}
         {isSearching && (
           <div className="flex items-center justify-center py-8">
-<div className="w-6 h-6 rounded-full border-2 border-deck-a/30 border-t-deck-a animate-spin" />
+            <div className="w-6 h-6 rounded-full border-2 border-deck-a/30 border-t-deck-a animate-spin" />
           </div>
         )}
         {results.map(track => (
@@ -474,11 +476,13 @@ function RecommendationsTabContent({
   onAddToQueue,
   currentTrackName,
   currentTrackArtist,
+  currentTrackId,
   onApiCall,
 }: {
   onAddToQueue: (track: Track) => void;
   currentTrackName?: string;
   currentTrackArtist?: string;
+  currentTrackId?: string;
   onApiCall: () => void;
 }) {
   const [recommendations, setRecommendations] = useState<ShazamTrack[]>([]);
@@ -491,6 +495,7 @@ function RecommendationsTabContent({
     setError('');
     const params = new URLSearchParams();
     if (genre) params.set('genre', genre);
+    if (currentTrackId) params.set('trackId', currentTrackId);
     if (currentTrackName) params.set('q', `${currentTrackArtist || ''} ${currentTrackName}`.trim());
     try {
       const res = await fetch(`${API_ENDPOINTS.RECOMMEND}?${params}`);
@@ -503,7 +508,7 @@ function RecommendationsTabContent({
     } finally {
       setLoading(false);
     }
-  }, [currentTrackName, currentTrackArtist, onApiCall]);
+  }, [currentTrackName, currentTrackArtist, currentTrackId, onApiCall]);
 
   const handleGenreSelect = (genre: string) => {
     setSelectedGenre(genre);

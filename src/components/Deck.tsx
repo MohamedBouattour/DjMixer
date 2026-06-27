@@ -135,7 +135,8 @@ export const Deck: React.FC<DeckProps> = ({
     return (
         <div 
             className={cn(
-                "flex flex-col bg-bg-dark p-2 gap-2 relative overflow-hidden min-w-0 content-visibility-auto w-[42%] flex-initial grow",
+                "flex flex-col p-2 gap-2 relative overflow-hidden min-w-0 content-visibility-auto w-[42%] flex-initial grow",
+                "bg-surface-container/40 backdrop-blur-xl border-x border-white/5",
                 isPlaying && "shadow-[inset_0_0_40px_rgba(var(--deck-color-rgb),0.05)]",
                 "max-xl:p-1.5 max-xl:gap-1.5",
                 "landscape:p-0.5 landscape:gap-0.5"
@@ -148,7 +149,7 @@ export const Deck: React.FC<DeckProps> = ({
             <div className="flex items-center justify-between h-7 shrink-0 pb-1 border-b border-white/10 max-xl:h-6 landscape:h-5 landscape:pb-0.5">
                 <div className="flex items-center gap-2">
                     <div 
-                        className="text-white px-3 py-1 text-[11px] font-extrabold tracking-widest rounded-sm shadow-[0_0_12px_var(--deck-color)] max-xl:text-[10px] max-xl:px-2 max-xl:py-0.5 landscape:text-[8px] landscape:px-1 landscape:py-0.5 landscape:tracking-tight" 
+                        className="text-white px-3 py-1 text-[11px] font-extrabold tracking-widest rounded-sm shadow-[0_0_12px_var(--deck-color)] max-xl:text-[10px] max-xl:px-2 max-xl:py-0.5 landscape:text-[8px] landscape:px-1 landscape:py-0.5 landscape:tracking-tight font-display" 
                         style={{ background: color }}
                     >
                         DECK {deckId}
@@ -184,7 +185,7 @@ export const Deck: React.FC<DeckProps> = ({
                                 )}
                             </div>
                         )}
-                        <div className="text-[13px] font-semibold text-white truncate max-xl:text-[11px] landscape:text-[10px]">{track.name}</div>
+                        <div className="text-[13px] font-semibold text-on-surface truncate max-xl:text-[11px] landscape:text-[10px] font-display">{track.name}</div>
                         {effectiveBPM && (
                             <div className="flex flex-col items-center">
                                 <span className="text-[9px] text-text-muted font-bold tracking-widest">BPM</span>
@@ -234,9 +235,9 @@ export const Deck: React.FC<DeckProps> = ({
                 {/* Central Vinyl Area */}
                 <div className="flex-1 flex items-center justify-center w-full h-full min-w-0">
                     {state.isLoading ? (
-                        <div className="w-full aspect-square max-w-[320px] mx-auto flex flex-col items-center justify-center bg-bg-control rounded-full text-[#666] text-xs text-center border-2 border-white/10 gap-2 max-xl:max-w-[180px]">
+                        <div className="w-full aspect-square max-w-[320px] mx-auto flex flex-col items-center justify-center bg-surface-container rounded-full text-outline text-xs text-center border-2 border-white/10 gap-2 max-xl:max-w-[180px]">
                             <div className="w-6 h-6 border-2 border-white/10 border-t-[var(--deck-color)] rounded-full animate-[deck-spin_1s_linear_infinite]"></div>
-                            <span>Downloading track...</span>
+                            <span className="text-on-surface-variant">Downloading track...</span>
                         </div>
                     ) : track ? (
                         <div className="w-full flex justify-center items-center">
@@ -252,8 +253,8 @@ export const Deck: React.FC<DeckProps> = ({
                             />
                         </div>
                     ) : (
-                        <div className="w-full aspect-square max-w-[320px] mx-auto flex flex-col items-center justify-center bg-bg-control rounded-full text-[#666] text-xs text-center border-2 border-white/10 gap-2 max-xl:max-w-[180px]">
-                            <span>Load a track to begin</span>
+                        <div className="w-full aspect-square max-w-[320px] mx-auto flex flex-col items-center justify-center bg-surface-container rounded-full text-outline text-xs text-center border-2 border-white/10 gap-2 max-xl:max-w-[180px]">
+                            <span className="text-on-surface-variant">Load a track to begin</span>
                         </div>
                     )}
                 </div>
@@ -282,26 +283,26 @@ export const Deck: React.FC<DeckProps> = ({
                         <div className="flex items-center gap-2 w-full max-xl:gap-1.5 landscape:gap-0.5">
                             {isPlaying ? (
                                 <button 
-                                    className="w-[101px] h-[101px] rounded-full bg-bg-control border-2 border-white/15 text-white flex items-center justify-center transition-all duration-150 shrink-0 bg-[var(--deck-color)] border-[var(--deck-color)] shadow-[0_0_20px_var(--deck-color)] relative max-xl:w-[60px] max-xl:h-[60px] max-md:w-[68px] max-md:h-[68px] landscape:w-[47px] landscape:h-[47px]" 
+                                    className="w-[101px] h-[101px] rounded-full flex items-center justify-center transition-all duration-150 shrink-0 bg-[var(--deck-color)] shadow-[0_0_25px_var(--deck-color)] relative max-xl:w-[60px] max-xl:h-[60px] max-md:w-[68px] max-md:h-[68px] landscape:w-[47px] landscape:h-[47px]" 
                                     onClick={pause}
                                 >
                                     <PauseIcon />
-                                    {shortcuts?.play && <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1 rounded-sm border border-white/20">{shortcuts.play}</span>}
+                                    {shortcuts?.play && <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[9px] px-1.5 py-0.5 rounded-sm border border-white/10 font-mono text-[8px]">{shortcuts.play}</span>}
                                 </button>
                             ) : (
                                 <button
-                                    className="w-[101px] h-[101px] rounded-full bg-bg-control border-2 border-white/15 text-white flex items-center justify-center transition-all duration-150 shrink-0 hover:enabled:border-[var(--deck-color)] hover:enabled:shadow-[0_0_15px_var(--deck-color)] disabled:opacity-30 disabled:cursor-not-allowed relative max-xl:w-[60px] max-xl:h-[60px] max-md:w-[68px] max-md:h-[68px] landscape:w-[47px] landscape:h-[47px]"
+                                    className="w-[101px] h-[101px] rounded-full bg-surface-container-highest border-2 border-white/10 text-white flex items-center justify-center transition-all duration-150 shrink-0 hover:enabled:border-[var(--deck-color)] hover:enabled:shadow-[0_0_20px_var(--deck-color)] disabled:opacity-30 disabled:cursor-not-allowed relative max-xl:w-[60px] max-xl:h-[60px] max-md:w-[68px] max-md:h-[68px] landscape:w-[47px] landscape:h-[47px]"
                                     onClick={play}
                                     disabled={!track}
                                 >
                                     <PlayIcon />
-                                    {shortcuts?.play && <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1 rounded-sm border border-white/20">{shortcuts.play}</span>}
+                                    {shortcuts?.play && <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[9px] px-1.5 py-0.5 rounded-sm border border-white/10 font-mono text-[8px]">{shortcuts.play}</span>}
                                 </button>
                             )}
 
                             <button
                                 className={cn(
-                                    "hidden max-md:flex items-center justify-center w-[42px] h-[42px] rounded-lg bg-gradient-to-br from-deck-a to-deck-b text-white text-[12px] font-extrabold tracking-tight cursor-pointer shadow-[0_2px_10px_rgba(255,0,128,0.3)] transition-all duration-150 hover:scale-105 hover:shadow-[0_4px_15px_rgba(255,0,128,0.4)]",
+                                    "hidden max-md:flex items-center justify-center w-[42px] h-[42px] rounded-lg bg-gradient-to-br from-deck-a to-deck-b text-white text-[12px] font-extrabold tracking-tight cursor-pointer shadow-[0_2px_10px_rgba(255,0,128,0.3)] transition-all duration-150 hover:scale-105 hover:shadow-[0_4px_15px_rgba(255,0,128,0.4)] font-mono",
                                     showEffects && "ring-2 ring-white/50"
                                 )}
                                 onClick={() => setShowEffects(!showEffects)}
@@ -324,8 +325,8 @@ export const Deck: React.FC<DeckProps> = ({
                                     <button
                                         key={fx}
                                         className={cn(
-                                            "flex-1 min-w-[94px] h-[66px] bg-bg-control border border-white/8 rounded-md text-text-secondary text-[20px] font-bold transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white relative",
-                                            activeEffects?.[fx] && "bg-[var(--deck-color)] border-[var(--deck-color)] text-white shadow-[0_0_10px_var(--deck-color)]",
+                                            "flex-1 min-w-[94px] h-[66px] bg-surface-container-high border border-white/10 rounded-lg text-on-surface-variant text-[20px] font-bold transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white relative font-mono tracking-wider",
+                                            activeEffects?.[fx] && "bg-[var(--deck-color)] border-[var(--deck-color)] text-white shadow-[0_0_12px_var(--deck-color)]",
                                             "max-xl:min-w-[52px] max-xl:h-[39px] max-xl:text-[12px]",
                                             "max-md:min-w-[62px] max-md:h-[44px] max-md:text-[13px]"
                                         )}
@@ -333,7 +334,7 @@ export const Deck: React.FC<DeckProps> = ({
                                         title={fx.toUpperCase()}
                                     >
                                         {fx.substring(0, 3).toUpperCase()}
-                                        {fx === 'filter' && shortcuts?.effect && <span className="absolute bottom-0.5 right-0.5 text-[8px] opacity-60">{shortcuts.effect}</span>}
+                                        {fx === 'filter' && shortcuts?.effect && <span className="absolute bottom-0.5 right-0.5 text-[8px] opacity-60 font-sans">{shortcuts.effect}</span>}
                                     </button>
                                 ))}
                             </div>
@@ -343,8 +344,8 @@ export const Deck: React.FC<DeckProps> = ({
                                     <button
                                         key={index}
                                         className={cn(
-                                            "flex-1 h-[66px] bg-bg-control border border-white/8 rounded-md text-text-secondary text-[26px] font-bold transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white relative",
-                                            cuePoints[index] !== undefined && "bg-[var(--deck-color)] border-[var(--deck-color)] text-white shadow-[0_0_10px_var(--deck-color)]",
+                                            "flex-1 h-[66px] bg-surface-container-high border border-white/10 rounded-lg text-on-surface-variant text-[26px] font-bold transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white relative font-mono",
+                                            cuePoints[index] !== undefined && "bg-[var(--deck-color)] border-[var(--deck-color)] text-white shadow-[0_0_12px_var(--deck-color)]",
                                             "max-xl:h-[39px] max-xl:text-[12px] max-xl:min-w-[52px]",
                                             "landscape:h-[31px] landscape:text-[10px] landscape:min-w-[39px]",
                                             "max-md:h-[44px] max-md:text-[17px]"
@@ -369,7 +370,7 @@ export const Deck: React.FC<DeckProps> = ({
                             <div className="mt-1 landscape:mt-0" style={{ touchAction: 'none' }}>
                                 <button
                                     className={cn(
-                                        "w-full h-[74px] flex items-center justify-center gap-2 bg-bg-control border border-white/8 rounded-lg text-[#888] text-[20px] font-bold tracking-tight transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white",
+                                        "w-full h-[74px] flex items-center justify-center gap-2 bg-surface-container-high border border-white/10 rounded-lg text-on-surface-variant text-[20px] font-bold tracking-tight transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white",
                                         (activeLoop?.active || isHoldingLoop) && "bg-[var(--deck-color)] border-[var(--deck-color)] text-white shadow-[0_0_15px_var(--deck-color)]",
                                         isHoldingLoop && "border-[var(--deck-color)] text-[var(--deck-color)] bg-white/2",
                                         "max-xl:h-[42px] max-xl:text-[12px]",
@@ -396,25 +397,29 @@ export const Deck: React.FC<DeckProps> = ({
             </div>
 
             <div className={cn(
-                "fixed bottom-0 left-0 right-0 bg-bg-panel border-t-2 border-[var(--deck-color)] z-[9000] flex flex-col p-3 transition-transform duration-250 translate-y-full",
+                "fixed bottom-0 left-0 right-0 bg-surface-container-low/95 backdrop-blur-xl border-t-2 border-[var(--deck-color)] z-[9000] flex flex-col p-3 transition-transform duration-250 translate-y-full",
                 "pl-[max(12px,env(safe-area-inset-left))] pr-[max(12px,env(safe-area-inset-right))] pb-[max(12px,env(safe-area-inset-bottom))]",
                 showEffects && "translate-y-0",
                 "deck-effects-popup"
             )} data-deck={deckId}>
                 <div className="flex justify-between items-center mb-3">
-                    <span className="text-[12px] font-extrabold text-[var(--deck-color)] tracking-widest uppercase">EFFECTS - DECK {deckId}</span>
+                    <span className="text-[12px] font-extrabold text-[var(--deck-color)] tracking-widest uppercase font-display">EFFECTS - DECK {deckId}</span>
                     <button
-                        className="w-7 h-7 rounded-full bg-[#333] border border-white/8 text-[#888] text-sm flex items-center justify-center cursor-pointer hover:bg-accent-red hover:text-white"
+                        className="w-7 h-7 rounded-full bg-surface-container border border-white/10 text-on-surface-variant text-sm flex items-center justify-center cursor-pointer hover:bg-error hover:text-white transition-all"
                         onClick={() => setShowEffects(false)}
-                    >✕</button>
+                    >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                     {(['reverb', 'delay', 'filter', 'hpf', 'distortion', 'bitcrusher', 'flanger', 'tremolo'] as const).map(fx => (
                         <button
                             key={fx}
                             className={cn(
-                                "h-11 bg-bg-control border border-white/8 rounded-md text-text-secondary text-[12px] font-bold transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white",
-                                activeEffects?.[fx] && "bg-[var(--deck-color)] border-[var(--deck-color)] text-white"
+                                "h-11 bg-surface-container-high border border-white/10 rounded-lg text-on-surface-variant text-[12px] font-bold transition-all duration-150 hover:border-[var(--deck-color)] hover:text-white font-mono tracking-wider",
+                                activeEffects?.[fx] && "bg-[var(--deck-color)] border-[var(--deck-color)] text-white shadow-[0_0_8px_var(--deck-color)]"
                             )}
                             onClick={() => toggleEffect(fx)}
                         >{fx.substring(0, 3).toUpperCase()}</button>

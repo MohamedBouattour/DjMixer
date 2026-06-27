@@ -203,6 +203,10 @@ export class AudioEffects {
         this.outputNode.connect(destination);
     }
 
+    setGain(value: number) {
+        this.inputNode.gain.value = value / 80;
+    }
+
     setEQ(band: 'low' | 'mid' | 'high', value: number) {
         const gain = (value - 50) / 10; // -5 to +5 range
 

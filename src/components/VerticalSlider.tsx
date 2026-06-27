@@ -111,7 +111,7 @@ const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
             style={{ height: `${height}px` }}
         >
             {label && (
-                <span className="text-[11px] font-bold text-text-hint tracking-widest uppercase max-xl:text-[10px] landscape:text-[9px]">
+                <span className="text-[11px] font-bold text-on-surface-variant tracking-widest uppercase max-xl:text-[10px] landscape:text-[9px] font-display">
                     {label}
                 </span>
             )}
@@ -126,7 +126,7 @@ const VerticalSlider: React.FC<VerticalSliderProps> = memo(({
                 ref={trackRef}
                 style={{ 
                     touchAction: 'none',
-                    background: `linear-gradient(180deg, ${color} 0%, var(--color-bg-header) 50%, var(--color-bg-header) 100%)`,
+                    background: `linear-gradient(180deg, ${color} 0%, var(--color-surface-container-low) 50%, var(--color-surface-container-low) 100%)`,
                     backgroundClip: 'content-box'
                 } as React.CSSProperties}
                 onPointerDown={handlePointerDown}

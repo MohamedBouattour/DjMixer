@@ -76,8 +76,8 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
         <div className={cn("flex flex-col gap-1 w-full touch-none", className)}>
             {(label || showValue) && (
                 <div className="flex justify-between items-center">
-                    {label && <span className="text-xs font-bold text-text-hint uppercase tracking-widest">{label}</span>}
-                    {showValue && <span className="text-xs font-bold text-white/70">{Math.round(value)}</span>}
+                    {label && <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest font-display">{label}</span>}
+                    {showValue && <span className="text-xs font-bold text-on-surface/70 font-mono">{Math.round(value)}</span>}
                 </div>
             )}
             <div
@@ -101,16 +101,16 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
                 />
                 {showCenterLine && <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-white/20 -translate-x-1/2" />}
                 <div
-                    className="absolute top-1/2 -translate-y-1/2 rounded-[4px] cursor-grab active:cursor-grabbing z-[5] transition-shadow duration-150"
+                    className="absolute top-1/2 -translate-y-1/2 rounded-[4px] cursor-grab active:cursor-grabbing z-[5] transition-shadow duration-150 border border-white/10"
                     style={{
                         left: `calc(${percentage}% - ${thumbWidth / 2}px)`,
                         width: `${thumbWidth}px`,
                         height: `${Math.max(height + 12, 28)}px`,
-                        background: `linear-gradient(to bottom, #f0f0f0, #d0d0d0)`,
-                        boxShadow: `0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.5) inset, 0 0 12px ${color}33`
+                        background: `linear-gradient(to bottom, #e8e8e8, #c0c0c0)`,
+                        boxShadow: `0 2px 10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.6) inset, 0 0 15px ${color}44`
                     }}
                 >
-                    <div className="absolute top-1/2 left-3 right-3 h-px bg-black/10 -translate-y-1/2" />
+                    <div className="absolute top-1/2 left-3 right-3 h-px bg-black/15 -translate-y-1/2" />
                     <div className="absolute top-[calc(50%-4px)] left-3 right-3 h-px bg-black/10" />
                 </div>
             </div>

@@ -29,12 +29,12 @@ export const TimeDisplay: React.FC<TimeDisplayProps> = ({
             )}
         >
             <div className={cn(
-                "font-bold text-white tracking-[0.5px] flex items-baseline justify-end",
+                "font-bold text-on-surface tracking-[0.5px] flex items-baseline justify-end font-mono",
                 compact ? "text-sm" : "text-[18px] max-xl:text-[15px] landscape:text-xs"
             )}>
                 {mainTime}
                 <span className={cn(
-                    "text-[#888] font-medium ml-[2px]",
+                    "text-on-surface-variant font-mono ml-[2px]",
                     compact ? "text-[10px]" : "text-xs landscape:text-[9px]"
                 )}>
                     .{milliseconds}

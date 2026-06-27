@@ -171,10 +171,10 @@ const WaveformComponent: React.FC<WaveformProps> = ({
     return (
         <div
             className={cn(
-                "relative w-full aspect-square max-w-[320px] max-h-[320px] mx-auto cursor-grab select-none touch-none",
+                "relative w-full aspect-square max-w-[180px] max-h-[180px] mx-auto cursor-grab select-none touch-none",
                 "active:cursor-grabbing",
                 isScratching && "cursor-grabbing",
-                "max-xl:max-w-[180px] max-xl:max-h-[180px] max-xl:w-[180px] max-xl:h-[180px]",
+                "max-xl:max-w-[110px] max-xl:max-h-[110px] max-xl:w-[110px] max-xl:h-[110px]",
                 "before:content-[''] before:absolute before:inset-[4%] before:rounded-full before:border-[3px] before:border-[var(--deck-color)] before:pointer-events-none before:opacity-30 before:transition-all before:duration-500",
                 isPlaying && "before:shadow-[0_0_30px_var(--deck-color),inset_0_0_15px_rgba(0,0,0,0.5)] before:opacity-100"
             )}
@@ -187,7 +187,7 @@ const WaveformComponent: React.FC<WaveformProps> = ({
             onPointerLeave={handlePointerUp}
         >
             <div 
-                className="absolute inset-[8%] rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.8),inset_0_0_50px_rgba(0,0,0,0.9)] will-change-transform" 
+                className="absolute inset-[8%] rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.8),inset_0_0_50px_rgba(0,0,0,0.9)] will-change-transform border border-surface-container-highest" 
                 ref={discRef}
                 style={{
                     background: 'radial-gradient(circle at center, #0a0a0a 0%, #1a1a1a 20%, #0f0f0f 40%, #1a1a1a 60%, #0d0d0d 87%, #151515 100%)'
@@ -197,23 +197,31 @@ const WaveformComponent: React.FC<WaveformProps> = ({
                     ref={groovesCanvasRef} 
                     className="absolute inset-0 w-full h-full pointer-events-none opacity-80"
                 />
+                {/* Vinyl groove rings */}
+                <div className="absolute inset-[12%] rounded-full border border-white/5 pointer-events-none" />
+                <div className="absolute inset-[24%] rounded-full border border-white/5 pointer-events-none" />
+                <div className="absolute inset-[36%] rounded-full border border-white/5 pointer-events-none" />
+                {/* Highlight stripe */}
                 <div 
                     className="absolute top-[10%] left-1/2 w-1 h-[12%] rounded-[2px] -translate-x-1/2 shadow-[0_0_8px_var(--deck-color)] pointer-events-none opacity-90"
                     style={{ background: color }}
-                ></div>
+                />
+                {/* Center label */}
                 <div 
                     className="absolute inset-[38%] rounded-full flex flex-col items-center justify-center text-white font-bold text-xs text-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.4),0_2px_10px_rgba(0,0,0,0.3)] pointer-events-none"
                     style={{ background: color }}
                 >
-                    <div className="leading-tight">DJ PRO</div>
+                    <div className="leading-tight font-display tracking-wider">DJ PRO</div>
                     <div className="absolute w-[12%] h-[12%] rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_2px_rgba(255,255,255,0.1)]" style={{ background: 'radial-gradient(circle, #3a3a3a 0%, #1a1a1a 60%, #0a0a0a 100%)' }}></div>
                 </div>
+                {/* Shine */}
                 <div className="absolute inset-0 rounded-full bg-[linear-gradient(120deg,transparent_35%,rgba(255,255,255,0.04)_45%,rgba(255,255,255,0.07)_50%,rgba(255,255,255,0.04)_55%,transparent_65%)] pointer-events-none"></div>
             </div>
+            {/* Progress ring */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 100 100">
-                <circle className="fill-none stroke-white/8 stroke-[4]" cx="50" cy="50" r="48" />
+                <circle className="fill-none stroke-white/8 stroke-[3]" cx="50" cy="50" r="48" />
                 <circle
-                    className="fill-none stroke-[5] stroke-linecap-round"
+                    className="fill-none stroke-[4] stroke-linecap-round"
                     cx="50"
                     cy="50"
                     r="48"

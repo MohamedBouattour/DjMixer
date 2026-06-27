@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Deck } from "./components/Deck";
 import { Mixer } from "./components/Mixer";
 import { SettingsModal } from "./components/SettingsModal";
-import { SmartPanel } from "./components/SmartPanel";
+import { TrackLibrary } from "./components/TrackLibrary";
 
 import { useDeck } from "./hooks/useDeck";
 import { useApiCounter } from "./hooks/useApiCounter";
@@ -364,18 +364,24 @@ function App() {
   }, [keyMap, deckA, deckB, deckAState.isPlaying, deckBState.isPlaying, isSettingsOpen]);
 
   return (
-    <div className="w-full h-dvh flex flex-col overflow-hidden relative pt-[env(safe-area-inset-top,5px)] pb-[env(safe-area-inset-bottom,5px)] pl-[env(safe-area-inset-left,5px)] pr-[env(safe-area-inset-right,5px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_1px,rgba(255,255,255,0.01)_1px,rgba(255,255,255,0.01)_2px)] bg-gradient-to-b from-[#1a1a1a] to-[#0d0d0d]">
-      <div className="hidden portrait-mobile:flex fixed inset-0 bg-bg-darkest z-[9999] flex-col items-center justify-center text-center p-8 text-white">
+    <div className="w-full h-dvh flex flex-col overflow-hidden relative pt-[env(safe-area-inset-top,5px)] pb-[env(safe-area-inset-bottom,5px)] pl-[env(safe-area-inset-left,5px)] pr-[env(safe-area-inset-right,5px)] bg-surface-dim">
+      {/* Ambient glow background */}
+      <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary rounded-full mix-blend-screen blur-[100px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary rounded-full mix-blend-screen blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="hidden portrait-mobile:flex fixed inset-0 bg-surface-dim z-[9999] flex-col items-center justify-center text-center p-8 text-white">
         <div className="w-16 h-16 mb-5 animate-[rotate-phone_2s_infinite_ease-in-out]">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z" />
           </svg>
         </div>
         <h2 className="text-xl font-bold mb-2">Please Rotate Your Device</h2>
-        <p className="text-text-secondary">This DJ interface is optimized for landscape mode.</p>
+        <p className="text-on-surface-variant">This DJ interface is optimized for landscape mode.</p>
       </div>
 
-      <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))]">
+      <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))] mb-[40px]">
         <div className="flex-1 flex gap-0 min-h-0 w-full max-md:flex-col">
           <Deck
             deckId="A"
@@ -393,7 +399,7 @@ function App() {
             }
           />
 
-          <section className="w-[16%] flex flex-col gap-0 overflow-hidden shrink-0 min-w-[100px] max-md:w-full md:max-w-none md:min-w-0 md:w-auto">
+          <section className="w-[32%] min-w-[290px] max-w-[400px] flex flex-col gap-0 overflow-hidden shrink-0 max-md:w-full md:max-w-none md:min-w-0 md:w-auto bg-surface-container-low/30 backdrop-blur-sm border-x border-white/5">
             <Mixer
               crossfaderValue={crossfader}
               onCrossfaderChange={handleCrossfaderChange}
@@ -401,6 +407,8 @@ function App() {
               deckBState={deckBState}
               onVolumeChange={handleVolumeChange}
               onEQChange={handleEQChange}
+              onGainChange={(deckId, val) => (deckId === 'A' ? deckA : deckB).setGain(val)}
+              onFilterChange={(deckId, val) => (deckId === 'A' ? deckA : deckB).setEffect('filter', val)}
             />
           </section>
 
@@ -421,7 +429,7 @@ function App() {
           />
         </div>
 
-        <SmartPanel
+        <TrackLibrary
           queue={queue}
           onAddToQueue={handleAddToQueue}
           onRemoveFromQueue={handleRemoveFromQueue}
@@ -432,6 +440,7 @@ function App() {
           onDeleteTrack={handleDeleteTrack}
           currentTrackName={activeTrack?.name}
           currentTrackArtist={activeTrack?.artist}
+          currentTrackId={activeTrack?.id}
           onApiCall={incrementApiCount}
           isPlayingA={deckAState.isPlaying}
           isPlayingB={deckBState.isPlaying}

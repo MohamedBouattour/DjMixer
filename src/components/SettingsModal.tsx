@@ -53,9 +53,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
     return (
         <div className={cn(sharedStyles.modalOverlay, "landscape:items-start landscape:pt-[max(8px,env(safe-area-inset-top))] landscape:pb-[max(8px,env(safe-area-inset-bottom))] landscape:pl-[max(8px,env(safe-area-inset-left))] landscape:pr-[max(8px,env(safe-area-inset-right))]")} onClick={onClose}>
-            <div className={cn(sharedStyles.modalBase, "max-w-[90vw] max-h-[85vh] w-[400px] max-md:w-[95vw] max-md:max-h-[90vh] landscape:w-full landscape:max-w-[380px] landscape:max-h-[95vh] landscape:mx-auto landscape-sm:max-h-[98vh]")} onClick={e => e.stopPropagation()}>
+            <div className={cn(sharedStyles.modalBase, "max-w-[90vw] max-h-[85vh] w-[400px] max-md:w-[95vw] max-md:max-h-[90vh] landscape:w-full landscape:max-w-[380px] landscape:max-h-[95vh] landscape:mx-auto landscape-sm:max-h-[98vh] bg-surface-container/95 backdrop-blur-xl border border-white/10")} onClick={e => e.stopPropagation()}>
                 <header className={sharedStyles.modalHeader}>
-                    <h2 className="text-base font-bold text-white m-0">Settings</h2>
+                    <h2 className="text-base font-bold text-on-surface m-0 font-display">Settings</h2>
                     <button className={sharedStyles.iconBtnClose} onClick={onClose}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
@@ -65,35 +65,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                 <div className="p-5 overflow-y-auto max-h-[calc(85vh-60px)] max-md:p-4 max-md:max-h-[calc(90vh-60px)] landscape:p-2.5 landscape:max-h-[calc(95vh-50px)] landscape-sm:p-2 landscape-sm:max-h-[calc(98vh-40px)]">
                     <div className="mb-5 landscape:mb-3">
-                        <h3 className="text-[12px] font-bold text-text-hint uppercase tracking-widest mb-3 landscape:text-[10px] landscape:mb-2">Keyboard Layout</h3>
+                        <h3 className="text-[12px] font-bold text-text-hint uppercase tracking-widest mb-3 landscape:text-[10px] landscape:mb-2 font-display">Keyboard Layout</h3>
                         <div className="flex gap-3 landscape:gap-2 mt-2">
                             <button
                                 className={cn(
-                                    "flex-1 p-2.5 bg-bg-control-dark border border-white/10 rounded-md text-text-light font-semibold cursor-pointer transition-all duration-150 landscape:py-1.5 landscape:px-3 landscape:text-[11px]",
-                                    layout === 'qwerty' && "bg-deck-a text-white border-transparent"
+                                    "flex-1 p-2.5 bg-surface-container-high border border-white/10 rounded-lg text-on-surface-variant font-semibold cursor-pointer transition-all duration-150 landscape:py-1.5 landscape:px-3 landscape:text-[11px] font-display",
+                                    layout === 'qwerty' && "bg-deck-a text-white border-transparent shadow-[0_0_10px_var(--color-deck-a)]"
                                 )}
                                 onClick={() => setLayout('qwerty')}
                             >QWERTY</button>
                             <button
                                 className={cn(
-                                    "flex-1 p-2.5 bg-bg-control-dark border border-white/10 rounded-md text-text-light font-semibold cursor-pointer transition-all duration-150 landscape:py-1.5 landscape:px-3 landscape:text-[11px]",
-                                    layout === 'azerty' && "bg-deck-a text-white border-transparent"
+                                    "flex-1 p-2.5 bg-surface-container-high border border-white/10 rounded-lg text-on-surface-variant font-semibold cursor-pointer transition-all duration-150 landscape:py-1.5 landscape:px-3 landscape:text-[11px] font-display",
+                                    layout === 'azerty' && "bg-deck-a text-white border-transparent shadow-[0_0_10px_var(--color-deck-a)]"
                                 )}
                                 onClick={() => setLayout('azerty')}
                             >AZERTY</button>
                         </div>
                     </div>
 
-                    <h3 className="text-[12px] font-bold text-text-hint uppercase tracking-widest mb-3 landscape:text-[10px] landscape:mb-2">Keyboard Shortcuts</h3>
-                    <p className="text-[13px] text-text-hint mb-4 landscape:text-[11px] landscape:mb-2">Click a button below and press a key to remap.</p>
+                    <h3 className="text-[12px] font-bold text-text-hint uppercase tracking-widest mb-3 landscape:text-[10px] landscape:mb-2 font-display">Keyboard Shortcuts</h3>
+                    <p className="text-[13px] text-on-surface-variant mb-4 landscape:text-[11px] landscape:mb-2">Click a button below and press a key to remap.</p>
 
                     <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 landscape:gap-1">
                         {Object.entries(ACTION_LABELS).map(([actionId, label]) => (
                             <div key={actionId} className="flex items-center justify-between py-2 border-b border-white/5 landscape:py-1.5 landscape:flex-wrap landscape:gap-1">
-                                <span className="text-[13px] text-text-secondary landscape:text-[11px] landscape:flex-1 landscape:min-w-[120px] landscape-sm:text-[10px]">{label}</span>
+                                <span className="text-[13px] text-on-surface-variant landscape:text-[11px] landscape:flex-1 landscape:min-w-[120px] landscape-sm:text-[10px]">{label}</span>
                                 <button
                                     className={cn(
-                                        "min-w-[100px] px-3 py-1.5 bg-bg-header border border-white/10 rounded-sm text-deck-b font-mono font-bold cursor-pointer landscape:py-1 landscape:px-2.5 landscape:text-[10px] landscape:min-w-[70px] landscape-sm:py-0.5 landscape-sm:px-2 landscape-sm:text-[9px]",
+                                        "min-w-[100px] px-3 py-1.5 bg-surface-container-low border border-white/10 rounded-lg text-deck-b font-mono font-bold cursor-pointer landscape:py-1 landscape:px-2.5 landscape:text-[10px] landscape:min-w-[70px] landscape-sm:py-0.5 landscape-sm:px-2 landscape-sm:text-[9px] transition-all",
                                         listeningFor === actionId && "border-deck-a text-deck-a animate-[settings-pulse_1s_infinite]"
                                     )}
                                     onClick={() => setListeningFor(actionId)}
@@ -107,10 +107,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     </div>
 
                     <div className="mt-6 flex justify-center landscape:mt-2.5">
-                        <button className="px-5 py-2.5 bg-transparent border border-white/30 rounded-full text-text-hint text-[13px] cursor-pointer transition-all duration-150 hover:border-white/50 hover:text-white landscape:py-2 landscape:px-4 landscape:text-[11px]" onClick={resetToDefaults}>Reset to Defaults</button>
+                        <button className="px-5 py-2.5 bg-transparent border border-white/20 rounded-full text-on-surface-variant text-[13px] cursor-pointer transition-all duration-150 hover:border-white/50 hover:text-on-surface landscape:py-2 landscape:px-4 landscape:text-[11px] font-mono" onClick={resetToDefaults}>Reset to Defaults</button>
                     </div>
 
-                    <div className="mt-5 pt-2.5 border-top border-white/10 text-center text-white/40 text-[0.8rem] landscape:mt-2.5 landscape:pt-2 landscape:text-[10px]">
+                    <div className="mt-5 pt-2.5 border-t border-white/10 text-center text-on-surface-variant/50 text-[0.8rem] landscape:mt-2.5 landscape:pt-2 landscape:text-[10px] font-mono">
                         <span>Version: {localStorage.getItem('app_version') || 'Development Build'}</span>
                     </div>
                 </div>

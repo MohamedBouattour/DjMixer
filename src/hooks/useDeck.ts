@@ -259,6 +259,12 @@ export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOp
         }
     }, []);
 
+    const setGain = useCallback((value: number) => {
+        if (effectsRef.current) {
+            effectsRef.current.setGain(value);
+        }
+    }, []);
+
     const setEffect = useCallback((effect: 'reverb' | 'delay' | 'filter' | 'distortion' | 'bitcrusher' | 'flanger' | 'tremolo' | 'hpf', value: number) => {
         if (effectsRef.current) {
             switch (effect) {
@@ -354,6 +360,7 @@ export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOp
         endScratch,
         setScratchRate,
         setVolume,
+        setGain,
         setEQ,
         setEffect,
         toggleEffect,
@@ -362,7 +369,7 @@ export const useDeck = ({ audioContext, destination, isWorkletReady }: UseDeckOp
         setLoop,
         clearLoop,
         setIsLoading
-    }), [loadTrack, play, pause, seek, setPitch, startScratch, endScratch, setScratchRate, setVolume, setEQ, setEffect, toggleEffect, handleCue, deleteCue, setLoop, clearLoop, setIsLoading]);
+    }), [loadTrack, play, pause, seek, setPitch, startScratch, endScratch, setScratchRate, setVolume, setGain, setEQ, setEffect, toggleEffect, handleCue, deleteCue, setLoop, clearLoop, setIsLoading]);
 
     return {
         state,

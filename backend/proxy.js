@@ -132,10 +132,76 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// ─── API: Recommendations (YouTube search) ────────────────────────────────────
+// ─── API: Recommendations (YouTube search & Shazam recognition) ───────────────
 app.get('/api/recommend', async (req, res) => {
   try {
-    const { q, genre } = req.query;
+    const { q, genre, trackId } = req.query;
+    const apiKey = process.env.VITE_RAPIDAPI_KEY || process.env.RAPID_API_KEY;
+
+    if (trackId && !trackId.startsWith('local-')) {
+      try {
+        console.log(`[RECOMMEND] Shazam path initiated for trackId: ${trackId}`);
+        // 1. Get direct MP3 stream URL via YouTube-to-MP3 API
+        const downloadUrl = await fetchRapidAudio(trackId);
+        if (downloadUrl) {
+          // 2. Call Shazam API to recognize song
+          const shazamUrl = `https://shazam-song-recognition-api.p.rapidapi.com/recognize/url?url=${encodeURIComponent(downloadUrl)}`;
+          const shazamRes = await fetch(shazamUrl, {
+            headers: {
+              'x-rapidapi-key': apiKey,
+              'x-rapidapi-host': 'shazam-song-recognition-api.p.rapidapi.com',
+              'Content-Type': 'application/json'
+            }
+          });
+          if (shazamRes.ok) {
+            const shazamData = await shazamRes.json();
+            const relatedTracksUrl = shazamData?.track?.relatedtracksurl || 
+              (shazamData?.track?.key ? `https://cdn.shazam.com/shazam/v3/en-US/GB/web/-/tracks/track-similarities-id-${shazamData.track.key}?startFrom=0&pageSize=20&connected=` : null);
+            
+            if (relatedTracksUrl) {
+              // 3. Fetch similar tracks
+              const simRes = await fetch(relatedTracksUrl);
+              if (simRes.ok) {
+                const simData = await simRes.json();
+                const tracks = simData?.tracks || [];
+                if (tracks.length > 0) {
+                  // 4. Resolve YouTube video IDs in parallel for the top 8 tracks
+                  const searchPromises = tracks.slice(0, 8).map(async (t) => {
+                    try {
+                      const queryStr = `${t.subtitle} ${t.title}`;
+                      const ytResults = await searchYouTube(queryStr, 1);
+                      if (ytResults && ytResults.length > 0) {
+                        return {
+                          id: ytResults[0].id,
+                          name: t.title,
+                          title: t.title,
+                          artist: t.subtitle,
+                          thumbnail: t.images?.coverart || ytResults[0].thumbnail,
+                          duration: ytResults[0].duration,
+                          source: 'shazam'
+                        };
+                      }
+                    } catch (e) {
+                      console.error(`[RECOMMEND] YouTube resolve failed for "${t.title}":`, e.message);
+                    }
+                    return null;
+                  });
+                  const resolved = (await Promise.all(searchPromises)).filter(Boolean);
+                  if (resolved.length > 0) {
+                    console.log(`[RECOMMEND] Successfully resolved ${resolved.length} shazam recommendations.`);
+                    return res.json({ recommendations: resolved, source: 'shazam' });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[RECOMMEND] Shazam flow error:', err.message);
+      }
+    }
+
+    // Fallback: YouTube search based recommendations
     let searchTerm = q ? String(q) : '';
     if (!searchTerm) {
       const genres = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop', 'rock', 'rnb', 'latin'];

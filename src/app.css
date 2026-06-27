@@ -1,52 +1,110 @@
 @import "tailwindcss";
 
 @theme {
-  /* Core backgrounds — Design System: Deep Space palette */
-  --color-bg-dark: #1a1a1a;
-  --color-bg-darker: #131313;
-  --color-bg-darkest: #0a0a0a;
-  --color-bg-panel: #181c22;
-  --color-bg-control: #1c2026;
-  --color-bg-header: #181c22;
-  --color-bg-control-dark: #262a31;
-  --color-bg-surface-bright: #353940;
-  --color-bg-container-high: #262a31;
-  --color-bg-container-highest: #31353c;
+  /* ─── Material 3 Surface Colors (Sonic Fluidity) ─── */
+  --color-surface: #0f141a;
+  --color-surface-dim: #0f141a;
+  --color-surface-bright: #353940;
+  --color-surface-container-lowest: #0a0e15;
+  --color-surface-container-low: #181c22;
+  --color-surface-container: #1c2026;
+  --color-surface-container-high: #262a31;
+  --color-surface-container-highest: #31353c;
+  --color-surface-variant: #31353c;
+  --color-on-surface: #dfe2eb;
+  --color-on-surface-variant: #bfc7d5;
+  --color-inverse-surface: #dfe2eb;
+  --color-inverse-on-surface: #2c3137;
+  --color-surface-tint: #9ecaff;
 
-  /* Deck colors — Design System: Sonic Fluidity */
+  /* ─── Primary (Electric Blue) ─── */
+  --color-primary: #9ecaff;
+  --color-on-primary: #003258;
+  --color-primary-container: #009afe;
+  --color-on-primary-container: #003054;
+  --color-inverse-primary: #0061a3;
+  --color-primary-fixed: #d1e4ff;
+  --color-primary-fixed-dim: #9ecaff;
+  --color-on-primary-fixed: #001d36;
+  --color-on-primary-fixed-variant: #00497d;
+
+  /* ─── Secondary (Muted Steel Blue) ─── */
+  --color-secondary: #a6caf4;
+  --color-on-secondary: #043255;
+  --color-secondary-container: #264b70;
+  --color-on-secondary-container: #98bbe6;
+  --color-secondary-fixed: #d1e4ff;
+  --color-secondary-fixed-dim: #a6caf4;
+  --color-on-secondary-fixed: #001d35;
+  --color-on-secondary-fixed-variant: #24496d;
+
+  /* ─── Tertiary (Warm Orange) ─── */
+  --color-tertiary: #ffb782;
+  --color-on-tertiary: #4f2500;
+  --color-tertiary-container: #e77900;
+  --color-on-tertiary-container: #4b2300;
+  --color-tertiary-fixed: #ffdcc5;
+  --color-tertiary-fixed-dim: #ffb782;
+  --color-on-tertiary-fixed: #301400;
+  --color-on-tertiary-fixed-variant: #703800;
+
+  /* ─── Error ─── */
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* ─── Outline ─── */
+  --color-outline: #89919e;
+  --color-outline-variant: #3f4753;
+
+  /* ─── Background ─── */
+  --color-bg: #0f141a;
+  --color-on-bg: #dfe2eb;
+
+  /* ─── Deck accent colors (Brand Identity) ─── */
   --color-deck-a: #ff0080;
   --color-deck-b: #00d4ff;
 
-  /* Accent colors — per design system */
-  --color-accent-orange: #e77900;
+  /* ─── Legacy compat aliases ─── */
+  --color-bg-dark: var(--color-surface-dim);
+  --color-bg-darker: var(--color-surface-container-lowest);
+  --color-bg-darkest: #070a10;
+  --color-bg-panel: var(--color-surface-container-low);
+  --color-bg-control: var(--color-surface-container);
+  --color-bg-header: var(--color-surface-container-low);
+  --color-bg-control-dark: var(--color-surface-container-high);
+  --color-bg-surface-bright: var(--color-surface-bright);
+  --color-bg-container-high: var(--color-surface-container-high);
+  --color-bg-container-highest: var(--color-surface-container-highest);
+
+  --color-accent-orange: var(--color-tertiary-container);
   --color-accent-green: #39ff14;
   --color-accent-yellow: #ffcc00;
   --color-accent-red: #ff4444;
 
-  /* Glassmorphism — per design system spec */
+  --color-text-primary: var(--color-on-surface);
+  --color-text-secondary: var(--color-on-surface-variant);
+  --color-text-muted: var(--color-outline);
+  --color-text-hint: #73777f;
+
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-medium: rgba(255, 255, 255, 0.15);
+  --color-border-light: rgba(255, 255, 255, 0.1);
+
+  /* ─── Glassmorphism ─── */
   --glass-bg: rgba(255, 255, 255, 0.03);
   --glass-bg-hover: rgba(255, 255, 255, 0.06);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-border-hover: rgba(255, 255, 255, 0.15);
   --glass-blur: 12px;
 
-  /* Text — per design system on-surface colors */
-  --color-text-primary: #dfe2eb;
-  --color-text-secondary: #bfc7d5;
-  --color-text-muted: #89919e;
-  --color-text-hint: #73777f;
-
-  /* Borders */
-  --color-border-subtle: rgba(255, 255, 255, 0.08);
-  --color-border-medium: rgba(255, 255, 255, 0.15);
-  --color-border-light: rgba(255, 255, 255, 0.1);
-
-  /* Font — Design System: Inter body, JetBrains Mono readouts, Space Grotesk headers */
+  /* ─── Typography ─── */
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
   --font-display: 'Space Grotesk', 'Inter', sans-serif;
 
-  /* Radius — per design system */
+  /* ─── Border Radii ─── */
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 16px;
@@ -54,7 +112,7 @@
   --radius-xl: 32px;
   --radius-full: 9999px;
 
-  /* Custom breakpoints */
+  /* ─── Custom breakpoints ─── */
   --breakpoint-xs: 480px;
   --breakpoint-xl: 1200px;
   --breakpoint-landscape: (orientation: landscape) and (max-height: 500px);
@@ -62,7 +120,7 @@
   --breakpoint-portrait-mobile: (orientation: portrait) and (max-width: 1024px);
 }
 
-/* Base layer: reset + body styles */
+/* ─── Base layer ─── */
 @layer base {
   *, *::before, *::after {
     -webkit-tap-highlight-color: transparent;
@@ -103,9 +161,49 @@
     -webkit-user-drag: none;
     -webkit-touch-callout: none;
   }
+
+  /* Scrollbar styling (per design system) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 }
 
-/* Keyframes needed globally */
+/* ─── Glass panel utility ─── */
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Neon glow utilities ─── */
+.neon-glow-primary {
+  box-shadow: 0 0 15px var(--color-primary);
+}
+.neon-glow-secondary {
+  box-shadow: 0 0 15px var(--color-secondary);
+}
+.neon-glow-tertiary {
+  box-shadow: 0 0 15px var(--color-tertiary-container);
+}
+.neon-glow-deck-a {
+  box-shadow: 0 0 15px var(--color-deck-a);
+}
+.neon-glow-deck-b {
+  box-shadow: 0 0 15px var(--color-deck-b);
+}
+
+/* ─── Keyframes ─── */
 @keyframes rotate-phone {
   0%, 75%, 100% { transform: rotate(0deg); }
   25%, 50% { transform: rotate(90deg); }
@@ -127,11 +225,11 @@
 }
 
 @keyframes auto-mix-pulse {
-  0%, 100% { 
+  0%, 100% {
     box-shadow: 0 0 15px rgba(255, 0, 128, 0.3), 0 0 15px rgba(0, 212, 255, 0.3);
     filter: brightness(1);
   }
-  50% { 
+  50% {
     box-shadow: 0 0 25px rgba(255, 0, 128, 0.6), 0 0 25px rgba(0, 212, 255, 0.6);
     filter: brightness(1.15);
   }

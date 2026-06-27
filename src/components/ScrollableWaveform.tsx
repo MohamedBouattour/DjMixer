@@ -366,12 +366,12 @@ const ScrollableWaveformComponent: React.FC<ScrollableWaveformProps> = ({
     return (
         <div
             ref={containerRef}
-            className={cn(
-                "relative w-full overflow-hidden cursor-grab select-none touch-none min-h-[44px] border border-white/5 transition-colors duration-200",
-                "bg-[linear-gradient(to_bottom,#0d0d0d_0%,#151515_50%,#0d0d0d_100%)]",
-                "h-[60px] md:h-[50px] landscape:h-[40px] max-md:h-[48px] max-md:rounded-md",
-                isDragging && "cursor-grabbing border-opacity-100 shadow-[0_0_8px_rgba(255,255,255,0.05)]"
-            )}
+className={cn(
+    "relative w-full overflow-hidden cursor-grab select-none touch-none min-h-[44px] border border-white/10 transition-colors duration-200",
+    "bg-surface-container-lowest rounded-lg",
+    "h-[60px] md:h-[50px] landscape:h-[40px] max-md:h-[48px]",
+    isDragging && "cursor-grabbing border-opacity-100 shadow-[0_0_8px_rgba(255,255,255,0.05)]"
+)}
             style={{ 
                 height: `${height}px`,
                 borderColor: isDragging ? color : 'rgba(255, 255, 255, 0.06)'
