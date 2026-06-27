@@ -23,13 +23,14 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
     label,
     showValue = true,
     color = '#ff0080',
-    height = 12,
-    thumbWidth = 44,
+    height = 20,
+    thumbWidth = 48,
     className = '',
     showCenterLine = false
 }) => {
     const trackRef = useRef<HTMLDivElement>(null);
     const isDragging = useRef(false);
+    const pointerIdRef = useRef<number | null>(null);
 
     const updateValue = useCallback((clientX: number) => {
         if (!trackRef.current) return;
@@ -39,70 +40,79 @@ const HorizontalSlider: React.FC<HorizontalSliderProps> = ({
         onChange(newValue);
     }, [min, max, onChange]);
 
-    const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-        isDragging.current = true;
-        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-        updateValue(clientX);
-    };
-
     useEffect(() => {
-        const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-            if (!isDragging.current) return;
-            const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-            updateValue(clientX);
+        const handlePointerMove = (e: PointerEvent) => {
+            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
+            e.preventDefault();
+            updateValue(e.clientX);
         };
-
-        const handleMouseUp = () => {
+        const handlePointerUp = (e: PointerEvent) => {
+            if (!isDragging.current || e.pointerId !== pointerIdRef.current) return;
             isDragging.current = false;
+            pointerIdRef.current = null;
         };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-        window.addEventListener('touchmove', handleMouseMove);
-        window.addEventListener('touchend', handleMouseUp);
-
+        document.addEventListener('pointermove', handlePointerMove, { passive: false });
+        document.addEventListener('pointerup', handlePointerUp);
+        document.addEventListener('pointercancel', handlePointerUp);
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-            window.removeEventListener('touchmove', handleMouseMove);
-            window.removeEventListener('touchend', handleMouseUp);
+            document.removeEventListener('pointermove', handlePointerMove);
+            document.removeEventListener('pointerup', handlePointerUp);
+            document.removeEventListener('pointercancel', handlePointerUp);
         };
     }, [updateValue]);
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        if (!trackRef.current) return;
+        e.preventDefault();
+        isDragging.current = true;
+        pointerIdRef.current = e.pointerId;
+        try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch {}
+        updateValue(e.clientX);
+    };
 
     const percentage = ((value - min) / (max - min)) * 100;
 
     return (
-        <div className={cn("flex flex-col gap-2 w-full", className)}>
+        <div className={cn("flex flex-col gap-1 w-full touch-none", className)}>
             {(label || showValue) && (
-                <div className="flex justify-between items-center mb-1">
-                    {label && <span className="text-sm font-bold text-text-hint uppercase tracking-widest">{label}</span>}
-                    {showValue && <span className="text-sm font-bold">{Math.round(value)}</span>}
+                <div className="flex justify-between items-center">
+                    {label && <span className="text-xs font-bold text-text-hint uppercase tracking-widest">{label}</span>}
+                    {showValue && <span className="text-xs font-bold text-white/70">{Math.round(value)}</span>}
                 </div>
             )}
-            <div 
+            <div
                 ref={trackRef}
-                className="relative w-full bg-bg-darkest rounded-md cursor-pointer shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)] overflow-visible"
-                style={{ height: `${height}px` }}
-                onMouseDown={handleMouseDown}
-                onTouchStart={handleMouseDown}
+                className="relative w-full rounded-[6px] cursor-pointer overflow-visible"
+                style={{
+                    height: `${height}px`,
+                    background: `linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.02))`,
+                    boxShadow: `inset 0 2px 6px rgba(0,0,0,0.5)`,
+                    touchAction: 'none'
+                }}
+                onPointerDown={handlePointerDown}
             >
-                <div className="absolute inset-0 rounded-md bg-white/5"></div>
-                <div 
-                    className="absolute h-full left-0 rounded-md transition-all duration-75"
-                    style={{ 
+                <div
+                    className="absolute h-full left-0 rounded-[6px] transition-all duration-75"
+                    style={{
                         width: `${percentage}%`,
-                        background: color,
-                        boxShadow: `0 0 10px ${color}`
+                        background: `linear-gradient(to right, ${color}88, ${color})`,
+                        boxShadow: `0 0 8px ${color}44`
                     }}
-                ></div>
-                {showCenterLine && <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-white/20 -translate-x-1/2"></div>}
-                <div 
-                    className="absolute top-1/2 h-[130%] -translate-y-1/2 bg-gradient-to-b from-white via-[#e0e0e0] to-[#c8c8c8] rounded-sm shadow-[0_2px_8px_rgba(0,0,0,0.5)] cursor-grab active:cursor-grabbing z-[5]"
-                    style={{ 
+                />
+                {showCenterLine && <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-white/20 -translate-x-1/2" />}
+                <div
+                    className="absolute top-1/2 -translate-y-1/2 rounded-[4px] cursor-grab active:cursor-grabbing z-[5] transition-shadow duration-150"
+                    style={{
                         left: `calc(${percentage}% - ${thumbWidth / 2}px)`,
-                        width: `${thumbWidth}px`
+                        width: `${thumbWidth}px`,
+                        height: `${Math.max(height + 12, 28)}px`,
+                        background: `linear-gradient(to bottom, #f0f0f0, #d0d0d0)`,
+                        boxShadow: `0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.5) inset, 0 0 12px ${color}33`
                     }}
-                ></div>
+                >
+                    <div className="absolute top-1/2 left-3 right-3 h-px bg-black/10 -translate-y-1/2" />
+                    <div className="absolute top-[calc(50%-4px)] left-3 right-3 h-px bg-black/10" />
+                </div>
             </div>
         </div>
     );

@@ -45,8 +45,7 @@ function App() {
   const { keyMap, layout } = useSettings();
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [queue, setQueue] = useState<Track[]>([]);
-  const [smartPanelKey, setSmartPanelKey] = useState(0);
-  const { count: apiCount, increment: incrementApiCount } = useApiCounter();
+  const { increment: incrementApiCount } = useApiCounter();
 
   useEffect(() => {
     const checkVersion = async () => {
@@ -376,66 +375,6 @@ function App() {
         <p className="text-text-secondary">This DJ interface is optimized for landscape mode.</p>
       </div>
 
-      <header className="flex items-center justify-between px-2 py-0.5 bg-black/80 backdrop-blur-lg border-b border-white/10 z-[1000] h-7">
-        <div className="flex items-center gap-1.5">
-          <div className="text-deck-a flex items-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-            </svg>
-          </div>
-          <div className="flex flex-col justify-center leading-none">
-            <h1 className="text-[0.7rem] font-bold tracking-widest text-white m-0 uppercase leading-none">DJ PRO MASTER</h1>
-            <span className="text-[7px] text-white/40 tracking-widest leading-none">v.{typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : 'dev'}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/50">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-            </svg>
-            <span className="text-[8px] font-mono font-bold">{apiCount}</span>
-          </div>
-
-          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-white hover:border-white/30" onClick={() => setSmartPanelKey(s => s + 1)} title="Open Library & Queue">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-            </svg>
-          </button>
-          <button className="bg-[rgba(40,40,40,0.6)] border border-white/10 text-[#aaa] w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[rgba(60,60,60,0.8)] hover:text-deck-a hover:border-deck-a/40" onClick={() => setIsSettingsOpen(true)} title="Settings">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      {/* Floating Action Buttons (Mobile Overlay) */}
-      {isMobile && (
-        <div className="fixed top-[max(8px,env(safe-area-inset-top))] right-[87%] flex flex-row gap-[10px] z-[2000] landscape:top-[max(10px,env(safe-area-inset-top))] landscape:right-1/2 landscape:translate-x-1/2 landscape:gap-3 landscape-sm:top-[5px] landscape-sm:gap-2">
-          <button
-            className="w-[98px] h-[98px] rounded-full bg-[rgba(30,30,30,0.95)] border-[3px] border-white/20 text-[#aaa] flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-xl shadow-[0_2px_10px_rgba(0,0,0,0.5)] hover:bg-[rgba(50,50,50,0.98)] hover:text-white hover:border-white/40 hover:scale-105 border-deck-b/50 text-deck-b hover:border-deck-b hover:shadow-[0_2px_15px_rgba(0,212,255,0.4)] landscape:w-[85px] landscape:h-[85px] landscape-sm:w-[78px] landscape-sm:h-[78px]"
-            onClick={() => setSmartPanelKey(s => s + 1)}
-            title="Open Library & Queue"
-          >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="landscape:w-[42px] landscape:h-[42px] landscape-sm:w-[36px] landscape-sm:h-[36px]">
-              <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-            </svg>
-          </button>
-          <button
-            className="w-[98px] h-[98px] rounded-full bg-[rgba(30,30,30,0.95)] border-[3px] border-white/20 text-[#aaa] flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-xl shadow-[0_2px_10px_rgba(0,0,0,0.5)] hover:bg-[rgba(50,50,50,0.98)] hover:text-white hover:border-white/40 hover:scale-105 border-deck-a/40 hover:border-deck-a hover:shadow-[0_2px_15px_rgba(255,0,128,0.4)] landscape:w-[85px] landscape:h-[85px] landscape-sm:w-[78px] landscape-sm:h-[78px]"
-            onClick={() => setIsSettingsOpen(true)}
-            title="Open Settings"
-          >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="landscape:w-[42px] landscape:h-[42px] landscape-sm:w-[36px] landscape-sm:h-[36px]">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
-        </div>
-      )}
-
       <main className="flex-1 flex p-0 overflow-hidden landscape:pl-[max(5px,env(safe-area-inset-left))] landscape:pr-[max(5px,env(safe-area-inset-right))]">
         <div className="flex-1 flex gap-0 min-h-0 w-full max-md:flex-col">
           <Deck
@@ -483,7 +422,6 @@ function App() {
         </div>
 
         <SmartPanel
-          key={smartPanelKey ? `sp-${smartPanelKey}` : 'sp-default'}
           queue={queue}
           onAddToQueue={handleAddToQueue}
           onRemoveFromQueue={handleRemoveFromQueue}
@@ -497,7 +435,7 @@ function App() {
           onApiCall={incrementApiCount}
           isPlayingA={deckAState.isPlaying}
           isPlayingB={deckBState.isPlaying}
-          defaultOpen={smartPanelKey > 0}
+          onOpenSettings={() => setIsSettingsOpen(true)}
         />
 
         <SettingsModal

@@ -40,7 +40,7 @@ interface Props {
   onApiCall: () => void;
   isPlayingA: boolean;
   isPlayingB: boolean;
-  defaultOpen?: boolean;
+  onOpenSettings: () => void;
 }
 
 const GENRES = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop', 'rock', 'rnb', 'latin'];
@@ -61,27 +61,10 @@ export function SmartPanel({
   onApiCall,
   isPlayingA,
   isPlayingB,
-  defaultOpen,
+  onOpenSettings,
 }: Props) {
-  const [isOpen, setIsOpen] = useState(defaultOpen ?? false);
+  const [isOpen, setIsOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('queue');
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen]);
-
-  const handleToggle = useCallback(() => {
-    const next = !isOpen;
-    setIsOpen(next);
-    if (next && activeTab === 'queue' && queue.length === 0) {
-      setActiveTab('recommendations');
-    }
-  }, [isOpen, activeTab, queue.length]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'queue', label: 'Queue' },
@@ -93,41 +76,51 @@ export function SmartPanel({
   return (
     <>
       {isOpen && (
-        <div className="fixed inset-0 z-[4999] bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
+        <div className="fixed inset-0 z-[4999]" onClick={() => setIsOpen(false)} />
       )}
 
-      <div className={`fixed bottom-0 left-0 right-0 z-[5000] transition-all duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-[calc(100%-44px)]'}`}>
-        {/* Collapsed bar */}
+      <div className={`fixed bottom-0 left-0 right-0 z-[5000] transition-transform duration-300 ${isOpen ? 'translate-y-0' : 'translate-y-[calc(100%-36px)]'}`}>
+        {/* Collapsed bar — always visible */}
         <div
-          className="h-11 px-4 flex items-center justify-between cursor-pointer bg-gray-900/90 backdrop-blur-xl border-t border-white/10"
-          onClick={handleToggle}
+          className="h-9 px-3 flex items-center justify-between cursor-pointer bg-[var(--color-bg-panel)]/90 backdrop-blur-xl border-t border-white/10"
+          onClick={() => { const next = !isOpen; setIsOpen(next); if (next && activeTab === 'queue' && queue.length === 0) setActiveTab('recommendations'); }}
         >
-          <div className="flex items-center gap-3">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-purple-400">
+          <div className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-deck-a shrink-0">
               <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
             </svg>
-            <span className="text-sm font-semibold text-white/90">Smart Panel</span>
+            <span className="text-[11px] font-semibold text-white/70">Panel</span>
             {queue.length > 0 && (
-              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-deck-a/20 text-deck-a rounded">{queue.length}</span>
+              <span className="px-1 py-0.5 text-[8px] font-bold bg-deck-a/20 text-deck-a rounded">{queue.length}</span>
             )}
+            <span className="text-[9px] text-white/40 ml-1 capitalize">{activeTab}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/40">{isOpen ? 'Close' : 'Open'}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={e => { e.stopPropagation(); onOpenSettings(); }}
+              className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white transition-all rounded hover:bg-white/10"
+              title="Settings"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-white/40 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
               <path d="M6 9l6 6 6-6" />
             </svg>
           </div>
         </div>
 
         {/* Expanded panel */}
-        <div className={`bg-gray-900/95 backdrop-blur-xl border-t border-white/10 overflow-y-auto transition-all ${isOpen ? 'max-h-[75vh]' : 'max-h-0'}`}>
-          {/* Tabs */}
-          <div className="flex border-b border-white/10 px-2 sticky top-0 bg-gray-900/95 z-10">
+        <div className={`bg-[var(--color-bg-panel)]/95 backdrop-blur-xl border-t border-white/10 overflow-hidden transition-all ${isOpen ? 'max-h-[60vh]' : 'max-h-0'}`}>
+          {/* Tab bar */}
+          <div className="flex items-center border-b border-white/10 px-2">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all relative ${
+                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-all relative ${
                   activeTab === tab.id
                     ? 'text-white'
                     : 'text-white/40 hover:text-white/70'
@@ -135,7 +128,7 @@ export function SmartPanel({
               >
                 {tab.label}
                 {tab.id === 'queue' && queue.length > 0 && (
-                  <span className="ml-1.5 px-1 py-0.5 text-[8px] bg-deck-a/20 text-deck-a rounded">{queue.length}</span>
+                  <span className="ml-1 px-1 py-0.5 text-[7px] bg-deck-a/20 text-deck-a rounded">{queue.length}</span>
                 )}
                 {activeTab === tab.id && (
                   <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-gradient-to-r from-deck-a to-deck-b rounded-full" />
@@ -144,11 +137,14 @@ export function SmartPanel({
             ))}
           </div>
 
-          <div className="p-3 space-y-3">
-            {activeTab === 'queue' && <QueueTabContent queue={queue} onRemoveFromQueue={onRemoveFromQueue} onClearQueue={onClearQueue} />}
-            {activeTab === 'library' && <LibraryTabContent tracks={tracks} onTracksChange={onTracksChange} onLoadTrack={onLoadTrack} onDeleteTrack={onDeleteTrack} isPlayingA={isPlayingA} isPlayingB={isPlayingB} />}
-            {activeTab === 'search' && <SearchTabContent onLoadTrack={onLoadTrack} onApiCall={onApiCall} isPlayingA={isPlayingA} isPlayingB={isPlayingB} />}
-            {activeTab === 'recommendations' && <RecommendationsTabContent onAddToQueue={onAddToQueue} currentTrackName={currentTrackName} currentTrackArtist={currentTrackArtist} onApiCall={onApiCall} />}
+          {/* Content */}
+          <div className="overflow-y-auto max-h-[55vh]">
+            <div className="p-3 space-y-3">
+              {activeTab === 'queue' && <QueueTabContent queue={queue} onRemoveFromQueue={onRemoveFromQueue} onClearQueue={onClearQueue} />}
+              {activeTab === 'library' && <LibraryTabContent tracks={tracks} onTracksChange={onTracksChange} onLoadTrack={onLoadTrack} onDeleteTrack={onDeleteTrack} isPlayingA={isPlayingA} isPlayingB={isPlayingB} />}
+              {activeTab === 'search' && <SearchTabContent onLoadTrack={onLoadTrack} onApiCall={onApiCall} isPlayingA={isPlayingA} isPlayingB={isPlayingB} />}
+              {activeTab === 'recommendations' && <RecommendationsTabContent onAddToQueue={onAddToQueue} currentTrackName={currentTrackName} currentTrackArtist={currentTrackArtist} onApiCall={onApiCall} />}
+            </div>
           </div>
         </div>
       </div>
@@ -420,7 +416,7 @@ function SearchTabContent({
         )}
         {isSearching && (
           <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
+<div className="w-6 h-6 rounded-full border-2 border-deck-a/30 border-t-deck-a animate-spin" />
           </div>
         )}
         {results.map(track => (
@@ -524,7 +520,7 @@ function RecommendationsTabContent({
       {/* Now playing context */}
       {currentTrackName && (
         <div className="flex items-center gap-2.5 px-3 py-2 bg-white/5 rounded-lg border border-white/5 mb-3">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-deck-a to-deck-b flex items-center justify-center shrink-0">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white">
               <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
             </svg>
@@ -541,7 +537,7 @@ function RecommendationsTabContent({
       <div className="flex flex-wrap gap-1.5 mb-3">
         <button
           onClick={() => handleGenreSelect('')}
-          className={`px-2.5 py-1 text-[9px] font-semibold rounded-full transition-all ${!selectedGenre ? 'bg-purple-500/30 text-purple-200 border border-purple-500/40' : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'}`}
+          className={`px-2.5 py-1 text-[9px] font-semibold rounded-full transition-all ${!selectedGenre ? 'bg-deck-a/30 text-deck-a border border-deck-a/40' : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'}`}
         >
           Random
         </button>
@@ -549,7 +545,7 @@ function RecommendationsTabContent({
           <button
             key={g}
             onClick={() => handleGenreSelect(g)}
-            className={`px-2.5 py-1 text-[9px] font-semibold rounded-full transition-all capitalize ${selectedGenre === g ? 'bg-purple-500/30 text-purple-200 border border-purple-500/40' : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'}`}
+            className={`px-2.5 py-1 text-[9px] font-semibold rounded-full transition-all capitalize ${selectedGenre === g ? 'bg-deck-a/30 text-deck-a border border-deck-a/40' : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10'}`}
           >
             {g}
           </button>
@@ -564,7 +560,7 @@ function RecommendationsTabContent({
         <button
           onClick={() => fetchRecommendations(selectedGenre)}
           disabled={loading}
-          className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-lg hover:bg-purple-500/30 disabled:opacity-50 transition-all"
+          className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider bg-deck-a/20 border border-deck-a/30 text-deck-a rounded-lg hover:bg-deck-a/30 disabled:opacity-50 transition-all"
         >
           {loading ? 'Loading...' : 'Refresh'}
         </button>
@@ -576,7 +572,7 @@ function RecommendationsTabContent({
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-8">
-          <div className="w-6 h-6 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
+          <div className="w-6 h-6 rounded-full border-2 border-deck-a/30 border-t-deck-a animate-spin" />
         </div>
       )}
 
@@ -589,7 +585,7 @@ function RecommendationsTabContent({
                 {track.thumbnail ? (
                   <img src={track.thumbnail} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                  <div className="w-full h-full bg-gradient-to-br from-deck-a/20 to-deck-b/20 flex items-center justify-center">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-white/20">
                       <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
                     </svg>
@@ -607,7 +603,7 @@ function RecommendationsTabContent({
                 <div className="text-[8px] text-white/40 truncate mb-1.5">{track.artist}</div>
                 <button
                   onClick={() => onAddToQueue({ id: track.id, name: track.title, artist: track.artist, duration: track.duration || 180, thumbnail: track.thumbnail, url: `${API_ENDPOINTS.STREAM}?videoId=${track.id}` } as Track)}
-                  className="w-full py-1 text-[8px] font-bold uppercase tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:brightness-110 transition-all"
+                  className="w-full py-1 text-[8px] font-bold uppercase tracking-wider bg-gradient-to-r from-deck-a to-deck-b text-white rounded-lg hover:brightness-110 transition-all"
                 >
                   Add to Queue
                 </button>

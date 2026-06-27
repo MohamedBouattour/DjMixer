@@ -1,44 +1,58 @@
 @import "tailwindcss";
 
 @theme {
-  /* Core backgrounds */
+  /* Core backgrounds — Design System: Deep Space palette */
   --color-bg-dark: #1a1a1a;
-  --color-bg-darker: #121212;
+  --color-bg-darker: #131313;
   --color-bg-darkest: #0a0a0a;
-  --color-bg-panel: #1e1e1e;
-  --color-bg-control: #252525;
-  --color-bg-header: #252525;
-  --color-bg-control-dark: #333333;
+  --color-bg-panel: #181c22;
+  --color-bg-control: #1c2026;
+  --color-bg-header: #181c22;
+  --color-bg-control-dark: #262a31;
+  --color-bg-surface-bright: #353940;
+  --color-bg-container-high: #262a31;
+  --color-bg-container-highest: #31353c;
 
-  /* Deck colors */
+  /* Deck colors — Design System: Sonic Fluidity */
   --color-deck-a: #ff0080;
   --color-deck-b: #00d4ff;
 
-  /* Accent colors */
-  --color-accent-green: #00ff88;
+  /* Accent colors — per design system */
+  --color-accent-orange: #e77900;
+  --color-accent-green: #39ff14;
   --color-accent-yellow: #ffcc00;
   --color-accent-red: #ff4444;
 
-  /* Text */
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #aaaaaa;
-  --color-text-muted: #666666;
-  --color-text-hint: #888888;
+  /* Glassmorphism — per design system spec */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-bg-hover: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.15);
+  --glass-blur: 12px;
+
+  /* Text — per design system on-surface colors */
+  --color-text-primary: #dfe2eb;
+  --color-text-secondary: #bfc7d5;
+  --color-text-muted: #89919e;
+  --color-text-hint: #73777f;
 
   /* Borders */
   --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-border-medium: rgba(255, 255, 255, 0.15);
   --color-border-light: rgba(255, 255, 255, 0.1);
 
-  /* Font */
+  /* Font — Design System: Inter body, JetBrains Mono readouts, Space Grotesk headers */
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
 
-  /* Radius */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  /* Radius — per design system */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
 
   /* Custom breakpoints */
   --breakpoint-xs: 480px;

@@ -39,22 +39,28 @@ export const Mixer: React.FC<MixerProps> = ({
     const renderEQControls = (deckId: 'A' | 'B', state: DeckState, color: string) => {
         const { eq } = state;
         return (
-            <div className="bg-black/30 rounded-xl p-5 border border-white/5" style={{ '--deck-color': color } as React.CSSProperties}>
-                <div className="text-[10px] font-extrabold text-white py-1 px-2 rounded-full text-center mb-4 shadow-[0_4px_10px_rgba(0,0,0,0.3)] tracking-widest" style={{ background: color }}>DECK {deckId}</div>
+            <div className="bg-black/30 rounded-xl p-3 border border-white/5" style={{ '--deck-color': color } as React.CSSProperties}>
+                <div className="flex items-center justify-between mb-3">
+                    <div className="text-[10px] font-extrabold text-white py-1 px-2 rounded-full text-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] tracking-widest" style={{ background: color }}>DECK {deckId}</div>
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-white/40 border border-white/20 rounded-full px-2 py-0.5">{deckId === 'A' ? 'ACTIVE' : 'CUE'}</span>
+                </div>
                 <div className="flex gap-2 justify-center">
-                    {(['high', 'mid', 'low'] as const).map((band) => (
-                        <VerticalSlider
-                            key={band}
-                            value={eq[band]}
-                            min={0}
-                            max={100}
-                            onChange={(val) => onEQChange(deckId, band, val)}
-                            label={band.toUpperCase()}
-                            showValue={false}
-                            color={color}
-                            height={130}
-                            className="h-[140px] w-9 py-2 [&_.track]:w-1.5 [&_.track]:bg-black/50 [&_.track]:border-white/10 [&_.track]:px-0 [&_.track]:shadow-none [&_.thumb]:w-7 [&_.thumb]:h-3.5 [&_.thumb]:before:left-1 [&_.thumb]:before:right-1 [&_.thumb]:after:left-1 [&_.thumb]:after:right-1 [&_.vertical-slider-label]:mb-2 [&_.vertical-slider-label]:text-[9px] [&_.vertical-slider-label]:opacity-70"
-                        />
+                    {([['low', '60Hz'], ['mid', '1kHz'], ['high', '10kHz']] as const).map(([band, freq]) => (
+                        <div key={band} className="flex flex-col items-center gap-1">
+                            <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{freq}</span>
+                            <VerticalSlider
+                                value={eq[band]}
+                                min={0}
+                                max={100}
+                                onChange={(val) => onEQChange(deckId, band, val)}
+                                label={band.toUpperCase()}
+                                showValue={false}
+                                color={color}
+                                height={110}
+                                className="h-[120px] w-9 py-2 [&_.track]:w-1.5 [&_.track]:bg-black/50 [&_.track]:border-white/10 [&_.track]:px-0 [&_.track]:shadow-none [&_.thumb]:w-7 [&_.thumb]:h-3.5 [&_.thumb]:before:left-1 [&_.thumb]:before:right-1 [&_.thumb]:after:left-1 [&_.thumb]:after:right-1 [&_.vertical-slider-label]:mb-2 [&_.vertical-slider-label]:text-[9px] [&_.vertical-slider-label]:opacity-70"
+                            />
+                            <span className="text-[9px] font-mono text-white/60">{Math.round(((eq[band] - 50) / 50) * 6)}</span>
+                        </div>
                     ))}
                 </div>
             </div>
@@ -258,6 +264,29 @@ export const Mixer: React.FC<MixerProps> = ({
                         <div className="grid grid-cols-2 gap-4">
                             {renderEQControls('A', deckAState, '#ff0080')}
                             {renderEQControls('B', deckBState, '#00d4ff')}
+                        </div>
+
+                        {/* EQ Actions */}
+                        <div className="flex gap-3 px-2 pb-3">
+                            <button
+                                className="flex-1 py-2.5 bg-white/5 border border-white/10 text-white/60 text-[11px] font-bold tracking-widest rounded-lg hover:bg-white/10 hover:text-white transition-all uppercase"
+                                onClick={() => {
+                                    onEQChange('A', 'low', 50);
+                                    onEQChange('A', 'mid', 50);
+                                    onEQChange('A', 'high', 50);
+                                    onEQChange('B', 'low', 50);
+                                    onEQChange('B', 'mid', 50);
+                                    onEQChange('B', 'high', 50);
+                                }}
+                            >
+                                RESET
+                            </button>
+                            <button
+                                className="flex-1 py-2.5 bg-gradient-to-r from-deck-a to-deck-b text-white text-[11px] font-bold tracking-widest rounded-lg hover:brightness-110 transition-all uppercase"
+                                onClick={() => setIsEQPopupOpen(false)}
+                            >
+                                APPLY
+                            </button>
                         </div>
                     </div>
                 </div>
