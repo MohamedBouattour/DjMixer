@@ -497,6 +497,7 @@ function RecommendationsTabContent({
     const params = new URLSearchParams();
     if (genre) params.set('genre', genre);
     if (currentTrackId) params.set('trackId', currentTrackId);
+    if (currentTrackArtist) params.set('artist', currentTrackArtist);
     if (currentTrackName) params.set('q', `${currentTrackArtist || ''} ${currentTrackName}`.trim());
     try {
       const res = await fetch(`${API_ENDPOINTS.RECOMMEND}?${params}`);

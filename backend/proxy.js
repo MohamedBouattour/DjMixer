@@ -135,7 +135,7 @@ app.get('/api/search', async (req, res) => {
 // ─── API: Recommendations (YouTube search & Shazam recognition) ───────────────
 app.get('/api/recommend', async (req, res) => {
   try {
-    const { q, genre, trackId } = req.query;
+    const { q, genre, trackId, artist } = req.query;
     const apiKey = process.env.VITE_RAPIDAPI_KEY || process.env.RAPID_API_KEY;
 
     let targetVideoId = null;
@@ -228,14 +228,18 @@ app.get('/api/recommend', async (req, res) => {
     }
 
     // Fallback: YouTube search based recommendations
-    let searchTerm = q ? String(q) : '';
-    if (!searchTerm) {
+    let searchTerm = '';
+    if (artist) {
+      searchTerm = `${artist} music videos`;
+    } else if (q) {
+      searchTerm = `${q} similar songs`;
+    } else {
       const genres = ['house', 'techno', 'edm', 'dance', 'electronic', 'hip hop', 'pop', 'rock', 'rnb', 'latin'];
       const pick = genre || genres[Math.floor(Math.random() * genres.length)];
       searchTerm = `${pick} hits`;
     }
     incrementRequests();
-    const results = await searchYouTube(`${searchTerm} music`, 8);
+    const results = await searchYouTube(searchTerm, 8);
     res.json({ recommendations: results, source: 'youtube' });
   } catch (error) {
     console.error('[RECOMMEND]', error.message);
