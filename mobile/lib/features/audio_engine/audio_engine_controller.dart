@@ -49,6 +49,9 @@ class AudioEngineController extends ChangeNotifier {
   /// transport action unlocks the shared AudioContext.
   bool _unlocked = false;
 
+  /// Decks currently fetching/decoding audio.
+  final Set<String> _loadingDecks = {};
+
   /// Timestamp of the previous jog movement, used to derive scratch velocity.
   final Map<String, int> _lastJogMicros = {};
 
@@ -70,6 +73,8 @@ class AudioEngineController extends ChangeNotifier {
   int get samplerPitchSemitones => _samplerPitchSemitones;
   String? get lastAudioError => _lastAudioError;
 
+  bool isDeckLoading(String deckId) => _loadingDecks.contains(deckId);
+
   DeckAudioBackend backendFor(String deckId) =>
       deckId == 'A' ? _backendA : _backendB;
 
@@ -81,6 +86,10 @@ class AudioEngineController extends ChangeNotifier {
   }
 
   void _initEngine() {
+    // Analysis finishes after the track is already playable, so repaint the
+    // waveforms when it lands.
+    _backendA.onWaveformReady = notifyListeners;
+    _backendB.onWaveformReady = notifyListeners;
     // Start high-performance audio coordinator loop
     _engineTicker = Timer.periodic(const Duration(milliseconds: 16), _onEngineTick);
   }
@@ -111,6 +120,7 @@ class AudioEngineController extends ChangeNotifier {
       );
     }
     _lastAudioError = null;
+    _loadingDecks.add(deckId);
     notifyListeners();
 
     final backend = backendFor(deckId);
@@ -127,6 +137,8 @@ class AudioEngineController extends ChangeNotifier {
       // and left a transport that moved but made no sound.
       _lastAudioError = 'Deck $deckId could not load "${track.title}": $e';
       debugPrint(_lastAudioError);
+    } finally {
+      _loadingDecks.remove(deckId);
     }
     notifyListeners();
   }
@@ -205,6 +217,30 @@ class AudioEngineController extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  /// Seeks a deck to a fraction (0..1) of the loaded track.
+  Future<void> seekToFraction(String deckId, double fraction) async {
+    final isA = deckId == 'A';
+    final deck = isA ? _deckA : _deckB;
+    final total = deck.track?.duration ?? Duration.zero;
+    if (total <= Duration.zero) return;
+
+    final target = Duration(
+      microseconds:
+          (total.inMicroseconds * fraction.clamp(0.0, 1.0)).round(),
+    );
+    if (isA) {
+      _deckA = _deckA.copyWith(position: target, slipPosition: target);
+    } else {
+      _deckB = _deckB.copyWith(position: target, slipPosition: target);
+    }
+    notifyListeners();
+    try {
+      await backendFor(deckId).seek(target);
+    } catch (e) {
+      debugPrint('Deck $deckId seek failed: $e');
+    }
   }
 
   /// Pioneer-style Stutter Cue:
@@ -1064,16 +1100,31 @@ class AudioEngineController extends ChangeNotifier {
       }
     }
 
-    final addedMs = (dtSec * speed * 1000).toInt();
+    final trackDuration = deck.track?.duration ?? Duration.zero;
+    final trackEnded = !deck.isLoopActive &&
+        !deck.isScratching &&
+        ((trackDuration > Duration.zero && nextPos >= trackDuration) ||
+            (deck.isPlaying && !stillPlaying));
+
+    if (trackEnded) {
+      stillPlaying = false;
+      nextPos = Duration.zero;
+      backend.pause();
+      backend.seek(Duration.zero);
+    }
+
+    final addedMs = stillPlaying ? (dtSec * speed * 1000).toInt() : 0;
     final newSlipMs = deck.slipPosition.inMilliseconds + addedMs;
 
     // Rotate the platter with the audio; while scratching it is driven by the
-    // hand instead, so leave the angle alone.
-    final jogRot = deck.isScratching
+    // hand instead, and while stopped it stays still.
+    final jogRot = (deck.isScratching || !stillPlaying)
         ? deck.jogAngle
         : (deck.jogAngle + (speed * 0.08)) % (2 * math.pi);
 
-    final vuLevel = _meterLevel(deck, nextPos) * strip.channelFader * strip.gain;
+    final vuLevel = stillPlaying
+        ? _meterLevel(deck, nextPos) * strip.channelFader * strip.gain
+        : 0.0;
 
     deck = deck.copyWith(
       isPlaying: stillPlaying,

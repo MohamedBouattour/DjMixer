@@ -9,15 +9,19 @@ import '../../../core/widgets/xy_touch_fx_pad.dart';
 import '../../../core/widgets/stem_fader_panel.dart';
 
 enum PerformanceTab {
-  hotCue('HOT CUE', Icons.bookmark_border),
-  loop('LOOP & JUMP', Icons.repeat),
-  sampler('SAMPLER', Icons.grid_view),
-  fx('XY TOUCH FX', Icons.tune),
-  stems('AI STEMS', Icons.auto_awesome);
+  hotCue('HOT CUE', 'CUES', Icons.bookmark_border),
+  loop('LOOP & JUMP', 'LOOP', Icons.repeat),
+  sampler('SAMPLER', 'SAMPLER', Icons.grid_view),
+  fx('XY TOUCH FX', 'FX', Icons.tune),
+  stems('AI STEMS', 'STEMS', Icons.auto_awesome);
 
   final String title;
+
+  /// Short label for the tab chips, so all five fit beside a deck on a 13"
+  /// laptop instead of scrolling off the edge.
+  final String shortTitle;
   final IconData icon;
-  const PerformanceTab(this.title, this.icon);
+  const PerformanceTab(this.title, this.shortTitle, this.icon);
 }
 
 class PerformanceTabsView extends StatefulWidget {
@@ -135,11 +139,14 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                   ),
                 ),
               const SizedBox(width: 8),
-              // Horizontal Performance Tabs
+              // Performance tab chips. Wrapping keeps every tool reachable at
+              // any column width instead of hiding the last ones off-screen.
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 0,
+                    runSpacing: 4,
                     children: PerformanceTab.values.map((tab) {
                       final isSelected = _currentTab == tab;
                       return Padding(
@@ -147,7 +154,7 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                         child: GestureDetector(
                           onTap: () => setState(() => _currentTab = tab),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? accentColor.withOpacity(0.2)
@@ -164,9 +171,9 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                                   size: 12,
                                   color: isSelected ? accentColor : DJColors.textSecondary,
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 3),
                                 Text(
-                                  tab.title,
+                                  tab.shortTitle,
                                   style: DJTypography.buttonLabel.copyWith(
                                     fontSize: 9,
                                     color: isSelected ? accentColor : DJColors.textSecondary,
@@ -183,7 +190,7 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           // Active Performance Tab Content
           _buildActiveTabContent(deck, accentColor),
         ],

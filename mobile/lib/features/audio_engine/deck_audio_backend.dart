@@ -40,6 +40,9 @@ abstract class DeckAudioBackend {
   /// Mixxx-style banded waveform of the loaded track, once analysis finishes.
   WaveformData? get waveform;
 
+  /// Invoked once analysis has produced a [waveform], so the UI can repaint.
+  set onWaveformReady(void Function()? callback);
+
   /// Decodes [spec] and prepares it for playback. Throws on failure so callers
   /// can surface the problem instead of silently playing nothing.
   Future<void> load(AudioSourceSpec spec);

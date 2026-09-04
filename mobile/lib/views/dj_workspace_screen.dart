@@ -30,20 +30,28 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto load default demo tracks into Deck A and Deck B
-    if (LibraryService.defaultTracks.isNotEmpty) {
-      _controller.loadTrack('A', LibraryService.defaultTracks[0]);
+    _loadDefaultTracks();
+  }
+
+  /// Loads the demo tracks one after the other. Starting both at once raced in
+  /// the audio stack and could leave a deck with no source, so its transport
+  /// ran silently.
+  Future<void> _loadDefaultTracks() async {
+    final tracks = LibraryService.defaultTracks;
+    if (tracks.isNotEmpty) {
+      await _controller.loadTrack('A', tracks[0]);
     }
-    if (LibraryService.defaultTracks.length > 1) {
-      _controller.loadTrack('B', LibraryService.defaultTracks[1]);
+    if (tracks.length > 1) {
+      await _controller.loadTrack('B', tracks[1]);
     }
   }
 
-  void _openLibrary() {
+  void _openLibrary({int initialTab = 0}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => LibraryScreen(
+          initialTabIndex: initialTab,
           onLoadTrack: (deckId, track) {
             _controller.loadTrack(deckId, track);
           },
@@ -51,6 +59,10 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
       ),
     );
   }
+
+  /// Opens the library straight on the YouTube tab. Tracks picked there stream
+  /// as MP3 through the backend proxy.
+  void _openYouTubeSearch() => _openLibrary(initialTab: 1);
 
   void _openRecordingModal() {
     showModalBottomSheet(
@@ -247,11 +259,21 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
                 ),
               ),
               const SizedBox(width: 6),
+              // YouTube Search: streams the picked video as MP3 onto a deck.
+              IconButton(
+                icon: const Icon(Icons.smart_display,
+                    color: Color(0xFFFF0033), size: 20),
+                tooltip: 'Search YouTube',
+                onPressed: _openYouTubeSearch,
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(4),
+              ),
+              const SizedBox(width: 4),
               // Open Library Button
               IconButton(
                 icon: const Icon(Icons.music_note, color: DJColors.deckA, size: 18),
                 tooltip: 'Music Library',
-                onPressed: _openLibrary,
+                onPressed: () => _openLibrary(),
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(4),
               ),
@@ -279,6 +301,7 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
         children: [
           // Deck A scrolling waveform
           WaveformView(
+            waveform: _controller.waveformFor('A'),
             peaks: trackA?.waveformPeaks ?? [],
             currentProgress: progA,
             duration: trackA?.duration ?? const Duration(minutes: 3),
@@ -289,6 +312,7 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
           const SizedBox(height: 2),
           // Deck B scrolling waveform
           WaveformView(
+            waveform: _controller.waveformFor('B'),
             peaks: trackB?.waveformPeaks ?? [],
             currentProgress: progB,
             duration: trackB?.duration ?? const Duration(minutes: 3),

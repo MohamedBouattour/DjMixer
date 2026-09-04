@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/theme/dj_colors.dart';
@@ -5,6 +6,11 @@ import 'views/dj_workspace_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Disable native browser contextual menu on web
+  if (kIsWeb) {
+    BrowserContextMenu.disableContextMenu();
+  }
 
   // Configure edge-to-edge transparent system bars for immersive pro DJ experience
   SystemChrome.setSystemUIOverlayStyle(
@@ -36,6 +42,11 @@ class DJProMasterApp extends StatelessWidget {
           surface: DJColors.surface,
         ),
       ),
+      builder: (context, child) {
+        return SelectionContainer.disabled(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const DJWorkspaceScreen(),
     );
   }

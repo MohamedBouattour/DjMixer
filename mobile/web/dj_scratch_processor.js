@@ -125,8 +125,14 @@ class DeckProcessor extends AudioWorkletProcessor {
         pos = 0;
         this.playing = false;
       } else if (pos >= this.frames - 1) {
-        pos = this.frames - 1;
+        // Song ended: silence remaining output, reset playhead to start, and stop
+        pos = 0;
         this.playing = false;
+        this.position = 0;
+        outL.fill(0, i);
+        if (outR) outR.fill(0, i);
+        this._report(true);
+        return true;
       }
 
       // Linear interpolation between neighbouring frames.

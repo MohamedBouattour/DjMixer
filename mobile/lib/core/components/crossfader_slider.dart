@@ -114,9 +114,13 @@ class _CrossfaderSliderState extends State<CrossfaderSlider> {
   bool _isInteracting = false;
 
   /// Manual double-tap detection: claiming the pointer immediately means a
-  /// DoubleTapGestureRecognizer would never get a look in.
-  int _lastTapMicros = 0;
+  /// DoubleTapGestureRecognizer would never get a look in. Only a gesture that
+  /// ended without moving counts as a tap, so a quick series of cuts is not
+  /// mistaken for a double tap back to centre.
+  int _lastTapUpMicros = 0;
   double _lastTapX = 0;
+  double _dragStartX = 0;
+  bool _movedDuringDrag = false;
 
   double _maxTravel(double width) => width - (2 * _paddingH) - _thumbWidth;
 
@@ -142,15 +146,15 @@ class _CrossfaderSliderState extends State<CrossfaderSlider> {
 
   void _onDragStart(double localX, double width) {
     final now = DateTime.now().microsecondsSinceEpoch;
-    if (now - _lastTapMicros < 300000 && (localX - _lastTapX).abs() < 24) {
-      _lastTapMicros = 0;
+    if (now - _lastTapUpMicros < 300000 && (localX - _lastTapX).abs() < 24) {
+      _lastTapUpMicros = 0;
       _grabOffsetInThumb = _thumbWidth / 2.0;
       widget.onChanged(0.0); // double tap snaps back to centre
       setState(() => _isInteracting = false);
       return;
     }
-    _lastTapMicros = now;
-    _lastTapX = localX;
+    _dragStartX = localX;
+    _movedDuringDrag = false;
 
     final thumbLeft = _thumbLeft(width);
     if (localX >= thumbLeft && localX <= thumbLeft + _thumbWidth) {
@@ -165,6 +169,11 @@ class _CrossfaderSliderState extends State<CrossfaderSlider> {
   }
 
   void _onDragEnd() {
+    // A gesture that never moved is a tap, and two of those in quick
+    // succession centre the fader.
+    _lastTapUpMicros =
+        _movedDuringDrag ? 0 : DateTime.now().microsecondsSinceEpoch;
+    _lastTapX = _dragStartX;
     _grabOffsetInThumb = _thumbWidth / 2.0;
     if (_isInteracting) setState(() => _isInteracting = false);
   }
@@ -250,6 +259,9 @@ class _CrossfaderSliderState extends State<CrossfaderSlider> {
                         _onDragStart(details.localPosition.dx, width);
                       };
                       instance.onUpdate = (details) {
+                        if ((details.localPosition.dx - _dragStartX).abs() > 2) {
+                          _movedDuringDrag = true;
+                        }
                         _emit(details.localPosition.dx, width);
                       };
                       instance.onEnd = (_) => _onDragEnd();

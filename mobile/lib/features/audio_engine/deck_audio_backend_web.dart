@@ -121,6 +121,11 @@ class WebDeckAudioBackend implements DeckAudioBackend {
   @override
   WaveformData? get waveform => _waveform;
 
+  void Function()? _onWaveformReady;
+
+  @override
+  set onWaveformReady(void Function()? callback) => _onWaveformReady = callback;
+
   @override
   Duration get duration {
     final b = _buffer;
@@ -202,7 +207,10 @@ class WebDeckAudioBackend implements DeckAudioBackend {
                 right.buffer, right.offsetInBytes, right.length),
         sampleRate: buffer.sampleRate,
       );
-      if (_buffer == buffer) _waveform = data;
+      if (_buffer == buffer) {
+        _waveform = data;
+        _onWaveformReady?.call();
+      }
     } catch (e) {
       debugPrint('Waveform analysis failed on deck $deckId: $e');
     }
@@ -279,7 +287,12 @@ class WebDeckAudioBackend implements DeckAudioBackend {
         if (data is Map && data['type'] == 'pos') {
           _positionFrames = (data['frame'] as num).toDouble();
           final playing = data['playing'] == true;
-          if (!playing && _playing && !_scratching) _playing = false;
+          if (!playing && _playing && !_scratching) {
+            _playing = false;
+            if (_positionFrames >= (_buffer?.length ?? 1) - 1 || _positionFrames == 0.0) {
+              _positionFrames = 0.0;
+            }
+          }
         }
       }).toJS;
       node.connect(_eqLow!);
@@ -323,6 +336,13 @@ class WebDeckAudioBackend implements DeckAudioBackend {
     src.playbackRate.value = _rate.abs().clamp(0.06, 4.0);
     src.connect(_eqLow!);
     final offsetSec = _positionFrames / _sampleRate;
+    src.onended = ((web.Event e) {
+      if (_bufferSource == src) {
+        _playing = false;
+        _positionFrames = 0.0;
+        _bufferSource = null;
+      }
+    }).toJS;
     src.start(0, offsetSec);
     _bufferSource = src;
     _fallbackStartCtxTime = ctx.currentTime.toDouble();

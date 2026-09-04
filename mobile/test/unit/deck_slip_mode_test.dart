@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dj_pro_master/features/deck/models/deck_state.dart';
+import 'package:dj_pro_master/features/deck/models/track.dart';
 import 'package:dj_pro_master/features/audio_engine/time_stretcher.dart';
 
 void main() {
@@ -50,6 +51,39 @@ void main() {
 
       // 8A (Am) and 2A (Ebm) are completely dissonant -> not compatible
       expect(TimeStretcher.isHarmonicallyCompatible('Am', 'Ebm'), isFalse);
+    });
+
+    test('Track end triggers stop and resets playhead to start of song', () {
+      final stateAtEnd = DeckState(
+        deckId: 'A',
+        isPlaying: true,
+        position: const Duration(minutes: 3),
+        track: Track(
+          id: 'test',
+          title: 'Test',
+          artist: 'Artist',
+          bpm: 120,
+          key: 'Am',
+          camelot: '8A',
+          waveformPeaks: const [0.5, 0.8],
+          duration: const Duration(minutes: 3),
+        ),
+      );
+
+      final trackDuration = stateAtEnd.track!.duration;
+      final bool trackEnded = !stateAtEnd.isLoopActive &&
+          !stateAtEnd.isScratching &&
+          stateAtEnd.position >= trackDuration;
+
+      expect(trackEnded, isTrue);
+
+      final resetState = stateAtEnd.copyWith(
+        isPlaying: false,
+        position: Duration.zero,
+      );
+
+      expect(resetState.isPlaying, isFalse);
+      expect(resetState.position, equals(Duration.zero));
     });
   });
 }

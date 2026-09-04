@@ -1,23 +1,43 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+
+import '../../features/audio_engine/waveform_analyzer.dart';
 import '../theme/dj_colors.dart';
 
+/// Mixxx-style RGB waveform.
+///
+/// Follows the rendering Mixxx uses in
+/// `waveform/renderers/allshader/waveformrendererrgb.cpp`: for every pixel
+/// column take the peak of the low, mid and high bands, map them onto red,
+/// green and blue, normalize by the largest component, and draw a bar of the
+/// unfiltered peak's height symmetrically about the centre line.
 class WaveformView extends StatelessWidget {
-  final List<double> peaks; // Normalized peak amplitudes
+  /// Analyzed band data. When null the widget falls back to [peaks].
+  final WaveformData? waveform;
+
+  /// Legacy synthetic envelope, used until analysis finishes.
+  final List<double> peaks;
+
   final double currentProgress; // 0.0 to 1.0
   final Duration duration;
   final double bpm;
   final Color accentColor;
-  final List<double>? hotCuePoints; // Normalized 0.0 to 1.0 positions
-  final double? loopStart; // Normalized position
-  final double? loopEnd; // Normalized position
+  final List<double>? hotCuePoints;
+  final double? loopStart;
+  final double? loopEnd;
   final bool isLooping;
   final ValueChanged<double>? onSeek;
   final double height;
   final bool isOverview;
 
+  /// Zoom of the scrolling view, in screen pixels per second of audio.
+  final double pixelsPerSecond;
+
   const WaveformView({
     super.key,
+    this.waveform,
     required this.peaks,
     required this.currentProgress,
     required this.duration,
@@ -30,25 +50,15 @@ class WaveformView extends StatelessWidget {
     this.onSeek,
     this.height = 70.0,
     this.isOverview = false,
+    this.pixelsPerSecond = 140.0,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onHorizontalDragUpdate: (details) {
-        if (onSeek == null) return;
-        final box = context.findRenderObject() as RenderBox;
-        final localX = details.localPosition.dx;
-        final fraction = (localX / box.size.width).clamp(0.0, 1.0);
-        onSeek!(fraction);
-      },
-      onTapDown: (details) {
-        if (onSeek == null) return;
-        final box = context.findRenderObject() as RenderBox;
-        final localX = details.localPosition.dx;
-        final fraction = (localX / box.size.width).clamp(0.0, 1.0);
-        onSeek!(fraction);
-      },
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragUpdate: (details) => _seek(context, details.localPosition),
+      onTapDown: (details) => _seek(context, details.localPosition),
       child: Container(
         width: double.infinity,
         height: height,
@@ -60,26 +70,57 @@ class WaveformView extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: CustomPaint(
+            size: Size.infinite,
             painter: _WaveformPainter(
+              waveform: waveform,
               peaks: peaks,
               progress: currentProgress,
               bpm: bpm,
               duration: duration,
               accentColor: accentColor,
-              hotCues: hotCuePoints ?? [],
+              hotCues: hotCuePoints ?? const [],
               loopStart: loopStart,
               loopEnd: loopEnd,
               isLooping: isLooping,
               isOverview: isOverview,
+              pixelsPerSecond: pixelsPerSecond,
             ),
           ),
         ),
       ),
     );
   }
+
+  void _seek(BuildContext context, Offset local) {
+    final onSeek = this.onSeek;
+    if (onSeek == null) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    if (isOverview) {
+      onSeek((local.dx / box.size.width).clamp(0.0, 1.0));
+      return;
+    }
+    // The scrolling view is anchored at the playhead, so dragging it moves the
+    // track relative to where it is now rather than jumping to an absolute
+    // fraction of the width.
+    final totalSec = duration.inMicroseconds / 1e6;
+    if (totalSec <= 0) return;
+    final deltaSec = (local.dx - box.size.width / 2) / pixelsPerSecond;
+    onSeek(((currentProgress * totalSec + deltaSec) / totalSec).clamp(0.0, 1.0));
+  }
+}
+
+/// Peak of each band across a range of strides, plus the resulting colour.
+class _Column {
+  final double low, mid, high, all;
+  const _Column(this.low, this.mid, this.high, this.all);
+  static const zero = _Column(0, 0, 0, 0);
+  bool get isSilent => all <= 0;
 }
 
 class _WaveformPainter extends CustomPainter {
+  final WaveformData? waveform;
   final List<double> peaks;
   final double progress;
   final double bpm;
@@ -90,8 +131,10 @@ class _WaveformPainter extends CustomPainter {
   final double? loopEnd;
   final bool isLooping;
   final bool isOverview;
+  final double pixelsPerSecond;
 
   _WaveformPainter({
+    required this.waveform,
     required this.peaks,
     required this.progress,
     required this.bpm,
@@ -102,155 +145,269 @@ class _WaveformPainter extends CustomPainter {
     this.loopEnd,
     required this.isLooping,
     required this.isOverview,
+    required this.pixelsPerSecond,
   });
+
+  /// Mixxx's default signal colours: low = red, mid = green, high = blue.
+  static const _lowColor = Color(0xFFFF0000);
+  static const _midColor = Color(0xFF00FF00);
+  static const _highColor = Color(0xFF0000FF);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final midY = size.height / 2;
-
     if (isOverview) {
-      _paintOverview(canvas, size, midY);
+      _paintOverview(canvas, size);
     } else {
-      _paintScrollingWaveform(canvas, size, midY);
+      _paintScrolling(canvas, size);
     }
   }
 
-  void _paintOverview(Canvas canvas, Size size, double midY) {
-    // 1. Draw loop highlight region
-    if (loopStart != null && loopEnd != null && loopEnd! > loopStart!) {
-      final startX = loopStart! * size.width;
-      final endX = loopEnd! * size.width;
-      final loopRect = Rect.fromLTRB(startX, 0, endX, size.height);
-      final loopPaint = Paint()
-        ..color = (isLooping ? DJColors.vuGreen : DJColors.vuAmber).withOpacity(0.25)
-        ..style = PaintingStyle.fill;
-      canvas.drawRect(loopRect, loopPaint);
+  // --- Band sampling -------------------------------------------------------
+
+  /// Peak of each band over the strides covering [fromStride, toStride).
+  _Column _sampleStrides(WaveformData w, double fromStride, double toStride) {
+    var a = fromStride.floor();
+    var b = toStride.ceil();
+    if (b <= a) b = a + 1;
+    if (b <= 0 || a >= w.length) return _Column.zero;
+    a = a.clamp(0, w.length - 1);
+    b = b.clamp(1, w.length);
+
+    var low = 0, mid = 0, high = 0, all = 0;
+    for (var i = a; i < b; i++) {
+      if (w.low[i] > low) low = w.low[i];
+      if (w.mid[i] > mid) mid = w.mid[i];
+      if (w.high[i] > high) high = w.high[i];
+      if (w.all[i] > all) all = w.all[i];
     }
-
-    // 2. Draw static full track waveform
-    final count = peaks.isEmpty ? 120 : peaks.length;
-    final barWidth = size.width / count;
-
-    for (int i = 0; i < count; i++) {
-      final amp = peaks.isNotEmpty ? peaks[i % peaks.length] : (0.2 + 0.6 * math.sin(i * 0.1).abs());
-      final barHeight = (amp * midY * 0.9).clamp(2.0, midY);
-      final x = i * barWidth;
-      final isPlayed = (x / size.width) <= progress;
-
-      final barPaint = Paint()
-        ..color = isPlayed ? accentColor : DJColors.surfaceElevated
-        ..strokeWidth = math.max(1.0, barWidth - 0.5)
-        ..strokeCap = StrokeCap.round;
-
-      canvas.drawLine(Offset(x, midY - barHeight), Offset(x, midY + barHeight), barPaint);
-    }
-
-    // 3. Draw Hot Cue Pins
-    for (int i = 0; i < hotCues.length; i++) {
-      final cueX = hotCues[i] * size.width;
-      final cueColor = DJColors.padColors[i % DJColors.padColors.length];
-      final cuePaint = Paint()..color = cueColor;
-
-      canvas.drawCircle(Offset(cueX, 6), 3.5, cuePaint);
-      final linePaint = Paint()
-        ..color = cueColor
-        ..strokeWidth = 1.0;
-      canvas.drawLine(Offset(cueX, 6), Offset(cueX, size.height), linePaint);
-    }
-
-    // 4. Playhead needle
-    final playheadX = progress * size.width;
-    final needlePaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2.0;
-    canvas.drawLine(Offset(playheadX, 0), Offset(playheadX, size.height), needlePaint);
+    return _Column(low / 255, mid / 255, high / 255, all / 255);
   }
 
-  void _paintScrollingWaveform(Canvas canvas, Size size, double midY) {
-    final centerX = size.width / 2;
-    const pixelsPerSec = 140.0; // Zoom factor
-    final totalSec = duration.inMilliseconds / 1000.0;
-    final currentSec = progress * totalSec;
+  /// Fallback column built from the synthetic envelope, so a track still shows
+  /// something while it is being analyzed.
+  _Column _sampleFallback(double fraction) {
+    if (peaks.isEmpty) return _Column.zero;
+    final idx = (fraction * (peaks.length - 1))
+        .clamp(0, peaks.length - 1)
+        .toInt();
+    final amp = peaks[idx];
+    return _Column(amp, amp * 0.7, amp * 0.4, amp);
+  }
 
-    // Draw beatgrid lines
-    if (bpm > 0) {
-      final secPerBeat = 60.0 / bpm;
-      final startBeat = (currentSec - (centerX / pixelsPerSec)) / secPerBeat;
-      final endBeat = (currentSec + (centerX / pixelsPerSec)) / secPerBeat;
+  /// Mixxx's colour mix: weight each band colour by its peak, then normalize by
+  /// the largest component so every column is fully saturated.
+  Color _columnColor(_Column c) {
+    var r = c.low * _lowColor.r + c.mid * _midColor.r + c.high * _highColor.r;
+    var g = c.low * _lowColor.g + c.mid * _midColor.g + c.high * _highColor.g;
+    var b = c.low * _lowColor.b + c.mid * _midColor.b + c.high * _highColor.b;
 
-      for (int b = startBeat.floor(); b <= endBeat.ceil(); b++) {
-        if (b < 0) continue;
-        final beatSec = b * secPerBeat;
-        final x = centerX + (beatSec - currentSec) * pixelsPerSec;
-        final isDownbeat = (b % 4) == 0;
+    final maxComponent = math.max(r, math.max(g, b));
+    if (maxComponent <= 0) return Colors.transparent;
+    final norm = 1.0 / maxComponent;
+    r *= norm;
+    g *= norm;
+    b *= norm;
+    return Color.from(alpha: 1.0, red: r, green: g, blue: b);
+  }
 
-        final gridPaint = Paint()
-          ..color = isDownbeat
-              ? Colors.white.withOpacity(0.4)
-              : Colors.white.withOpacity(0.15)
-          ..strokeWidth = isDownbeat ? 1.5 : 0.8;
+  /// Builds the bar geometry as a triangle mesh, the way Mixxx fills its vertex
+  /// buffer. One `drawVertices` call is far cheaper than a draw call per column.
+  void _drawColumns(
+    Canvas canvas,
+    Size size,
+    List<double> xs,
+    List<_Column> columns, {
+    required double Function(int i) opacityFor,
+  }) {
+    final midY = size.height / 2;
+    final halfBar = math.max(0.5, (xs.length > 1 ? (xs[1] - xs[0]) : 2.0) / 2);
 
-        canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    final positions = <Offset>[];
+    final colors = <Color>[];
+
+    for (var i = 0; i < columns.length; i++) {
+      final c = columns[i];
+      if (c.isSilent) continue;
+      final x = xs[i];
+      final h = (c.all * midY * 0.95).clamp(1.0, midY);
+      final color = _columnColor(c).withValues(alpha: opacityFor(i));
+
+      final l = x - halfBar;
+      final r = x + halfBar;
+      final t = midY - h;
+      final b = midY + h;
+
+      // Two triangles per column.
+      positions.addAll([
+        Offset(l, t), Offset(r, t), Offset(l, b),
+        Offset(r, t), Offset(r, b), Offset(l, b),
+      ]);
+      for (var k = 0; k < 6; k++) {
+        colors.add(color);
       }
     }
 
-    // Draw multi-color frequency scrolling bars
-    const barSpacing = 4.0;
-    final numBars = (size.width / barSpacing).ceil() + 2;
+    if (positions.isEmpty) return;
+    final vertices = ui.Vertices(
+      ui.VertexMode.triangles,
+      positions,
+      colors: colors,
+    );
+    canvas.drawVertices(vertices, BlendMode.srcOver, Paint());
+    vertices.dispose();
+  }
 
-    for (int i = -numBars ~/ 2; i <= numBars ~/ 2; i++) {
-      final x = centerX + i * barSpacing;
-      final timeAtBar = currentSec + (i * barSpacing / pixelsPerSec);
-      if (timeAtBar < 0 || (totalSec > 0 && timeAtBar > totalSec)) continue;
+  // --- Overview ------------------------------------------------------------
 
-      // Amplitude from peaks or synthetic generator
-      final frac = totalSec > 0 ? (timeAtBar / totalSec).clamp(0.0, 1.0) : 0.0;
-      final peakIndex = peaks.isNotEmpty ? (frac * (peaks.length - 1)).round() : 0;
-      final amp = peaks.isNotEmpty
-          ? peaks[peakIndex]
-          : (0.3 + 0.6 * math.sin(timeAtBar * 4.0).abs());
-
-      final barH = (amp * midY * 0.95).clamp(3.0, midY);
-
-      // 3-band color: Bass (Pink/Red), Mid (Cyan), High (White)
-      final bassH = barH * 0.45;
-      final hiH = barH * 0.2;
-
-      // Highs
-      final hiPaint = Paint()..color = Colors.white.withOpacity(0.9)..strokeWidth = 2.5;
-      canvas.drawLine(Offset(x, midY - barH), Offset(x, midY - (barH - hiH)), hiPaint);
-      canvas.drawLine(Offset(x, midY + (barH - hiH)), Offset(x, midY + barH), hiPaint);
-
-      // Mids
-      final midPaint = Paint()..color = accentColor..strokeWidth = 2.5;
-      canvas.drawLine(Offset(x, midY - (barH - hiH)), Offset(x, midY - bassH), midPaint);
-      canvas.drawLine(Offset(x, midY + bassH), Offset(x, midY + (barH - hiH)), midPaint);
-
-      // Bass
-      final bassPaint = Paint()..color = const Color(0xFFFF2A6D)..strokeWidth = 2.5;
-      canvas.drawLine(Offset(x, midY - bassH), Offset(x, midY + bassH), bassPaint);
+  void _paintOverview(Canvas canvas, Size size) {
+    if (loopStart != null && loopEnd != null && loopEnd! > loopStart!) {
+      canvas.drawRect(
+        Rect.fromLTRB(
+            loopStart! * size.width, 0, loopEnd! * size.width, size.height),
+        Paint()
+          ..color = (isLooping ? DJColors.vuGreen : DJColors.vuAmber)
+              .withValues(alpha: 0.22),
+      );
     }
 
-    // Center Fixed Playhead
-    final playheadPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2.5;
-    canvas.drawLine(Offset(centerX, 0), Offset(centerX, size.height), playheadPaint);
+    final w = waveform;
+    final columnCount = size.width.floor().clamp(1, 4096);
+    final xs = <double>[];
+    final columns = <_Column>[];
 
-    final needleHead = Path()
-      ..moveTo(centerX - 5, 0)
-      ..lineTo(centerX + 5, 0)
-      ..lineTo(centerX, 7)
-      ..close();
-    canvas.drawPath(needleHead, Paint()..color = Colors.white);
+    for (var i = 0; i < columnCount; i++) {
+      final f0 = i / columnCount;
+      final f1 = (i + 1) / columnCount;
+      xs.add(i + 0.5);
+      if (w != null && w.length > 0) {
+        columns.add(_sampleStrides(w, f0 * w.length, f1 * w.length));
+      } else {
+        columns.add(_sampleFallback(f0));
+      }
+    }
+
+    // Played audio is drawn at full strength, the rest dimmed — the same cue
+    // Mixxx's overview gives.
+    _drawColumns(canvas, size, xs, columns,
+        opacityFor: (i) => (i / columnCount) <= progress ? 1.0 : 0.32);
+
+    for (var i = 0; i < hotCues.length; i++) {
+      final cueX = hotCues[i] * size.width;
+      final cueColor = DJColors.padColors[i % DJColors.padColors.length];
+      canvas.drawCircle(Offset(cueX, 6), 3.5, Paint()..color = cueColor);
+      canvas.drawLine(Offset(cueX, 6), Offset(cueX, size.height),
+          Paint()..color = cueColor..strokeWidth = 1.0);
+    }
+
+    final playheadX = progress * size.width;
+    canvas.drawLine(Offset(playheadX, 0), Offset(playheadX, size.height),
+        Paint()..color = Colors.white..strokeWidth = 2.0);
+  }
+
+  // --- Scrolling view ------------------------------------------------------
+
+  void _paintScrolling(Canvas canvas, Size size) {
+    final centerX = size.width / 2;
+    final totalSec = duration.inMicroseconds / 1e6;
+    final currentSec = progress * totalSec;
+
+    _paintBeatGrid(canvas, size, centerX, currentSec);
+
+    final w = waveform;
+    final columnCount = size.width.floor().clamp(1, 4096);
+    final secPerPixel = 1.0 / pixelsPerSecond;
+
+    final xs = <double>[];
+    final columns = <_Column>[];
+
+    for (var i = 0; i < columnCount; i++) {
+      final x = i + 0.5;
+      final t0 = currentSec + (x - 0.5 - centerX) * secPerPixel;
+      final t1 = currentSec + (x + 0.5 - centerX) * secPerPixel;
+      xs.add(x);
+
+      if (t1 < 0 || (totalSec > 0 && t0 > totalSec)) {
+        columns.add(_Column.zero);
+        continue;
+      }
+      if (w != null && w.length > 0) {
+        columns.add(_sampleStrides(
+            w, t0 * w.stridesPerSecond, t1 * w.stridesPerSecond));
+      } else if (totalSec > 0) {
+        columns.add(_sampleFallback((t0 / totalSec).clamp(0.0, 1.0)));
+      } else {
+        columns.add(_Column.zero);
+      }
+    }
+
+    _drawColumns(canvas, size, xs, columns, opacityFor: (_) => 1.0);
+
+    _paintLoopOverlay(canvas, size, centerX, currentSec, totalSec);
+    _paintPlayhead(canvas, size, centerX);
+  }
+
+  void _paintBeatGrid(
+      Canvas canvas, Size size, double centerX, double currentSec) {
+    if (bpm <= 0) return;
+    final secPerBeat = 60.0 / bpm;
+    final halfSpanSec = centerX / pixelsPerSecond;
+    final startBeat = ((currentSec - halfSpanSec) / secPerBeat).floor();
+    final endBeat = ((currentSec + halfSpanSec) / secPerBeat).ceil();
+
+    for (var b = startBeat; b <= endBeat; b++) {
+      if (b < 0) continue;
+      final x = centerX + (b * secPerBeat - currentSec) * pixelsPerSecond;
+      final isDownbeat = (b % 4) == 0;
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        Paint()
+          ..color = Colors.white.withValues(alpha: isDownbeat ? 0.35 : 0.12)
+          ..strokeWidth = isDownbeat ? 1.5 : 0.8,
+      );
+    }
+  }
+
+  void _paintLoopOverlay(Canvas canvas, Size size, double centerX,
+      double currentSec, double totalSec) {
+    if (loopStart == null || loopEnd == null || totalSec <= 0) return;
+    final x0 = centerX + (loopStart! * totalSec - currentSec) * pixelsPerSecond;
+    final x1 = centerX + (loopEnd! * totalSec - currentSec) * pixelsPerSecond;
+    if (x1 < 0 || x0 > size.width) return;
+    canvas.drawRect(
+      Rect.fromLTRB(x0, 0, x1, size.height),
+      Paint()
+        ..color = (isLooping ? DJColors.vuGreen : DJColors.vuAmber)
+            .withValues(alpha: 0.18),
+    );
+  }
+
+  void _paintPlayhead(Canvas canvas, Size size, double centerX) {
+    canvas.drawLine(
+      Offset(centerX, 0),
+      Offset(centerX, size.height),
+      Paint()..color = Colors.white..strokeWidth = 2.0,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(centerX - 5, 0)
+        ..lineTo(centerX + 5, 0)
+        ..lineTo(centerX, 7)
+        ..close(),
+      Paint()..color = Colors.white,
+    );
   }
 
   @override
   bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
     return oldDelegate.progress != progress ||
         oldDelegate.bpm != bpm ||
+        oldDelegate.waveform != waveform ||
+        oldDelegate.peaks != peaks ||
+        oldDelegate.duration != duration ||
         oldDelegate.isLooping != isLooping ||
         oldDelegate.loopStart != loopStart ||
-        oldDelegate.loopEnd != loopEnd;
+        oldDelegate.loopEnd != loopEnd ||
+        oldDelegate.pixelsPerSecond != pixelsPerSecond;
   }
 }

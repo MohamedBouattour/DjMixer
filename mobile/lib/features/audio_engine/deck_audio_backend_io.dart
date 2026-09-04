@@ -23,8 +23,11 @@ class NativeDeckAudioBackend implements DeckAudioBackend {
 
   NativeDeckAudioBackend(this.deckId) {
     _player.onDurationChanged.listen((d) => _duration = d);
-    _player.onPositionChanged.listen((p) => _position = p);
-    _player.onPlayerComplete.listen((_) => _playing = false);
+    _player.onPlayerComplete.listen((_) {
+      _playing = false;
+      _position = Duration.zero;
+      _player.seek(Duration.zero);
+    });
   }
 
   @override
@@ -44,6 +47,9 @@ class NativeDeckAudioBackend implements DeckAudioBackend {
 
   @override
   WaveformData? get waveform => null;
+
+  @override
+  set onWaveformReady(void Function()? callback) {}
 
   @override
   Future<void> unlock() async {}

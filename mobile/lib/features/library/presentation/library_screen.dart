@@ -8,9 +8,13 @@ import '../../../core/theme/dj_typography.dart';
 class LibraryScreen extends StatefulWidget {
   final Function(String deckId, Track track) onLoadTrack;
 
+  /// Which tab to open on: 0 crates, 1 YouTube, 2 cloud.
+  final int initialTabIndex;
+
   const LibraryScreen({
     super.key,
     required this.onLoadTrack,
+    this.initialTabIndex = 0,
   });
 
   @override
@@ -26,22 +30,46 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
   List<Track> _ytResults = [];
   bool _isSearchingYt = false;
 
+  final FocusNode _searchFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
+    // Opening straight onto YouTube means the user came here to search, so put
+    // the cursor in the box for them.
+    if (widget.initialTabIndex == 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocus.requestFocus();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchFocus.dispose();
+    _searchController.dispose();
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _onSearch(String query) async {
-    if (_tabController.index == 1 && query.trim().isNotEmpty) {
-      setState(() => _isSearchingYt = true);
-      final results = await _ytProxy.searchTracks(query);
-      if (mounted) {
-        setState(() {
-          _ytResults = results;
-          _isSearchingYt = false;
-        });
-      }
+    if (query.trim().isEmpty) return;
+    // Searching always means YouTube, so switch there rather than silently
+    // doing nothing when another tab happens to be showing.
+    if (_tabController.index != 1) _tabController.animateTo(1);
+
+    setState(() => _isSearchingYt = true);
+    final results = await _ytProxy.searchTracks(query);
+    if (mounted) {
+      setState(() {
+        _ytResults = results;
+        _isSearchingYt = false;
+      });
     }
   }
 
@@ -98,16 +126,39 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: DJColors.surfaceBorder),
               ),
-              child: TextField(
-                controller: _searchController,
-                style: DJTypography.trackTitle,
-                decoration: InputDecoration(
-                  icon: const Icon(Icons.search, color: DJColors.textSecondary, size: 20),
-                  hintText: 'Search tracks, artist, BPM, key...',
-                  hintStyle: DJTypography.trackArtist,
-                  border: InputBorder.none,
-                ),
-                onSubmitted: _onSearch,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocus,
+                      style: DJTypography.trackTitle,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        icon: const Icon(Icons.search,
+                            color: DJColors.textSecondary, size: 20),
+                        hintText: 'Search YouTube for a track, artist or mix...',
+                        hintStyle: DJTypography.trackArtist,
+                        border: InputBorder.none,
+                      ),
+                      onSubmitted: _onSearch,
+                    ),
+                  ),
+                  if (_isSearchingYt)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: DJColors.deckA),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.play_circle_fill,
+                          color: Color(0xFFFF0033), size: 22),
+                      tooltip: 'Search YouTube',
+                      onPressed: () => _onSearch(_searchController.text),
+                    ),
+                ],
               ),
             ),
           ),

@@ -123,6 +123,7 @@ class _DeckViewState extends State<DeckView> {
           const SizedBox(height: 4),
           // Dynamic Waveform View
           WaveformView(
+            waveform: widget.controller.waveformFor(widget.deckId),
             peaks: track?.waveformPeaks ?? [],
             currentProgress: progress,
             duration: track?.duration ?? const Duration(minutes: 3),
@@ -140,7 +141,9 @@ class _DeckViewState extends State<DeckView> {
                 : null,
             isLooping: deck.isLoopActive,
             height: 42,
-            onSeek: (seekFrac) {},
+            isOverview: true,
+            onSeek: (seekFrac) =>
+                widget.controller.seekToFraction(widget.deckId, seekFrac),
           ),
           const SizedBox(height: 6),
           // Center Section: Jog Wheel + Pitch Slider
