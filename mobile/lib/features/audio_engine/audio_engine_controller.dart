@@ -9,6 +9,8 @@ import '../../core/components/crossfader_slider.dart';
 import '../../core/widgets/jog_wheel_widget.dart';
 import '../../core/widgets/xy_touch_fx_pad.dart';
 import 'beat_grid_detector.dart';
+import 'deck_audio_backend.dart';
+import 'waveform_analyzer.dart';
 import 'split_cue_router.dart';
 import 'stem_separator_dsp.dart';
 import 'time_stretcher.dart';
@@ -32,10 +34,23 @@ class AudioEngineController extends ChangeNotifier {
   double _samplerVolume = 0.9;
   int _samplerPitchSemitones = 0;
 
-  // AudioPlayers
-  final AudioPlayer _playerA = AudioPlayer();
-  final AudioPlayer _playerB = AudioPlayer();
+  // Real audio backends. On web these decode the track up front, which gives
+  // a true playback clock, PCM for waveform analysis and sample-accurate
+  // scrubbing for scratching.
+  final DeckAudioBackend _backendA = createDeckAudioBackend('A');
+  final DeckAudioBackend _backendB = createDeckAudioBackend('B');
   final AudioPlayer _samplerPlayer = AudioPlayer();
+
+  /// Set when an audio operation fails, so the UI can say so instead of
+  /// silently running a mute transport.
+  String? _lastAudioError;
+
+  /// Browsers only allow audio to start from a user gesture; the first
+  /// transport action unlocks the shared AudioContext.
+  bool _unlocked = false;
+
+  /// Timestamp of the previous jog movement, used to derive scratch velocity.
+  final Map<String, int> _lastJogMicros = {};
 
   // Engine clock loop (approx 60fps ~ 16ms tick)
   Timer? _engineTicker;
@@ -53,6 +68,13 @@ class AudioEngineController extends ChangeNotifier {
   int get samplerBank => _samplerBank;
   double get samplerVolume => _samplerVolume;
   int get samplerPitchSemitones => _samplerPitchSemitones;
+  String? get lastAudioError => _lastAudioError;
+
+  DeckAudioBackend backendFor(String deckId) =>
+      deckId == 'A' ? _backendA : _backendB;
+
+  /// Mixxx-style banded waveform for a deck, once analysis has finished.
+  WaveformData? waveformFor(String deckId) => backendFor(deckId).waveform;
 
   AudioEngineController() {
     _initEngine();
@@ -67,9 +89,8 @@ class AudioEngineController extends ChangeNotifier {
 
   Future<void> loadTrack(String deckId, Track track) async {
     final isA = deckId == 'A';
-    final player = isA ? _playerA : _playerB;
 
-    // Immediately update deck state with new track
+    // Show the track on the deck straight away so the UI never stalls on I/O.
     if (isA) {
       _deckA = _deckA.copyWith(
         track: track,
@@ -89,72 +110,101 @@ class AudioEngineController extends ChangeNotifier {
         hotCues: {},
       );
     }
+    _lastAudioError = null;
     notifyListeners();
 
+    final backend = backendFor(deckId);
     try {
-      await player.stop();
-      if (track.assetPath != null) {
-        await player.setSource(AssetSource(track.assetPath!.replaceFirst('assets/', '')));
-      } else if (track.filePath != null) {
-        await player.setSource(DeviceFileSource(track.filePath!));
-      } else if (track.streamUrl != null) {
-        await player.setSource(UrlSource(track.streamUrl!));
-      }
+      await backend.load(AudioSourceSpec(
+        assetPath: track.assetPath,
+        url: track.streamUrl,
+        filePath: track.filePath,
+      ));
+      _applyDeckMixing(deckId);
+      _syncTrackDuration(deckId);
     } catch (e) {
-      debugPrint('Warning: AudioPlayer setSource deferred: $e');
+      // A deck that failed to load must say so; the old code swallowed this
+      // and left a transport that moved but made no sound.
+      _lastAudioError = 'Deck $deckId could not load "${track.title}": $e';
+      debugPrint(_lastAudioError);
     }
+    notifyListeners();
+  }
+
+  /// Replaces the placeholder duration with the decoded track's real length.
+  void _syncTrackDuration(String deckId) {
+    final backend = backendFor(deckId);
+    if (!backend.isSampleAccurate) return;
+    final real = backend.duration;
+    if (real <= Duration.zero) return;
+    final deck = deckId == 'A' ? _deckA : _deckB;
+    final track = deck.track;
+    if (track == null) return;
+    final updated = track.copyWith(duration: real);
+    if (deckId == 'A') {
+      _deckA = _deckA.copyWith(track: updated);
+    } else {
+      _deckB = _deckB.copyWith(track: updated);
+    }
+  }
+
+  /// Makes sure the browser audio graph is running. Must be reached from a
+  /// user gesture the first time.
+  Future<void> _ensureUnlocked() async {
+    if (_unlocked) return;
+    _unlocked = true;
+    await Future.wait([_backendA.unlock(), _backendB.unlock()]);
+    _updatePlaybackVolumes();
   }
 
   Future<void> togglePlay(String deckId) async {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = backendFor(deckId);
+
+    await _ensureUnlocked();
 
     if (deck.isPlaying) {
-      // Pause immediately
       if (isA) {
         _deckA = _deckA.copyWith(isPlaying: false);
       } else {
         _deckB = _deckB.copyWith(isPlaying: false);
       }
       notifyListeners();
-
       try {
-        await player.pause();
+        await backend.pause();
       } catch (e) {
-        debugPrint('AudioPlayer pause error: $e');
+        debugPrint('Deck $deckId pause failed: $e');
       }
+      return;
+    }
+
+    // Optimistic so the transport feels instant, then reverted if audio fails.
+    if (isA) {
+      _deckA = _deckA.copyWith(isPlaying: true, isCued: false);
     } else {
-      // Play immediately (optimistic UI update so transport starts)
-      if (isA) {
-        _deckA = _deckA.copyWith(isPlaying: true, isCued: false);
-      } else {
-        _deckB = _deckB.copyWith(isPlaying: true, isCued: false);
+      _deckB = _deckB.copyWith(isPlaying: true, isCued: false);
+    }
+    _lastAudioError = null;
+    notifyListeners();
+
+    try {
+      _applyDeckMixing(deckId);
+      backend.setRate(deck.effectiveSpeedMultiplier);
+      if (deck.position > Duration.zero) {
+        await backend.seek(deck.position);
       }
-      notifyListeners();
-
-      try {
-        if (player.state == PlayerState.paused) {
-          await player.resume();
-        } else if (deck.track?.assetPath != null) {
-          await player.play(AssetSource(deck.track!.assetPath!.replaceFirst('assets/', '')));
-        } else if (deck.track?.filePath != null) {
-          await player.play(DeviceFileSource(deck.track!.filePath!));
-        } else if (deck.track?.streamUrl != null) {
-          await player.play(UrlSource(deck.track!.streamUrl!));
-        } else {
-          await player.resume();
-        }
-
-        if (deck.position > Duration.zero) {
-          await player.seek(deck.position);
-        }
-        await player.setPlaybackRate(deck.effectiveSpeedMultiplier);
-      } catch (e) {
-        debugPrint('AudioPlayer play/stream notice: $e');
-        // Virtual audio transport continues smoothly in 60fps clock tick
+      await backend.play();
+    } catch (e) {
+      _lastAudioError = 'Deck $deckId could not play: $e';
+      debugPrint(_lastAudioError);
+      if (isA) {
+        _deckA = _deckA.copyWith(isPlaying: false);
+      } else {
+        _deckB = _deckB.copyWith(isPlaying: false);
       }
     }
+    notifyListeners();
   }
 
   /// Pioneer-style Stutter Cue:
@@ -163,7 +213,7 @@ class AudioEngineController extends ChangeNotifier {
   Future<void> stutterCue(String deckId) async {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = isA ? _backendA : _backendB;
 
     if (!deck.isPlaying) {
       // Set new cue point at current position
@@ -182,8 +232,8 @@ class AudioEngineController extends ChangeNotifier {
         _deckB = _deckB.copyWith(isPlaying: false, position: target);
       }
       try {
-        await player.pause();
-        await player.seek(target);
+        await backend.pause();
+        await backend.seek(target);
       } catch (e) {
         debugPrint('stutterCue player error: $e');
       }
@@ -195,7 +245,7 @@ class AudioEngineController extends ChangeNotifier {
   Future<void> tempCueDown(String deckId) async {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = isA ? _backendA : _backendB;
     final target = deck.cuePoint ?? Duration.zero;
 
     if (isA) {
@@ -206,8 +256,8 @@ class AudioEngineController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await player.seek(target);
-      await player.resume();
+      await backend.seek(target);
+      await backend.play();
     } catch (e) {
       debugPrint('tempCueDown player error: $e');
     }
@@ -216,7 +266,7 @@ class AudioEngineController extends ChangeNotifier {
   Future<void> tempCueUp(String deckId) async {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = isA ? _backendA : _backendB;
     final target = deck.cuePoint ?? Duration.zero;
 
     if (isA) {
@@ -227,8 +277,8 @@ class AudioEngineController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await player.pause();
-      await player.seek(target);
+      await backend.pause();
+      await backend.seek(target);
     } catch (e) {
       debugPrint('tempCueUp player error: $e');
     }
@@ -243,10 +293,10 @@ class AudioEngineController extends ChangeNotifier {
 
     if (isA) {
       _deckA = _deckA.copyWith(pitchPercent: clamped);
-      _playerA.setPlaybackRate(_deckA.effectiveSpeedMultiplier);
+      _backendA.setRate(_deckA.effectiveSpeedMultiplier);
     } else {
       _deckB = _deckB.copyWith(pitchPercent: clamped);
-      _playerB.setPlaybackRate(_deckB.effectiveSpeedMultiplier);
+      _backendB.setRate(_deckB.effectiveSpeedMultiplier);
     }
     notifyListeners();
   }
@@ -299,23 +349,23 @@ class AudioEngineController extends ChangeNotifier {
       bpmB: _deckB.effectiveBpm,
     );
 
-    final player = isTargetA ? _playerA : _playerB;
+    final backend = isTargetA ? _backendA : _backendB;
     final currentMs = targetDeck.position.inMilliseconds;
     final adjustedTargetMs = (currentMs + (phaseOffsetSec * 1000).toInt()).clamp(0, targetDeck.track!.duration.inMilliseconds);
-    player.seek(Duration(milliseconds: adjustedTargetMs));
+    backend.seek(Duration(milliseconds: adjustedTargetMs));
 
     if (isTargetA) {
       _deckA = _deckA.copyWith(
         pitchPercent: requiredPitchPercent.clamp(-_deckA.pitchRange.percentage, _deckA.pitchRange.percentage),
         isSync: true,
       );
-      _playerA.setPlaybackRate(_deckA.effectiveSpeedMultiplier);
+      _backendA.setRate(_deckA.effectiveSpeedMultiplier);
     } else {
       _deckB = _deckB.copyWith(
         pitchPercent: requiredPitchPercent.clamp(-_deckB.pitchRange.percentage, _deckB.pitchRange.percentage),
         isSync: true,
       );
-      _playerB.setPlaybackRate(_deckB.effectiveSpeedMultiplier);
+      _backendB.setRate(_deckB.effectiveSpeedMultiplier);
     }
     notifyListeners();
   }
@@ -329,53 +379,65 @@ class AudioEngineController extends ChangeNotifier {
     } else {
       _deckB = _deckB.copyWith(isScratching: true);
     }
+    _lastJogMicros[deckId] = DateTime.now().microsecondsSinceEpoch;
+    // Hand the deck over to the scratch path so the platter drives playback
+    // directly, including backwards.
+    backendFor(deckId).beginScratch();
     notifyListeners();
   }
+
+  /// Seconds of audio moved by one full revolution of the platter, matching
+  /// the feel of a 33 1/3 RPM record (1.8 s per revolution).
+  static const double kSecondsPerRevolution = 1.8;
 
   void onJogMove(String deckId, double angularDelta, bool isCenterTouch) {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = backendFor(deckId);
 
-    // Update jog wheel visual angle
     var newAngle = (deck.jogAngle + angularDelta) % (2 * math.pi);
     if (newAngle < 0) newAngle += 2 * math.pi;
 
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final lastMicros = _lastJogMicros[deckId] ?? now;
+    // Clamp dt so a stalled frame cannot produce an absurd rate spike.
+    final dt = ((now - lastMicros) / 1e6).clamp(0.004, 0.1);
+    _lastJogMicros[deckId] = now;
+
+    // Audio time the platter moved during this gesture.
+    final scrubSec = (angularDelta / (2 * math.pi)) * kSecondsPerRevolution;
+
     if (deck.jogMode == JogWheelMode.vinylScratch && isCenterTouch) {
-      // 1. Vinyl Scratch Mode: 1 full rotation (2*PI) ~ 1.8 seconds audio scrub
-      final scrubSec = (angularDelta / (2 * math.pi)) * 1.8;
-      final scrubMs = (scrubSec * 1000).toInt();
-      final newPosMs = (deck.position.inMilliseconds + scrubMs).clamp(
-        0,
-        deck.track?.duration.inMilliseconds ?? 300000,
-      );
+      // Vinyl scratch: the platter velocity *is* the playback rate, so
+      // pushing back plays the track backwards like a real record.
+      final rate = (scrubSec / dt).clamp(-4.0, 4.0);
+      backend.scratchTo(rate);
 
+      final newPosMs = (deck.position.inMilliseconds + (scrubSec * 1000).toInt())
+          .clamp(0, deck.track?.duration.inMilliseconds ?? 300000);
       final newPos = Duration(milliseconds: newPosMs);
-      player.seek(newPos);
-
       if (isA) {
         _deckA = _deckA.copyWith(jogAngle: newAngle, position: newPos);
       } else {
         _deckB = _deckB.copyWith(jogAngle: newAngle, position: newPos);
       }
     } else if (deck.jogMode == JogWheelMode.pitchBend || !isCenterTouch) {
-      // 2. Pitch Bend Mode (Outer ring nudge)
-      final nudgeFactor = angularDelta > 0 ? 1.05 : 0.95;
-      player.setPlaybackRate((deck.effectiveSpeedMultiplier * nudgeFactor).clamp(0.1, 2.5));
+      // Outer ring: temporary pitch bend proportional to how hard it is nudged.
+      final bend = (scrubSec / dt).clamp(-1.0, 1.0) * 0.12;
+      backend.setRate(
+          (deck.effectiveSpeedMultiplier * (1.0 + bend)).clamp(0.1, 2.5));
       if (isA) {
         _deckA = _deckA.copyWith(jogAngle: newAngle);
       } else {
         _deckB = _deckB.copyWith(jogAngle: newAngle);
       }
     } else {
-      // 3. CDJ Search Mode (1/75s audio frames)
+      // CDJ search mode: step through the track in 1/75 s audio frames.
       final frameMs = (angularDelta > 0 ? 13 : -13);
-      final newPosMs = (deck.position.inMilliseconds + frameMs).clamp(
-        0,
-        deck.track?.duration.inMilliseconds ?? 300000,
-      );
+      final newPosMs = (deck.position.inMilliseconds + frameMs)
+          .clamp(0, deck.track?.duration.inMilliseconds ?? 300000);
       final newPos = Duration(milliseconds: newPosMs);
-      player.seek(newPos);
+      backend.seek(newPos);
       if (isA) {
         _deckA = _deckA.copyWith(jogAngle: newAngle, position: newPos);
       } else {
@@ -388,16 +450,26 @@ class AudioEngineController extends ChangeNotifier {
   void onJogTouchUp(String deckId, double releaseVelocity) {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = backendFor(deckId);
 
-    // Reset rate to normal
-    player.setPlaybackRate(deck.effectiveSpeedMultiplier);
+    _lastJogMicros.remove(deckId);
+    backend.endScratch();
+    backend.setRate(deck.effectiveSpeedMultiplier);
 
-    // If Slip Mode was active during scratch/seek, snap back to slip timeline!
+    // Slip mode: the track carries on underneath, so drop back onto the
+    // shadow playhead when the hand leaves the platter.
     Duration targetPos = deck.position;
     if (deck.isSlipMode) {
       targetPos = deck.slipPosition;
-      player.seek(targetPos);
+      backend.seek(targetPos);
+    } else if (backend.isSampleAccurate) {
+      // Keep the visible position in step with where the scratch left the
+      // audio, rather than where the last gesture event happened to land.
+      targetPos = backend.position;
+    }
+
+    if (!deck.isPlaying) {
+      backend.pause();
     }
 
     if (isA) {
@@ -413,14 +485,14 @@ class AudioEngineController extends ChangeNotifier {
   void triggerHotCue(String deckId, int index) {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = isA ? _backendA : _backendB;
 
     if (deck.hotCues.containsKey(index)) {
       // Jump to cue
       final target = deck.hotCues[index]!;
-      player.seek(target);
+      backend.seek(target);
       if (!deck.isPlaying) {
-        player.resume();
+        backend.play();
       }
       if (isA) {
         _deckA = _deckA.copyWith(position: target, isPlaying: true);
@@ -573,10 +645,10 @@ class AudioEngineController extends ChangeNotifier {
   void loopRollEnd(String deckId) {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = isA ? _backendA : _backendB;
 
     // Resumes to slip linear position
-    player.seek(deck.slipPosition);
+    backend.seek(deck.slipPosition);
     if (isA) {
       _deckA = _deckA.copyWith(
         isLoopRollActive: false,
@@ -600,7 +672,7 @@ class AudioEngineController extends ChangeNotifier {
   void beatJump(String deckId, int beats) {
     final isA = deckId == 'A';
     final deck = isA ? _deckA : _deckB;
-    final player = isA ? _playerA : _playerB;
+    final backend = isA ? _backendA : _backendB;
     final secPerBeat = 60.0 / deck.effectiveBpm;
     final offsetMs = (beats * secPerBeat * 1000).toInt();
 
@@ -609,7 +681,7 @@ class AudioEngineController extends ChangeNotifier {
       deck.track?.duration.inMilliseconds ?? 300000,
     );
     final targetPos = Duration(milliseconds: targetMs);
-    player.seek(targetPos);
+    backend.seek(targetPos);
 
     if (isA) {
       _deckA = _deckA.copyWith(position: targetPos);
@@ -751,6 +823,7 @@ class AudioEngineController extends ChangeNotifier {
     } else {
       _mixer = _mixer.copyWith(channelB: _mixer.channelB.copyWith(eqHigh: val));
     }
+    _applyDeckMixing(channel);
     notifyListeners();
   }
 
@@ -760,6 +833,7 @@ class AudioEngineController extends ChangeNotifier {
     } else {
       _mixer = _mixer.copyWith(channelB: _mixer.channelB.copyWith(eqMid: val));
     }
+    _applyDeckMixing(channel);
     notifyListeners();
   }
 
@@ -767,6 +841,7 @@ class AudioEngineController extends ChangeNotifier {
     final strip = channel == 'A' ? _mixer.channelA : _mixer.channelB;
     final updated = strip.copyWith(eqLow: val.clamp(0.0, 2.0));
     _mixer = channel == 'A' ? _mixer.copyWith(channelA: updated) : _mixer.copyWith(channelB: updated);
+    _applyDeckMixing(channel);
     notifyListeners();
   }
 
@@ -788,6 +863,7 @@ class AudioEngineController extends ChangeNotifier {
       if (band == 'mid') _mixer = _mixer.copyWith(channelB: ch.copyWith(killMid: !ch.killMid));
       if (band == 'low') _mixer = _mixer.copyWith(channelB: ch.copyWith(killLow: !ch.killLow));
     }
+    _applyDeckMixing(channel);
     notifyListeners();
   }
 
@@ -797,6 +873,7 @@ class AudioEngineController extends ChangeNotifier {
     } else {
       _mixer = _mixer.copyWith(channelB: _mixer.channelB.copyWith(filterPosition: pos));
     }
+    _applyDeckMixing(channel);
     notifyListeners();
   }
 
@@ -807,17 +884,35 @@ class AudioEngineController extends ChangeNotifier {
   }
 
   void _updatePlaybackVolumes() {
+    _applyDeckMixing('A');
+    _applyDeckMixing('B');
+  }
+
+  /// Pushes the mixer strip for one deck (gain, channel fader, crossfader,
+  /// master, EQ and filter) into that deck's audio backend.
+  void _applyDeckMixing(String deckId) {
     final (crossGainA, crossGainB) = CrossfaderSlider.calculateGains(
       _mixer.crossfaderPosition,
       _mixer.crossfaderCurve,
       _mixer.isHamsterReverse,
     );
 
-    final finalVolA = (_mixer.channelA.channelFader * _mixer.channelA.gain * crossGainA * _mixer.masterVolume).clamp(0.0, 1.2);
-    final finalVolB = (_mixer.channelB.channelFader * _mixer.channelB.gain * crossGainB * _mixer.masterVolume).clamp(0.0, 1.2);
+    final isA = deckId == 'A';
+    final strip = isA ? _mixer.channelA : _mixer.channelB;
+    final cross = isA ? crossGainA : crossGainB;
+    final backend = isA ? _backendA : _backendB;
 
-    _playerA.setVolume(finalVolA.clamp(0.0, 1.0));
-    _playerB.setVolume(finalVolB.clamp(0.0, 1.0));
+    final volume =
+        (strip.channelFader * strip.gain * cross * _mixer.masterVolume)
+            .clamp(0.0, 1.0);
+    backend.setVolume(volume);
+
+    backend.setEq(
+      low: strip.killLow ? 0.0 : strip.eqLow,
+      mid: strip.killMid ? 0.0 : strip.eqMid,
+      high: strip.killHigh ? 0.0 : strip.eqHigh,
+    );
+    backend.setFilter(strip.filterPosition);
   }
 
   // --- XY FX & Sampler ---
@@ -871,100 +966,22 @@ class AudioEngineController extends ChangeNotifier {
   void _onEngineTick(Timer timer) {
     const dtSec = 0.016; // 16ms
 
-    // 1. Deck A Clock & Slip Tracking
-    if (_deckA.isPlaying) {
-      final speedA = _deckA.effectiveSpeedMultiplier;
-      final addedMs = (dtSec * speedA * 1000).toInt();
+    final beforeA = _deckA;
+    final beforeB = _deckB;
+    final beforeMixer = _mixer;
 
-      final newPosMs = _deckA.position.inMilliseconds + addedMs;
-      final newSlipMs = _deckA.slipPosition.inMilliseconds + addedMs;
+    _tickDeck('A', dtSec);
+    _tickDeck('B', dtSec);
 
-      // Check Looping Wrap-around
-      Duration nextPos = Duration(milliseconds: newPosMs);
-      if (_deckA.isLoopActive && _deckA.loopStartPosition != null && _deckA.loopEndPosition != null) {
-        if (nextPos >= _deckA.loopEndPosition!) {
-          nextPos = _deckA.loopStartPosition!;
-          _playerA.seek(nextPos);
-        }
-      }
-
-      // Rotate Jog Wheel
-      final jogRot = (_deckA.jogAngle + (speedA * 0.08)) % (2 * math.pi);
-
-      // Synthesize dynamic VU meter level
-      final peakIndex = _deckA.track != null && _deckA.track!.waveformPeaks.isNotEmpty
-          ? ((nextPos.inMilliseconds / (_deckA.track!.duration.inMilliseconds + 1)) * (_deckA.track!.waveformPeaks.length - 1)).clamp(0, _deckA.track!.waveformPeaks.length - 1).toInt()
-          : 0;
-      final rawPeak = _deckA.track != null && _deckA.track!.waveformPeaks.isNotEmpty
-          ? _deckA.track!.waveformPeaks[peakIndex]
-          : 0.6;
-      final vuLevel = rawPeak * _mixer.channelA.channelFader * _mixer.channelA.gain;
-
-      _deckA = _deckA.copyWith(
-        position: nextPos,
-        slipPosition: Duration(milliseconds: newSlipMs),
-        jogAngle: jogRot,
-        vuLeft: vuLevel,
-        vuRight: (vuLevel * 0.95),
-        vuPeak: math.max(vuLevel, _deckA.vuPeak * 0.96),
-      );
-    } else {
-      _deckA = _deckA.copyWith(
-        vuLeft: _deckA.vuLeft * 0.85,
-        vuRight: _deckA.vuRight * 0.85,
-        vuPeak: _deckA.vuPeak * 0.95,
-      );
-    }
-
-    // 2. Deck B Clock & Slip Tracking
-    if (_deckB.isPlaying) {
-      final speedB = _deckB.effectiveSpeedMultiplier;
-      final addedMs = (dtSec * speedB * 1000).toInt();
-
-      final newPosMs = _deckB.position.inMilliseconds + addedMs;
-      final newSlipMs = _deckB.slipPosition.inMilliseconds + addedMs;
-
-      Duration nextPos = Duration(milliseconds: newPosMs);
-      if (_deckB.isLoopActive && _deckB.loopStartPosition != null && _deckB.loopEndPosition != null) {
-        if (nextPos >= _deckB.loopEndPosition!) {
-          nextPos = _deckB.loopStartPosition!;
-          _playerB.seek(nextPos);
-        }
-      }
-
-      final jogRot = (_deckB.jogAngle + (speedB * 0.08)) % (2 * math.pi);
-
-      final peakIndex = _deckB.track != null && _deckB.track!.waveformPeaks.isNotEmpty
-          ? ((nextPos.inMilliseconds / (_deckB.track!.duration.inMilliseconds + 1)) * (_deckB.track!.waveformPeaks.length - 1)).clamp(0, _deckB.track!.waveformPeaks.length - 1).toInt()
-          : 0;
-      final rawPeak = _deckB.track != null && _deckB.track!.waveformPeaks.isNotEmpty
-          ? _deckB.track!.waveformPeaks[peakIndex]
-          : 0.6;
-      final vuLevel = rawPeak * _mixer.channelB.channelFader * _mixer.channelB.gain;
-
-      _deckB = _deckB.copyWith(
-        position: nextPos,
-        slipPosition: Duration(milliseconds: newSlipMs),
-        jogAngle: jogRot,
-        vuLeft: vuLevel,
-        vuRight: (vuLevel * 0.95),
-        vuPeak: math.max(vuLevel, _deckB.vuPeak * 0.96),
-      );
-    } else {
-      _deckB = _deckB.copyWith(
-        vuLeft: _deckB.vuLeft * 0.85,
-        vuRight: _deckB.vuRight * 0.85,
-        vuPeak: _deckB.vuPeak * 0.95,
-      );
-    }
-
-    // 3. Master Bus VU Meter calculation
+    // Master bus VU
     final (crossA, crossB) = CrossfaderSlider.calculateGains(
       _mixer.crossfaderPosition,
       _mixer.crossfaderCurve,
       _mixer.isHamsterReverse,
     );
-    final masterSig = ((_deckA.vuLeft * crossA) + (_deckB.vuLeft * crossB)) * _mixer.masterVolume;
+    final masterSig =
+        ((_deckA.vuLeft * crossA) + (_deckB.vuLeft * crossB)) *
+            _mixer.masterVolume;
     _mixer = _mixer.copyWith(
       masterVuLeft: masterSig,
       masterVuRight: masterSig * 0.98,
@@ -972,15 +989,133 @@ class AudioEngineController extends ChangeNotifier {
       isLimiterEngaged: masterSig > 1.05,
     );
 
-    notifyListeners();
+    // Only repaint when something actually moved. The old tick notified 60
+    // times a second unconditionally, which rebuilt the whole workspace even
+    // while idle and made dragging the crossfader feel sticky.
+    final idle = !_deckA.isPlaying &&
+        !_deckB.isPlaying &&
+        !_deckA.isScratching &&
+        !_deckB.isScratching &&
+        identical(beforeA, _deckA) &&
+        identical(beforeB, _deckB) &&
+        _isSettled(beforeMixer, _mixer);
+    if (!idle) notifyListeners();
+  }
+
+  /// True when the master meters have decayed to nothing, so there is no
+  /// visible change left to paint.
+  bool _isSettled(MixerState before, MixerState after) {
+    return after.masterVuLeft < 0.001 &&
+        after.masterVuPeak < 0.001 &&
+        before.masterVuPeak < 0.001;
+  }
+
+  void _tickDeck(String deckId, double dtSec) {
+    final isA = deckId == 'A';
+    var deck = isA ? _deckA : _deckB;
+    final backend = backendFor(deckId);
+    final strip = isA ? _mixer.channelA : _mixer.channelB;
+
+    if (!deck.isPlaying && !deck.isScratching) {
+      // Decay the meters, then leave the deck untouched so the tick can idle.
+      if (deck.vuLeft < 0.001 && deck.vuRight < 0.001 && deck.vuPeak < 0.001) {
+        if (deck.vuLeft != 0.0 || deck.vuRight != 0.0 || deck.vuPeak != 0.0) {
+          deck = deck.copyWith(vuLeft: 0.0, vuRight: 0.0, vuPeak: 0.0);
+          if (isA) {
+            _deckA = deck;
+          } else {
+            _deckB = deck;
+          }
+        }
+        return;
+      }
+      deck = deck.copyWith(
+        vuLeft: deck.vuLeft * 0.85,
+        vuRight: deck.vuRight * 0.85,
+        vuPeak: deck.vuPeak * 0.95,
+      );
+      if (isA) {
+        _deckA = deck;
+      } else {
+        _deckB = deck;
+      }
+      return;
+    }
+
+    final speed = deck.effectiveSpeedMultiplier;
+    Duration nextPos;
+    var stillPlaying = deck.isPlaying;
+
+    if (backend.isSampleAccurate && backend.isLoaded) {
+      // Real audio clock: the playhead is wherever the audio actually is.
+      nextPos = backend.position;
+      if (deck.isPlaying && !deck.isScratching && !backend.isPlaying) {
+        stillPlaying = false; // reached the end of the track
+      }
+    } else {
+      final addedMs = (dtSec * speed * 1000).toInt();
+      nextPos = Duration(milliseconds: deck.position.inMilliseconds + addedMs);
+      if (deck.isLoopActive &&
+          deck.loopStartPosition != null &&
+          deck.loopEndPosition != null &&
+          nextPos >= deck.loopEndPosition!) {
+        nextPos = deck.loopStartPosition!;
+        backend.seek(nextPos);
+      }
+    }
+
+    final addedMs = (dtSec * speed * 1000).toInt();
+    final newSlipMs = deck.slipPosition.inMilliseconds + addedMs;
+
+    // Rotate the platter with the audio; while scratching it is driven by the
+    // hand instead, so leave the angle alone.
+    final jogRot = deck.isScratching
+        ? deck.jogAngle
+        : (deck.jogAngle + (speed * 0.08)) % (2 * math.pi);
+
+    final vuLevel = _meterLevel(deck, nextPos) * strip.channelFader * strip.gain;
+
+    deck = deck.copyWith(
+      isPlaying: stillPlaying,
+      position: nextPos,
+      slipPosition: Duration(milliseconds: newSlipMs),
+      jogAngle: jogRot,
+      vuLeft: vuLevel,
+      vuRight: vuLevel * 0.95,
+      vuPeak: math.max(vuLevel, deck.vuPeak * 0.96),
+    );
+
+    if (isA) {
+      _deckA = deck;
+    } else {
+      _deckB = deck;
+    }
+  }
+
+  /// Meter level taken from the analyzed waveform where one exists, so the VUs
+  /// follow the actual track instead of a synthetic envelope.
+  double _meterLevel(DeckState deck, Duration position) {
+    final wave = backendFor(deck.deckId).waveform;
+    if (wave != null && wave.length > 0) {
+      final idx = (position.inMicroseconds / 1e6 * wave.stridesPerSecond)
+          .floor()
+          .clamp(0, wave.length - 1);
+      return wave.all[idx] / 255.0;
+    }
+    final track = deck.track;
+    if (track == null || track.waveformPeaks.isEmpty) return 0.6;
+    final idx = ((position.inMilliseconds / (track.duration.inMilliseconds + 1)) *
+            (track.waveformPeaks.length - 1))
+        .clamp(0, track.waveformPeaks.length - 1)
+        .toInt();
+    return track.waveformPeaks[idx];
   }
 
   @override
   void dispose() {
     _engineTicker?.cancel();
-    _playerA.dispose();
-    _playerB.dispose();
-    _playerB.dispose();
+    _backendA.dispose();
+    _backendB.dispose();
     _samplerPlayer.dispose();
     super.dispose();
   }

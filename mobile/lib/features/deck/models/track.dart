@@ -27,6 +27,36 @@ class Track {
     this.streamUrl,
   });
 
+  Track copyWith({
+    String? id,
+    String? title,
+    String? artist,
+    String? album,
+    Duration? duration,
+    double? bpm,
+    String? key,
+    String? camelot,
+    List<double>? waveformPeaks,
+    String? assetPath,
+    String? filePath,
+    String? streamUrl,
+  }) {
+    return Track(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      artist: artist ?? this.artist,
+      album: album ?? this.album,
+      duration: duration ?? this.duration,
+      bpm: bpm ?? this.bpm,
+      key: key ?? this.key,
+      camelot: camelot ?? this.camelot,
+      waveformPeaks: waveformPeaks ?? this.waveformPeaks,
+      assetPath: assetPath ?? this.assetPath,
+      filePath: filePath ?? this.filePath,
+      streamUrl: streamUrl ?? this.streamUrl,
+    );
+  }
+
   /// Factory helper to generate synthetic waveform peaks if audio is not pre-analyzed
   static List<double> generateMockPeaks(int count) {
     return List.generate(count, (i) {

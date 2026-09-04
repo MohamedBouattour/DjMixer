@@ -1,12 +1,12 @@
 {
-    "name": "dj_pro_master",
-    "short_name": "dj_pro_master",
+    "name": "DJ Pro Master - Dual-Deck Audio Engine",
+    "short_name": "DJ Pro Master",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#0A0B10",
+    "theme_color": "#0A0B10",
+    "description": "Professional ultra-low-latency dual-deck DJ mixing application",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {
