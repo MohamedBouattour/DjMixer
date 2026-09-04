@@ -268,6 +268,9 @@ class WebDeckAudioBackend implements DeckAudioBackend {
         'sampleRate': buffer.sampleRate,
       }.jsify(),
     );
+    // 'load' resets the worklet's playhead, so it must only ever be sent once
+    // per track — re-sending it on play would jump back to the start.
+    _workletHasBuffer = true;
   }
 
   web.AudioWorkletNode? _createWorklet() {
@@ -323,7 +326,6 @@ class WebDeckAudioBackend implements DeckAudioBackend {
   void _pushBufferToWorkletIfNeeded() {
     if (_workletHasBuffer && _worklet != null) return;
     _pushBufferToWorklet();
-    _workletHasBuffer = _worklet != null;
   }
 
   void _startBufferSource() {

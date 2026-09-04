@@ -7,7 +7,8 @@ class YTProxyService {
   final String baseUrl;
 
   YTProxyService({String? baseUrl})
-      : baseUrl = baseUrl ?? (kIsWeb ? '' : 'http://localhost:5001');
+      : baseUrl = baseUrl ??
+            ((kIsWeb && !kDebugMode) ? '' : 'http://localhost:5001');
 
   /// Searches for tracks via the backend proxy
   Future<List<Track>> searchTracks(String query) async {

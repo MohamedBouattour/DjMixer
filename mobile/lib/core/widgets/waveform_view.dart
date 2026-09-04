@@ -164,7 +164,12 @@ class _WaveformPainter extends CustomPainter {
 
   // --- Band sampling -------------------------------------------------------
 
-  /// Peak of each band over the strides covering [fromStride, toStride).
+  /// Band levels over the strides covering [fromStride, toStride).
+  ///
+  /// Height always comes from the true peak. Colour uses the peak too when a
+  /// column covers only a handful of strides (the zoomed-in view), but falls
+  /// back to the mean once a column spans a long stretch of the track —
+  /// otherwise every band saturates and the waveform washes out to grey.
   _Column _sampleStrides(WaveformData w, double fromStride, double toStride) {
     var a = fromStride.floor();
     var b = toStride.ceil();
@@ -173,14 +178,33 @@ class _WaveformPainter extends CustomPainter {
     a = a.clamp(0, w.length - 1);
     b = b.clamp(1, w.length);
 
-    var low = 0, mid = 0, high = 0, all = 0;
+    var peakLow = 0, peakMid = 0, peakHigh = 0, peakAll = 0;
+    var sumLow = 0, sumMid = 0, sumHigh = 0, sumAll = 0;
     for (var i = a; i < b; i++) {
-      if (w.low[i] > low) low = w.low[i];
-      if (w.mid[i] > mid) mid = w.mid[i];
-      if (w.high[i] > high) high = w.high[i];
-      if (w.all[i] > all) all = w.all[i];
+      if (w.low[i] > peakLow) peakLow = w.low[i];
+      if (w.mid[i] > peakMid) peakMid = w.mid[i];
+      if (w.high[i] > peakHigh) peakHigh = w.high[i];
+      if (w.all[i] > peakAll) peakAll = w.all[i];
+      sumLow += w.low[i];
+      sumMid += w.mid[i];
+      sumHigh += w.high[i];
+      sumAll += w.all[i];
     }
-    return _Column(low / 255, mid / 255, high / 255, all / 255);
+
+    final n = b - a;
+    if (n <= 8) {
+      return _Column(
+          peakLow / 255, peakMid / 255, peakHigh / 255, peakAll / 255);
+    }
+    // Mostly the average, so the intro/breakdown/drop shape of the track is
+    // visible, with a little of the peak mixed back in to keep transients.
+    final meanAll = sumAll / n;
+    return _Column(
+      sumLow / n / 255,
+      sumMid / n / 255,
+      sumHigh / n / 255,
+      ((meanAll * 0.72 + peakAll * 0.28) / 255).clamp(0.0, 1.0),
+    );
   }
 
   /// Fallback column built from the synthetic envelope, so a track still shows

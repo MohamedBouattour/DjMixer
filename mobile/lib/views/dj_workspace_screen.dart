@@ -119,6 +119,20 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
   }
 
   Widget _buildTopBar() {
+    // The bar has to hold the brand, the deck selector and five actions. On a
+    // phone there is not room for all of it, so the least important parts drop
+    // out rather than pushing the action buttons off the screen.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final showBrandText = width >= 520;
+        final showDeckTabs = width >= 700;
+        return _buildTopBarContent(showBrandText, showDeckTabs);
+      },
+    );
+  }
+
+  Widget _buildTopBarContent(bool showBrandText, bool showDeckTabs) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       color: DJColors.surface,
@@ -127,6 +141,7 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
         children: [
           // App Logo & Brand Title
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
@@ -138,12 +153,15 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
                   errorBuilder: (_, __, ___) => const Icon(Icons.album, color: DJColors.deckA, size: 24),
                 ),
               ),
-              const SizedBox(width: 8),
-              Text('DJ PRO MASTER', style: DJTypography.brandTitle.copyWith(fontSize: 14)),
+              if (showBrandText) ...[
+                const SizedBox(width: 8),
+                Text('DJ PRO MASTER',
+                    style: DJTypography.brandTitle.copyWith(fontSize: 14)),
+              ],
             ],
           ),
           // 4-Deck Selector Tabs (A/B vs C/D expandable)
-          Container(
+          if (showDeckTabs) Container(
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               color: DJColors.background,

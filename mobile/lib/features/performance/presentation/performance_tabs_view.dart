@@ -150,7 +150,7 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                     children: PerformanceTab.values.map((tab) {
                       final isSelected = _currentTab == tab;
                       return Padding(
-                        padding: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.only(right: 5),
                         child: GestureDetector(
                           onTap: () => setState(() => _currentTab = tab),
                           child: Container(
@@ -165,6 +165,7 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                               ),
                             ),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   tab.icon,
