@@ -273,7 +273,7 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
         : 0.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       color: DJColors.background,
       child: Column(
         children: [
@@ -284,7 +284,7 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
             duration: trackA?.duration ?? const Duration(minutes: 3),
             bpm: _controller.deckA.effectiveBpm,
             accentColor: DJColors.deckA,
-            height: 36,
+            height: 28,
           ),
           const SizedBox(height: 2),
           // Deck B scrolling waveform
@@ -294,7 +294,7 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
             duration: trackB?.duration ?? const Duration(minutes: 3),
             bpm: _controller.deckB.effectiveBpm,
             accentColor: DJColors.deckB,
-            height: 36,
+            height: 28,
           ),
         ],
       ),
@@ -329,51 +329,68 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
     );
   }
 
-  // Landscape Pro Layout (iPad / Tablet / Horizontal Phone): Side-by-side Decks with Center Mixer
+  // Landscape Pro Layout (Mac 13 / Desktop / iPad): Side-by-side Decks with Center Mixer & Performance Pads
   Widget _buildLandscapeLayout() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left: Deck A
+        // Left: Deck A + Deck A Performance Pads
         Expanded(
-          flex: 4,
+          flex: 5,
           child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
             child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: DeckView(
-                deckId: 'A',
-                controller: _controller,
-                onOpenLibrary: _openLibrary,
-              ),
-            ),
-          ),
-        ),
-        // Center: Mixer & Performance Drawer
-        Expanded(
-          flex: 4,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  MixerView(controller: _controller),
-                  const SizedBox(height: 6),
-                  PerformanceTabsView(controller: _controller),
+                  DeckView(
+                    deckId: 'A',
+                    controller: _controller,
+                    onOpenLibrary: _openLibrary,
+                  ),
+                  const SizedBox(height: 5),
+                  PerformanceTabsView(
+                    controller: _controller,
+                    fixedDeckId: 'A',
+                  ),
                 ],
               ),
             ),
           ),
         ),
-        // Right: Deck B
+        // Center: Full Mixer Console with Crossfader
         Expanded(
           flex: 4,
           child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
             child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: DeckView(
-                deckId: 'B',
-                controller: _controller,
-                onOpenLibrary: _openLibrary,
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+              child: MixerView(controller: _controller),
+            ),
+          ),
+        ),
+        // Right: Deck B + Deck B Performance Pads
+        Expanded(
+          flex: 5,
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DeckView(
+                    deckId: 'B',
+                    controller: _controller,
+                    onOpenLibrary: _openLibrary,
+                  ),
+                  const SizedBox(height: 5),
+                  PerformanceTabsView(
+                    controller: _controller,
+                    fixedDeckId: 'B',
+                  ),
+                ],
               ),
             ),
           ),

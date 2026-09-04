@@ -22,10 +22,12 @@ enum PerformanceTab {
 
 class PerformanceTabsView extends StatefulWidget {
   final AudioEngineController controller;
+  final String? fixedDeckId;
 
   const PerformanceTabsView({
     super.key,
     required this.controller,
+    this.fixedDeckId,
   });
 
   @override
@@ -34,7 +36,21 @@ class PerformanceTabsView extends StatefulWidget {
 
 class _PerformanceTabsViewState extends State<PerformanceTabsView> {
   PerformanceTab _currentTab = PerformanceTab.hotCue;
-  String _targetDeck = 'A'; // 'A' or 'B'
+  late String _targetDeck;
+
+  @override
+  void initState() {
+    super.initState();
+    _targetDeck = widget.fixedDeckId ?? 'A';
+  }
+
+  @override
+  void didUpdateWidget(covariant PerformanceTabsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.fixedDeckId != null) {
+      _targetDeck = widget.fixedDeckId!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +58,10 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
     final accentColor = _targetDeck == 'A' ? DJColors.deckA : DJColors.deckB;
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: DJColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: DJColors.surfaceBorder),
       ),
       child: Column(
@@ -54,56 +70,70 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
           // Header: Tab Bar & Deck A/B Target Selector
           Row(
             children: [
-              // Deck Selector Pills
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: DJColors.background,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => setState(() => _targetDeck = 'A'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _targetDeck == 'A'
-                              ? DJColors.deckA
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'DECK A',
-                          style: DJTypography.buttonLabel.copyWith(
-                            fontSize: 9,
-                            color: _targetDeck == 'A' ? Colors.black : DJColors.deckA,
+              if (widget.fixedDeckId != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(color: accentColor.withOpacity(0.5)),
+                  ),
+                  child: Text(
+                    'PADS ${widget.fixedDeckId}',
+                    style: DJTypography.deckLabel.copyWith(fontSize: 9, color: accentColor),
+                  ),
+                )
+              else
+                // Deck Selector Pills
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: DJColors.background,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() => _targetDeck = 'A'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _targetDeck == 'A'
+                                ? DJColors.deckA
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'DECK A',
+                            style: DJTypography.buttonLabel.copyWith(
+                              fontSize: 9,
+                              color: _targetDeck == 'A' ? Colors.black : DJColors.deckA,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    GestureDetector(
-                      onTap: () => setState(() => _targetDeck = 'B'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _targetDeck == 'B'
-                              ? DJColors.deckB
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'DECK B',
-                          style: DJTypography.buttonLabel.copyWith(
-                            fontSize: 9,
-                            color: _targetDeck == 'B' ? Colors.black : DJColors.deckB,
+                      GestureDetector(
+                        onTap: () => setState(() => _targetDeck = 'B'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _targetDeck == 'B'
+                                ? DJColors.deckB
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'DECK B',
+                            style: DJTypography.buttonLabel.copyWith(
+                              fontSize: 9,
+                              color: _targetDeck == 'B' ? Colors.black : DJColors.deckB,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(width: 8),
               // Horizontal Performance Tabs
               Expanded(

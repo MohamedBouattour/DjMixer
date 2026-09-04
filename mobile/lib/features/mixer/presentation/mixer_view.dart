@@ -24,10 +24,10 @@ class MixerView extends StatelessWidget {
     final deckB = controller.deckB;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: DJColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: DJColors.surfaceBorder, width: 1.2),
       ),
       child: Column(
@@ -45,16 +45,16 @@ class MixerView extends StatelessWidget {
                   label: 'MASTER',
                   valueDisplay: '${(mixer.masterVolume * 100).toInt()}%',
                   activeColor: Colors.white,
-                  size: 38,
+                  size: 32,
                   onChanged: controller.setMasterVolume,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 // Limiter & Master VU Meter
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: mixer.isLimiterEngaged
                             ? DJColors.vuRed.withOpacity(0.3)
@@ -69,36 +69,36 @@ class MixerView extends StatelessWidget {
                       child: Text(
                         'LIMITER',
                         style: DJTypography.buttonLabel.copyWith(
-                          fontSize: 8,
+                          fontSize: 7,
                           color: mixer.isLimiterEngaged
                               ? DJColors.vuRed
                               : DJColors.textMuted,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     LedVuMeter(
                       level: mixer.masterVuLeft,
                       peakLevel: mixer.masterVuPeak,
                       rightLevel: mixer.masterVuRight,
                       isStereo: true,
-                      height: 35,
-                      width: 8,
+                      height: 28,
+                      width: 7,
                       segments: 8,
                     ),
                   ],
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 // Booth Vol Knob
                 RotaryKnob(
                   value: mixer.boothVolume,
                   label: 'BOOTH',
                   valueDisplay: '${(mixer.boothVolume * 100).toInt()}%',
                   activeColor: DJColors.textSecondary,
-                  size: 38,
+                  size: 32,
                   onChanged: (v) {},
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 // Headphone Vol & Split Cue Toggle
                 Row(
                   children: [
@@ -107,17 +107,17 @@ class MixerView extends StatelessWidget {
                       label: 'PHONES',
                       valueDisplay: '${(mixer.headphoneVolume * 100).toInt()}%',
                       activeColor: DJColors.vuAmber,
-                      size: 38,
+                      size: 32,
                       onChanged: (v) {},
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     NeonButton(
                       label: 'SPLIT',
                       isActive: mixer.isSplitCue,
                       activeColor: DJColors.vuAmber,
-                      width: 36,
-                      height: 28,
-                      fontSize: 8,
+                      width: 32,
+                      height: 24,
+                      fontSize: 7,
                       onTap: () {},
                     ),
                   ],
@@ -125,7 +125,7 @@ class MixerView extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(color: DJColors.surfaceBorder, height: 16),
+          const Divider(color: DJColors.surfaceBorder, height: 10),
           // Dual Channels (A & B) Knobs, Faders & VU Meters
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -143,18 +143,18 @@ class MixerView extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 12),
-                  Text('CURVE', style: DJTypography.knobLabel.copyWith(fontSize: 8)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
+                  Text('CURVE', style: DJTypography.knobLabel.copyWith(fontSize: 7)),
+                  const SizedBox(height: 3),
                   PopupMenuButton<CrossfaderCurve>(
                     initialValue: mixer.crossfaderCurve,
                     onSelected: controller.setCrossfaderCurve,
                     color: DJColors.surfaceElevated,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: DJColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(3),
                         border: Border.all(color: DJColors.surfaceBorder),
                       ),
                       child: Text(
@@ -163,7 +163,7 @@ class MixerView extends StatelessWidget {
                             : (mixer.crossfaderCurve == CrossfaderCurve.exponential
                                 ? 'EXP'
                                 : 'CUT'),
-                        style: DJTypography.buttonLabel.copyWith(fontSize: 9),
+                        style: DJTypography.buttonLabel.copyWith(fontSize: 8),
                       ),
                     ),
                     itemBuilder: (context) => [
@@ -172,15 +172,15 @@ class MixerView extends StatelessWidget {
                       const PopupMenuItem(value: CrossfaderCurve.sharpCut, child: Text('Sharp Cut (Scratch)')),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   // Hamster Switch
                   NeonButton(
                     label: 'REV',
                     isActive: mixer.isHamsterReverse,
                     activeColor: DJColors.vuAmber,
-                    width: 36,
-                    height: 26,
-                    fontSize: 8,
+                    width: 32,
+                    height: 22,
+                    fontSize: 7,
                     onTap: controller.toggleHamsterReverse,
                   ),
                 ],
@@ -195,14 +195,15 @@ class MixerView extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           // Horizontal Pro Crossfader
           CrossfaderSlider(
             position: mixer.crossfaderPosition,
             curve: mixer.crossfaderCurve,
             isHamsterReverse: mixer.isHamsterReverse,
             onChanged: controller.setCrossfaderPosition,
-            width: 290,
+            width: 250,
+            height: 42,
           ),
         ],
       ),
@@ -227,17 +228,17 @@ class MixerView extends StatelessWidget {
           defaultValue: 1.0,
           label: 'GAIN',
           activeColor: accentColor,
-          size: 40,
+          size: 32,
           onChanged: (v) => controller.setGain(channelId, v),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 3),
         // 3-Band EQ Knobs + Kill Buttons
         _buildEqRow(channelId, 'HIGH', channelStrip.eqHigh, channelStrip.killHigh, accentColor, 'high'),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         _buildEqRow(channelId, 'MID', channelStrip.eqMid, channelStrip.killMid, accentColor, 'mid'),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         _buildEqRow(channelId, 'LOW', channelStrip.eqLow, channelStrip.killLow, accentColor, 'low'),
-        const SizedBox(height: 6),
+        const SizedBox(height: 3),
         // Bipolar Combo Filter Knob (HPF/LPF)
         RotaryKnob(
           value: channelStrip.filterPosition,
@@ -247,10 +248,10 @@ class MixerView extends StatelessWidget {
           isBipolar: true,
           label: 'FILTER',
           activeColor: channelStrip.filterPosition < 0 ? DJColors.vuAmber : DJColors.deckA,
-          size: 42,
+          size: 32,
           onChanged: (v) => controller.setFilter(channelId, v),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         // Channel Fader & Stereo LED VU Meter
         Row(
           mainAxisSize: MainAxisSize.min,
@@ -263,29 +264,29 @@ class MixerView extends StatelessWidget {
               defaultValue: 1.0,
               label: 'CH $channelId',
               activeColor: accentColor,
-              width: 38,
-              height: 110,
+              width: 32,
+              height: 85,
               onChanged: (v) => controller.setChannelFader(channelId, v),
             ),
             const SizedBox(width: 4),
             LedVuMeter(
               level: vuLevel,
               peakLevel: vuPeak,
-              height: 110,
-              width: 9,
-              segments: 10,
+              height: 85,
+              width: 8,
+              segments: 8,
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         // Cue PFL Audition Button
         NeonButton(
           label: 'CUE',
           isActive: channelStrip.cueHeadphones,
           activeColor: DJColors.vuAmber,
-          width: 44,
-          height: 26,
-          fontSize: 9,
+          width: 38,
+          height: 22,
+          fontSize: 8,
           onTap: () {},
         ),
       ],
@@ -306,33 +307,35 @@ class MixerView extends StatelessWidget {
         RotaryKnob(
           value: value,
           min: 0.0,
-          max: 1.0,
-          defaultValue: 0.5,
+          max: 2.0,
+          defaultValue: 1.0,
           label: band,
-          activeColor: isKilled ? DJColors.textMuted : color,
-          size: 38,
-          onChanged: (v) {
-            if (bandKey == 'high') controller.setEqHigh(channelId, v);
-            if (bandKey == 'mid') controller.setEqMid(channelId, v);
-            if (bandKey == 'low') controller.setEqLow(channelId, v);
-          },
+          activeColor: color,
+          size: 30,
+          onChanged: (v) => controller.setEq(channelId, bandKey, v),
         ),
-        const SizedBox(width: 2),
+        const SizedBox(width: 3),
         // Kill Button
         GestureDetector(
           onTap: () => controller.toggleEqKill(channelId, bandKey),
           child: Container(
-            padding: const EdgeInsets.all(3),
+            width: 18,
+            height: 16,
             decoration: BoxDecoration(
               color: isKilled ? DJColors.vuRed.withOpacity(0.3) : DJColors.surfaceElevated,
-              shape: BoxShape.circle,
-              border: Border.all(color: isKilled ? DJColors.vuRed : DJColors.surfaceBorder),
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(
+                color: isKilled ? DJColors.vuRed : DJColors.surfaceBorder,
+                width: 1,
+              ),
             ),
-            child: Text(
-              'K',
-              style: DJTypography.buttonLabel.copyWith(
-                fontSize: 7,
-                color: isKilled ? DJColors.vuRed : DJColors.textMuted,
+            child: Center(
+              child: Text(
+                'K',
+                style: DJTypography.buttonLabel.copyWith(
+                  fontSize: 7,
+                  color: isKilled ? DJColors.vuRed : DJColors.textMuted,
+                ),
               ),
             ),
           ),

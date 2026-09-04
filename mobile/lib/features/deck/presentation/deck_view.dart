@@ -120,7 +120,7 @@ class _DeckViewState extends State<DeckView> {
             duration: track?.duration ?? const Duration(minutes: 3),
             accentColor: accentColor,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           // Dynamic Waveform View
           WaveformView(
             peaks: track?.waveformPeaks ?? [],
@@ -139,10 +139,10 @@ class _DeckViewState extends State<DeckView> {
                 ? (deck.loopEndPosition!.inMilliseconds / track.duration.inMilliseconds).clamp(0.0, 1.0)
                 : null,
             isLooping: deck.isLoopActive,
-            height: 52,
+            height: 42,
             onSeek: (seekFrac) {},
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           // Center Section: Jog Wheel + Pitch Slider
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -157,7 +157,7 @@ class _DeckViewState extends State<DeckView> {
                     mode: deck.jogMode,
                     accentColor: accentColor,
                     assetImage: jogAsset,
-                    size: 175.0,
+                    size: 155.0,
                     onTouchDown: () => widget.controller.onJogTouchDown(widget.deckId),
                     onJogTouchMove: (delta, isCenter) =>
                         widget.controller.onJogMove(widget.deckId, delta, isCenter),
@@ -177,7 +177,7 @@ class _DeckViewState extends State<DeckView> {
                     onSelected: (r) => widget.controller.setPitchRange(widget.deckId, r),
                     color: DJColors.surfaceElevated,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
                         color: DJColors.surfaceElevated,
                         borderRadius: BorderRadius.circular(3),
@@ -198,7 +198,7 @@ class _DeckViewState extends State<DeckView> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   PrecisionFader(
                     value: deck.pitchPercent,
                     min: -deck.pitchRange.percentage,
@@ -206,18 +206,18 @@ class _DeckViewState extends State<DeckView> {
                     defaultValue: 0.0,
                     label: 'TEMPO',
                     activeColor: accentColor,
-                    width: 38,
-                    height: 125,
+                    width: 34,
+                    height: 105,
                     hasCenterDetent: true,
                     onChanged: (val) => widget.controller.setPitchPercent(widget.deckId, val),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   // Tap Tempo Button
                   NeonButton(
                     label: 'TAP',
-                    width: 38,
-                    height: 22,
-                    fontSize: 8,
+                    width: 34,
+                    height: 20,
+                    fontSize: 7,
                     onTap: _onTapTempo,
                     activeColor: DJColors.textSecondary,
                   ),
@@ -225,7 +225,7 @@ class _DeckViewState extends State<DeckView> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           // Action Buttons Strip: Play/Pause, Stutter Cue, Sync, Key Lock, Slip Mode
           Row(
             children: [
@@ -236,8 +236,8 @@ class _DeckViewState extends State<DeckView> {
                   icon: deck.isPlaying ? Icons.pause : Icons.play_arrow,
                   isActive: deck.isPlaying,
                   activeColor: DJColors.vuGreen,
-                  height: 38,
-                  fontSize: 10,
+                  height: 34,
+                  fontSize: 9,
                   onTap: () => widget.controller.togglePlay(widget.deckId),
                 ),
               ),
@@ -248,8 +248,8 @@ class _DeckViewState extends State<DeckView> {
                   label: 'CUE',
                   isActive: deck.isCued,
                   activeColor: DJColors.vuAmber,
-                  height: 38,
-                  fontSize: 10,
+                  height: 34,
+                  fontSize: 9,
                   onTapDown: () => widget.controller.tempCueDown(widget.deckId),
                   onTapUp: () => widget.controller.tempCueUp(widget.deckId),
                   onTap: () => widget.controller.stutterCue(widget.deckId),
@@ -262,8 +262,8 @@ class _DeckViewState extends State<DeckView> {
                   label: 'SYNC',
                   isActive: deck.isSync,
                   activeColor: accentColor,
-                  height: 38,
-                  fontSize: 10,
+                  height: 34,
+                  fontSize: 9,
                   onTap: () => widget.controller.triggerBeatSync(widget.deckId),
                 ),
               ),
@@ -274,8 +274,8 @@ class _DeckViewState extends State<DeckView> {
                   label: 'KEY',
                   isActive: deck.isKeyLock,
                   activeColor: DJColors.deckC,
-                  height: 38,
-                  fontSize: 9,
+                  height: 34,
+                  fontSize: 8,
                   onTap: () => widget.controller.toggleKeyLock(widget.deckId),
                 ),
               ),
@@ -286,8 +286,8 @@ class _DeckViewState extends State<DeckView> {
                   label: 'SLIP',
                   isActive: deck.isSlipMode,
                   activeColor: DJColors.vuAmber,
-                  height: 38,
-                  fontSize: 9,
+                  height: 34,
+                  fontSize: 8,
                   onTap: () => widget.controller.toggleSlipMode(widget.deckId),
                 ),
               ),

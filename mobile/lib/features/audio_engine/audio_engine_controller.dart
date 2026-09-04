@@ -66,18 +66,11 @@ class AudioEngineController extends ChangeNotifier {
   // --- Deck Transport Controls ---
 
   Future<void> loadTrack(String deckId, Track track) async {
-    final player = deckId == 'A' ? _playerA : _playerB;
-    await player.stop();
+    final isA = deckId == 'A';
+    final player = isA ? _playerA : _playerB;
 
-    if (track.assetPath != null) {
-      await player.setSource(AssetSource(track.assetPath!.replaceFirst('assets/', '')));
-    } else if (track.filePath != null) {
-      await player.setSource(DeviceFileSource(track.filePath!));
-    } else if (track.streamUrl != null) {
-      await player.setSource(UrlSource(track.streamUrl!));
-    }
-
-    if (deckId == 'A') {
+    // Immediately update deck state with new track
+    if (isA) {
       _deckA = _deckA.copyWith(
         track: track,
         position: Duration.zero,
@@ -97,6 +90,19 @@ class AudioEngineController extends ChangeNotifier {
       );
     }
     notifyListeners();
+
+    try {
+      await player.stop();
+      if (track.assetPath != null) {
+        await player.setSource(AssetSource(track.assetPath!.replaceFirst('assets/', '')));
+      } else if (track.filePath != null) {
+        await player.setSource(DeviceFileSource(track.filePath!));
+      } else if (track.streamUrl != null) {
+        await player.setSource(UrlSource(track.streamUrl!));
+      }
+    } catch (e) {
+      debugPrint('Warning: AudioPlayer setSource deferred: $e');
+    }
   }
 
   Future<void> togglePlay(String deckId) async {
@@ -105,22 +111,50 @@ class AudioEngineController extends ChangeNotifier {
     final player = isA ? _playerA : _playerB;
 
     if (deck.isPlaying) {
-      await player.pause();
+      // Pause immediately
       if (isA) {
         _deckA = _deckA.copyWith(isPlaying: false);
       } else {
         _deckB = _deckB.copyWith(isPlaying: false);
       }
+      notifyListeners();
+
+      try {
+        await player.pause();
+      } catch (e) {
+        debugPrint('AudioPlayer pause error: $e');
+      }
     } else {
-      await player.setPlaybackRate(deck.effectiveSpeedMultiplier);
-      await player.resume();
+      // Play immediately (optimistic UI update so transport starts)
       if (isA) {
         _deckA = _deckA.copyWith(isPlaying: true, isCued: false);
       } else {
         _deckB = _deckB.copyWith(isPlaying: true, isCued: false);
       }
+      notifyListeners();
+
+      try {
+        if (player.state == PlayerState.paused) {
+          await player.resume();
+        } else if (deck.track?.assetPath != null) {
+          await player.play(AssetSource(deck.track!.assetPath!.replaceFirst('assets/', '')));
+        } else if (deck.track?.filePath != null) {
+          await player.play(DeviceFileSource(deck.track!.filePath!));
+        } else if (deck.track?.streamUrl != null) {
+          await player.play(UrlSource(deck.track!.streamUrl!));
+        } else {
+          await player.resume();
+        }
+
+        if (deck.position > Duration.zero) {
+          await player.seek(deck.position);
+        }
+        await player.setPlaybackRate(deck.effectiveSpeedMultiplier);
+      } catch (e) {
+        debugPrint('AudioPlayer play/stream notice: $e');
+        // Virtual audio transport continues smoothly in 60fps clock tick
+      }
     }
-    notifyListeners();
   }
 
   /// Pioneer-style Stutter Cue:
@@ -141,13 +175,17 @@ class AudioEngineController extends ChangeNotifier {
       }
     } else {
       // Return to cue point and pause
-      await player.pause();
       final target = deck.cuePoint ?? Duration.zero;
-      await player.seek(target);
       if (isA) {
         _deckA = _deckA.copyWith(isPlaying: false, position: target);
       } else {
         _deckB = _deckB.copyWith(isPlaying: false, position: target);
+      }
+      try {
+        await player.pause();
+        await player.seek(target);
+      } catch (e) {
+        debugPrint('stutterCue player error: $e');
       }
     }
     notifyListeners();
@@ -160,14 +198,19 @@ class AudioEngineController extends ChangeNotifier {
     final player = isA ? _playerA : _playerB;
     final target = deck.cuePoint ?? Duration.zero;
 
-    await player.seek(target);
-    await player.resume();
     if (isA) {
       _deckA = _deckA.copyWith(isPlaying: true, position: target);
     } else {
       _deckB = _deckB.copyWith(isPlaying: true, position: target);
     }
     notifyListeners();
+
+    try {
+      await player.seek(target);
+      await player.resume();
+    } catch (e) {
+      debugPrint('tempCueDown player error: $e');
+    }
   }
 
   Future<void> tempCueUp(String deckId) async {
@@ -176,14 +219,19 @@ class AudioEngineController extends ChangeNotifier {
     final player = isA ? _playerA : _playerB;
     final target = deck.cuePoint ?? Duration.zero;
 
-    await player.pause();
-    await player.seek(target);
     if (isA) {
       _deckA = _deckA.copyWith(isPlaying: false, position: target);
     } else {
       _deckB = _deckB.copyWith(isPlaying: false, position: target);
     }
     notifyListeners();
+
+    try {
+      await player.pause();
+      await player.seek(target);
+    } catch (e) {
+      debugPrint('tempCueUp player error: $e');
+    }
   }
 
   // --- Pitch & Tempo & Sync ---
@@ -716,12 +764,16 @@ class AudioEngineController extends ChangeNotifier {
   }
 
   void setEqLow(String channel, double val) {
-    if (channel == 'A') {
-      _mixer = _mixer.copyWith(channelA: _mixer.channelA.copyWith(eqLow: val));
-    } else {
-      _mixer = _mixer.copyWith(channelB: _mixer.channelB.copyWith(eqLow: val));
-    }
+    final strip = channel == 'A' ? _mixer.channelA : _mixer.channelB;
+    final updated = strip.copyWith(eqLow: val.clamp(0.0, 2.0));
+    _mixer = channel == 'A' ? _mixer.copyWith(channelA: updated) : _mixer.copyWith(channelB: updated);
     notifyListeners();
+  }
+
+  void setEq(String channel, String band, double val) {
+    if (band == 'high') setEqHigh(channel, val);
+    if (band == 'mid') setEqMid(channel, val);
+    if (band == 'low') setEqLow(channel, val);
   }
 
   void toggleEqKill(String channel, String band) {
