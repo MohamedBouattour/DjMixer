@@ -307,7 +307,7 @@ async function ensureAudioCached(videoId) {
 // ─── API: Stream (audio proxy) ───────────────────────────────────────────────
 app.get('/api/stream', async (req, res) => {
   try {
-    let videoId = req.query.videoId;
+    let videoId = req.query.videoId || req.query.id;
     if (!videoId) return res.status(400).json({ error: 'videoId required' });
     incrementRequests();
 
