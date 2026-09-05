@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../audio_engine/audio_engine_controller.dart';
 import '../../../core/theme/dj_colors.dart';
 import '../../../core/theme/dj_typography.dart';
@@ -6,6 +7,7 @@ import '../../../core/widgets/hot_cue_pad_grid.dart';
 import '../../../core/widgets/loop_control_strip.dart';
 import '../../../core/widgets/sampler_bank_grid.dart';
 import '../../../core/widgets/xy_touch_fx_pad.dart';
+import '../../../core/widgets/coming_soon.dart';
 import '../../../core/widgets/stem_fader_panel.dart';
 
 enum PerformanceTab {
@@ -58,7 +60,9 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
 
   @override
   Widget build(BuildContext context) {
-    final deck = _targetDeck == 'A' ? widget.controller.deckA : widget.controller.deckB;
+    final deck = _targetDeck == 'A'
+        ? widget.controller.deckA
+        : widget.controller.deckB;
     final accentColor = _targetDeck == 'A' ? DJColors.deckA : DJColors.deckB;
 
     return Container(
@@ -76,7 +80,10 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
             children: [
               if (widget.fixedDeckId != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(3),
@@ -84,7 +91,10 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                   ),
                   child: Text(
                     'PADS ${widget.fixedDeckId}',
-                    style: DJTypography.deckLabel.copyWith(fontSize: 9, color: accentColor),
+                    style: DJTypography.deckLabel.copyWith(
+                      fontSize: 9,
+                      color: accentColor,
+                    ),
                   ),
                 )
               else
@@ -100,7 +110,10 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                       GestureDetector(
                         onTap: () => setState(() => _targetDeck = 'A'),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: _targetDeck == 'A'
                                 ? DJColors.deckA
@@ -111,7 +124,9 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                             'DECK A',
                             style: DJTypography.buttonLabel.copyWith(
                               fontSize: 9,
-                              color: _targetDeck == 'A' ? Colors.black : DJColors.deckA,
+                              color: _targetDeck == 'A'
+                                  ? Colors.black
+                                  : DJColors.deckA,
                             ),
                           ),
                         ),
@@ -119,7 +134,10 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                       GestureDetector(
                         onTap: () => setState(() => _targetDeck = 'B'),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: _targetDeck == 'B'
                                 ? DJColors.deckB
@@ -130,7 +148,9 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                             'DECK B',
                             style: DJTypography.buttonLabel.copyWith(
                               fontSize: 9,
-                              color: _targetDeck == 'B' ? Colors.black : DJColors.deckB,
+                              color: _targetDeck == 'B'
+                                  ? Colors.black
+                                  : DJColors.deckB,
                             ),
                           ),
                         ),
@@ -154,14 +174,19 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                         child: GestureDetector(
                           onTap: () => setState(() => _currentTab = tab),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? accentColor.withOpacity(0.2)
                                   : DJColors.surfaceElevated,
                               borderRadius: BorderRadius.circular(5),
                               border: Border.all(
-                                color: isSelected ? accentColor : DJColors.surfaceBorder,
+                                color: isSelected
+                                    ? accentColor
+                                    : DJColors.surfaceBorder,
                               ),
                             ),
                             child: Row(
@@ -170,14 +195,18 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
                                 Icon(
                                   tab.icon,
                                   size: 12,
-                                  color: isSelected ? accentColor : DJColors.textSecondary,
+                                  color: isSelected
+                                      ? accentColor
+                                      : DJColors.textSecondary,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
                                   tab.shortTitle,
                                   style: DJTypography.buttonLabel.copyWith(
                                     fontSize: 9,
-                                    color: isSelected ? accentColor : DJColors.textSecondary,
+                                    color: isSelected
+                                        ? accentColor
+                                        : DJColors.textSecondary,
                                   ),
                                 ),
                               ],
@@ -206,9 +235,12 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
           hotCues: deck.hotCues,
           isDeleteMode: deck.isDeleteCueMode,
           isQuantized: deck.isQuantize,
-          onTriggerCue: (idx) => widget.controller.triggerHotCue(_targetDeck, idx),
-          onDeleteCue: (idx) => widget.controller.deleteHotCue(_targetDeck, idx),
-          onToggleDeleteMode: () => widget.controller.toggleDeleteCueMode(_targetDeck),
+          onTriggerCue: (idx) =>
+              widget.controller.triggerHotCue(_targetDeck, idx),
+          onDeleteCue: (idx) =>
+              widget.controller.deleteHotCue(_targetDeck, idx),
+          onToggleDeleteMode: () =>
+              widget.controller.toggleDeleteCueMode(_targetDeck),
           onToggleQuantize: () => widget.controller.toggleQuantize(_targetDeck),
         );
 
@@ -218,7 +250,8 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
           isLoopActive: deck.isLoopActive,
           isLoopRollActive: deck.isLoopRollActive,
           accentColor: accentColor,
-          onSelectLoopLength: (len) => widget.controller.setLoopLength(_targetDeck, len),
+          onSelectLoopLength: (len) =>
+              widget.controller.setLoopLength(_targetDeck, len),
           onToggleLoop: () => widget.controller.toggleLoop(_targetDeck),
           onHalveLoop: () => widget.controller.halveLoop(_targetDeck),
           onDoubleLoop: () => widget.controller.doubleLoop(_targetDeck),
@@ -237,7 +270,8 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
           onSelectBank: widget.controller.setSamplerBank,
           onVolumeChanged: widget.controller.setSamplerVolume,
           onPitchChanged: widget.controller.setSamplerPitch,
-          onTriggerPad: (idx, asset) => widget.controller.triggerSamplerPad(idx, asset),
+          onTriggerPad: (idx, asset) =>
+              widget.controller.triggerSamplerPad(idx, asset),
         );
 
       case PerformanceTab.fx:
@@ -256,22 +290,31 @@ class _PerformanceTabsViewState extends State<PerformanceTabsView> {
 
       case PerformanceTab.stems:
         final stems = deck.stems;
-        return StemFaderPanel(
-          vocalVolume: stems.vocalVolume,
-          drumVolume: stems.drumVolume,
-          bassVolume: stems.bassVolume,
-          melodyVolume: stems.melodyVolume,
-          vocalMuted: stems.vocalMuted,
-          drumMuted: stems.drumMuted,
-          bassMuted: stems.bassMuted,
-          melodyMuted: stems.melodyMuted,
-          vocalSolo: stems.vocalSolo,
-          drumSolo: stems.drumSolo,
-          bassSolo: stems.bassSolo,
-          melodySolo: stems.melodySolo,
-          onVolumeChanged: (stem, vol) => widget.controller.setStemVolume(_targetDeck, stem, vol),
-          onToggleMute: (stem) => widget.controller.toggleStemMute(_targetDeck, stem),
-          onToggleSolo: (stem) => widget.controller.toggleStemSolo(_targetDeck, stem),
+        // The faders move deck state but no stem separation feeds the audio
+        // engine yet, so say so rather than looking broken.
+        return ComingSoonOverlay(
+          feature: 'AI STEMS',
+          detail: 'Live vocal / drum / bass / melody separation.',
+          child: StemFaderPanel(
+            vocalVolume: stems.vocalVolume,
+            drumVolume: stems.drumVolume,
+            bassVolume: stems.bassVolume,
+            melodyVolume: stems.melodyVolume,
+            vocalMuted: stems.vocalMuted,
+            drumMuted: stems.drumMuted,
+            bassMuted: stems.bassMuted,
+            melodyMuted: stems.melodyMuted,
+            vocalSolo: stems.vocalSolo,
+            drumSolo: stems.drumSolo,
+            bassSolo: stems.bassSolo,
+            melodySolo: stems.melodySolo,
+            onVolumeChanged: (stem, vol) =>
+                widget.controller.setStemVolume(_targetDeck, stem, vol),
+            onToggleMute: (stem) =>
+                widget.controller.toggleStemMute(_targetDeck, stem),
+            onToggleSolo: (stem) =>
+                widget.controller.toggleStemSolo(_targetDeck, stem),
+          ),
         );
     }
   }

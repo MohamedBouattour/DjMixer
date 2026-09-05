@@ -405,16 +405,9 @@ class WebDeckAudioBackend implements DeckAudioBackend {
 
   @override
   void setEq({required double low, required double mid, required double high}) {
-    // 0..1 knobs, 0.5 unity. Full cut at 0 (-26 dB), +9 dB boost at 1, which
-    // matches the feel of a club mixer's isolator-ish EQ.
-    _eqLow?.gain.value = _knobToDb(low);
-    _eqMid?.gain.value = _knobToDb(mid);
-    _eqHigh?.gain.value = _knobToDb(high);
-  }
-
-  double _knobToDb(double v) {
-    final k = v.clamp(0.0, 1.0);
-    return k < 0.5 ? (k / 0.5) * 26.0 - 26.0 : (k - 0.5) / 0.5 * 9.0;
+    _eqLow?.gain.value = eqKnobToDb(low);
+    _eqMid?.gain.value = eqKnobToDb(mid);
+    _eqHigh?.gain.value = eqKnobToDb(high);
   }
 
   @override

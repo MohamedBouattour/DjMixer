@@ -82,6 +82,15 @@ abstract class DeckAudioBackend {
   void dispose();
 }
 
+/// Maps a 0..1 EQ knob (0.5 = unity) to decibels.
+///
+/// Full cut at 0 (-26 dB) and +9 dB of boost at 1, which gives the feel of a
+/// club mixer's EQ. Shared so the web and native engines respond identically.
+double eqKnobToDb(double value) {
+  final v = value.clamp(0.0, 1.0);
+  return v < 0.5 ? (v / 0.5) * 26.0 - 26.0 : (v - 0.5) / 0.5 * 9.0;
+}
+
 /// Creates the platform's backend. Web gets the Web Audio engine; other
 /// platforms get the `audioplayers` fallback.
 DeckAudioBackend createDeckAudioBackend(String deckId) =>

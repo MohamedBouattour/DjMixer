@@ -6,9 +6,19 @@ import '../../deck/models/track.dart';
 class YTProxyService {
   final String baseUrl;
 
-  YTProxyService({String? baseUrl})
-      : baseUrl = baseUrl ??
-            ((kIsWeb && !kDebugMode) ? '' : 'http://localhost:5001');
+  /// Where the backend lives when the app is not served from it.
+  static const String productionOrigin = 'https://dj-mixer.cloud';
+
+  YTProxyService({String? baseUrl}) : baseUrl = baseUrl ?? defaultBaseUrl();
+
+  /// Web release builds are served by the backend itself, so a relative path
+  /// works. Everything else — a phone, a desktop build — has to reach it over
+  /// the network; pointing those at localhost meant search silently failed on
+  /// device, since there is no server running on the phone.
+  static String defaultBaseUrl() {
+    if (kIsWeb) return kDebugMode ? 'http://localhost:5001' : '';
+    return productionOrigin;
+  }
 
   /// Searches for tracks via the backend proxy
   Future<List<Track>> searchTracks(String query) async {

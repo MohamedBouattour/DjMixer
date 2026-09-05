@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import '../features/audio_engine/audio_engine_controller.dart';
 import '../features/audio_engine/ableton_link_service.dart';
 import '../features/recording/services/audio_recorder_service.dart';
-import '../features/recording/presentation/recording_modal.dart';
 import '../features/library/services/library_service.dart';
 import '../features/library/presentation/library_screen.dart';
 import '../features/deck/presentation/deck_view.dart';
 import '../features/mixer/presentation/mixer_view.dart';
 import '../features/performance/presentation/performance_tabs_view.dart';
-import '../core/widgets/midi_mapping_modal.dart';
+import '../core/widgets/coming_soon.dart';
 import '../core/widgets/waveform_view.dart';
 import '../core/theme/dj_colors.dart';
 import '../core/theme/dj_typography.dart';
@@ -64,31 +63,7 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
   /// as MP3 through the backend proxy.
   void _openYouTubeSearch() => _openLibrary(initialTab: 1);
 
-  void _openRecordingModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => RecordingModal(recorder: _recorderService),
-    );
-  }
 
-  void _openMidiModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => MidiMappingModal(
-        selectedDevice: 'Pioneer DDJ-FLX4 (USB/BLE)',
-        isConnected: true,
-        availableDevices: const ['Pioneer DDJ-FLX4 (USB/BLE)', 'Numark Mixtrack Pro FX'],
-        currentMappings: const {},
-        onSelectPreset: (preset) {},
-        onScanDevices: () {},
-        onStartMidiLearn: (key) {},
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,13 +101,17 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final showBrandText = width >= 520;
-        final showDeckTabs = width >= 700;
-        return _buildTopBarContent(showBrandText, showDeckTabs);
+        // The deck selector is the widest optional piece, so it is the first
+        // to go. Thresholds are covered by top_bar_layout_test.dart.
+        final showDeckTabs = width >= 900;
+        final compactBadges = width < 460;
+        return _buildTopBarContent(showBrandText, showDeckTabs, compactBadges);
       },
     );
   }
 
-  Widget _buildTopBarContent(bool showBrandText, bool showDeckTabs) {
+  Widget _buildTopBarContent(
+      bool showBrandText, bool showDeckTabs, bool compactBadges) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       color: DJColors.surface,
@@ -199,7 +178,8 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
             children: [
               // Ableton Link Button
               GestureDetector(
-                onTap: () => _linkService.toggleLink(!_linkService.state.isEnabled),
+                onTap: () => showComingSoon(context, 'Ableton Link',
+                    detail: 'Tempo sync with other apps and devices.'),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
@@ -226,6 +206,8 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
                           color: _linkService.state.isEnabled ? DJColors.deckD : DJColors.textMuted,
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      ComingSoonBadge(compact: compactBadges),
                     ],
                   ),
                 ),
@@ -233,16 +215,18 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
               const SizedBox(width: 6),
               // MIDI Controller Button
               IconButton(
-                icon: const Icon(Icons.piano, color: DJColors.textSecondary, size: 18),
-                tooltip: 'MIDI Hardware',
-                onPressed: _openMidiModal,
+                icon: const Icon(Icons.piano, color: DJColors.textMuted, size: 18),
+                tooltip: 'MIDI Hardware (coming soon)',
+                onPressed: () => showComingSoon(context, 'MIDI hardware',
+                    detail: 'Mapping for DDJ and Mixtrack controllers.'),
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(4),
               ),
               const SizedBox(width: 4),
               // Session Recording Button
               GestureDetector(
-                onTap: _openRecordingModal,
+                onTap: () => showComingSoon(context, 'Session recording',
+                    detail: 'Capturing the master mix to a file.'),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
@@ -272,6 +256,8 @@ class _DJWorkspaceScreenState extends State<DJWorkspaceScreen> {
                           color: _recorderService.isRecording ? DJColors.vuRed : DJColors.textMuted,
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      ComingSoonBadge(compact: compactBadges),
                     ],
                   ),
                 ),
